@@ -251,7 +251,31 @@ let _liveDraftPicks = [];
 let _liveDraftPosFilter = '';
 let _liveDraftPool = null;        // memoized ranked candidate pool
 let _liveDraftPoolLeague = null;  // league the pool was built for
+let _liveDraftBoard = {};         // user's custom War Room board (pid -> {rank,tier,note,target})
+let _liveDraftBoardMode = 'best'; // 'my' (War Room board) | 'best' (DHQ)
+let _liveDraftBoardLoaded = false;
 const LIVE_DRAFT_POLL_MS = 6000;
+
+// Pull the user's custom draft board (built in War Room) once per live session.
+async function _loadLiveDraftBoard() {
+  const leagueId = window.S?.currentLeagueId || '';
+  try {
+    if (window.OD?.loadDraftBoard) {
+      const board = await window.OD.loadDraftBoard(leagueId);
+      _liveDraftBoard = board && typeof board === 'object' ? board : {};
+    }
+  } catch (e) { console.warn('[live-draft] board load failed', e); _liveDraftBoard = {}; }
+  _liveDraftBoardLoaded = true;
+  // If the user has a War Room board, default to showing it.
+  if (Object.keys(_liveDraftBoard).length) _liveDraftBoardMode = 'my';
+  renderLiveDraftUI();
+}
+
+function _setLiveDraftBoardMode(mode) {
+  _liveDraftBoardMode = mode === 'my' ? 'my' : 'best';
+  renderLiveDraftUI();
+}
+window._setLiveDraftBoardMode = _setLiveDraftBoardMode;
 
 // Find the draft that is currently running (status 'drafting').
 function _activeLiveDraft() {
@@ -294,6 +318,8 @@ function startLiveDraft() {
   if (mount && !_liveDraftPicks.length) {
     mount.innerHTML = `<div class="scout-empty-card"><div class="scout-empty-title">Connecting to your live draft…</div><div class="scout-empty-body">Pulling the latest picks from Sleeper.</div></div>`;
   }
+  _liveDraftBoardLoaded = false;
+  _loadLiveDraftBoard();
   _pollLiveDraft();
   _liveDraftTimer = setInterval(_pollLiveDraft, LIVE_DRAFT_POLL_MS);
 }
@@ -479,11 +505,28 @@ function renderLiveDraftUI(ended) {
       ${recent.length ? feedRows : '<div style="font-size:13px;color:var(--text3);padding:6px 0">No picks yet — draft is about to begin.</div>'}
     </div>`;
 
-  // ── Available board (your board: DHQ-ranked, undrafted, tags) ──
+  // ── Available board (your board: undrafted, DHQ or your War Room board) ──
   const taken = new Set(picks.map(p => String(p.player_id)));
   const tags = (typeof _rookieTags === 'function' ? _rookieTags() : {}) || {};
+  const customBoard = _liveDraftBoard || {};
+  const hasCustom = Object.keys(customBoard).length > 0;
+  const myMode = hasCustom && _liveDraftBoardMode === 'my';
+
   const pool = _buildLiveDraftPool().filter(p => !taken.has(p.pid));
-  const filtered = _liveDraftPosFilter ? pool.filter(p => p.pos === _liveDraftPosFilter) : pool;
+  let filtered = _liveDraftPosFilter ? pool.filter(p => p.pos === _liveDraftPosFilter) : pool;
+
+  // In My Board mode, order by the user's War Room rank; players not on the
+  // custom board fall to the bottom (by DHQ). Otherwise pure DHQ order.
+  if (myMode) {
+    filtered = filtered.slice().sort((a, b) => {
+      const ra = customBoard[a.pid]?.rank, rb = customBoard[b.pid]?.rank;
+      const aHas = ra != null, bHas = rb != null;
+      if (aHas && bHas) return ra - rb;
+      if (aHas) return -1;
+      if (bHas) return 1;
+      return b.val - a.val;
+    });
+  }
 
   // Need positions for highlight
   let needSet = new Set();
@@ -498,8 +541,16 @@ function renderLiveDraftUI(ended) {
     return `<button onclick="_setLiveDraftPosFilter('${p}')" style="font-size:12px;font-weight:700;padding:5px 11px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};background:${active ? 'var(--accentL)' : 'var(--bg2)'};color:${active ? 'var(--accent)' : 'var(--text2)'}">${p || 'All'}</button>`;
   }).join('');
 
+  // My Board / Best Available toggle — only when a War Room board exists.
+  const modeToggle = hasCustom ? `
+    <div style="display:flex;gap:0;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:10px">
+      <button onclick="_setLiveDraftBoardMode('my')" style="flex:1;padding:6px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${myMode ? 'var(--accentL)' : 'transparent'};color:${myMode ? 'var(--accent)' : 'var(--text3)'}">My Board <span style="font-size:10px;opacity:.8">· War Room</span></button>
+      <button onclick="_setLiveDraftBoardMode('best')" style="flex:1;padding:6px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:${!myMode ? 'var(--accentL)' : 'transparent'};color:${!myMode ? 'var(--accent)' : 'var(--text3)'}">Best Available</button>
+    </div>` : '';
+
   const tagBadge = (pid) => {
     const t = tags[pid];
+    if (customBoard[pid]?.target) return `<span title="Target (your War Room board)" style="font-size:11px;color:var(--accent)">★</span>`;
     if (t === 'watch') return `<span title="Target (synced from War Room)" style="font-size:11px;color:var(--accent)">★</span>`;
     if (t === 'untouchable') return `<span title="Must-draft (synced from War Room)" style="font-size:11px;color:var(--green)">●</span>`;
     return '';
@@ -507,26 +558,34 @@ function renderLiveDraftUI(ended) {
 
   const rows = filtered.slice(0, 60).map((p, i) => {
     const need = needSet.has(p.pos);
+    const cb = customBoard[p.pid];
+    const rankLabel = myMode && cb?.rank != null ? cb.rank : (i + 1);
+    const tier = myMode && cb?.tier != null ? `<span style="font-size:11px;font-weight:700;color:var(--accent);background:var(--accentL);border-radius:5px;padding:1px 6px;margin-left:4px">T${esc(String(cb.tier))}</span>` : '';
+    const note = myMode && cb?.note ? `<div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">“${esc(cb.note)}”</div>` : '';
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:12px;font-weight:700;color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:22px;text-align:right">${i + 1}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:22px;text-align:right">${rankLabel}</span>
         <span style="width:6px;height:6px;border-radius:50%;background:${posColor(p.pos)};flex-shrink:0"></span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)} ${tagBadge(p.pid)}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)} ${tagBadge(p.pid)}${tier}</div>
           <div style="font-size:12px;color:var(--text3)">${esc(p.pos)}${p.team ? ' · ' + esc(p.team) : ''}${need ? ' · <span style="color:var(--accent);font-weight:700">need</span>' : ''}</div>
+          ${note}
         </div>
         <span style="font-size:13px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace">${Math.round(p.val).toLocaleString()}</span>
       </div>`;
   }).join('');
 
+  const boardLabel = myMode ? 'Your War Room board' : 'Best available';
   const board = `
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Best available · ${filtered.length} left</span>
+        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">${boardLabel} · ${filtered.length} left</span>
+        ${myMode ? '<span style="font-size:11px;color:var(--green)">● Synced from War Room</span>' : ''}
       </div>
+      ${modeToggle}
       <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${filterChips}</div>
       ${rows || '<div style="font-size:13px;color:var(--text3);padding:6px 0">No players match this filter.</div>'}
-      <div style="font-size:12px;color:var(--text3);margin-top:10px;line-height:1.5">★ = your War Room targets · ● = must-draft. Open the War Room for full board editing.</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:10px;line-height:1.5">${hasCustom ? 'Showing the board you built in War Room. ' : ''}★ = target · ● = must-draft. Edit your full board in War Room.</div>
     </div>`;
 
   mount.innerHTML = header + feed + board;

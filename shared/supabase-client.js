@@ -864,7 +864,87 @@ window.OD.loadPlayerTags = async function(leagueId) {
 };
 
 // ══════════════════════════════════════════════════════════════════
-// FIELD LOG — shared between War Room Scout and War Room
+// DRAFT BOARD — the user's custom board built in War Room
+// (manual ranks, tiers, notes, targets). Read-only in Scout so the
+// board you prepped in War Room shows up live on your phone.
+// Syncs via Supabase; falls back to localStorage. Graceful no-op if
+// the draft_boards table / data does not exist yet.
+//
+// Expected table (created/owned by War Room):
+// create table if not exists public.draft_boards (
+//   id uuid primary key default gen_random_uuid(),
+//   username text references public.users(sleeper_username) on delete cascade,
+//   user_id uuid,
+//   league_id text not null,
+//   board jsonb not null default '{}'::jsonb,
+//   updated_at timestamptz default now(),
+//   unique(username, league_id)
+// );
+//
+// `board` shape is tolerated flexibly — a map keyed by player_id, an
+// array of entries, or { players: [...] } — and normalized to:
+//   { "<player_id>": { rank, tier, note, target } }
+// ══════════════════════════════════════════════════════════════════
+
+const DRAFT_BOARD_LS_KEY = (leagueId) => 'draft_board_' + (leagueId || '');
+
+function _normalizeDraftBoard(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    const entries = Array.isArray(raw) ? raw
+        : Array.isArray(raw.players) ? raw.players
+        : null;
+    const put = (pid, e) => {
+        if (pid == null) return;
+        out[String(pid)] = {
+            rank: e.rank != null ? Number(e.rank) : (e.overall != null ? Number(e.overall) : null),
+            tier: e.tier != null ? e.tier : (e.tier_label || null),
+            note: e.note || e.notes || '',
+            target: e.target === true || e.is_target === true || e.starred === true,
+        };
+    };
+    if (entries) {
+        entries.forEach(e => { if (e && typeof e === 'object') put(e.player_id ?? e.pid ?? e.id, e); });
+    } else {
+        // Map keyed by player_id. Values may be objects or a bare rank number.
+        Object.keys(raw).forEach(pid => {
+            const v = raw[pid];
+            if (v && typeof v === 'object') put(pid, v);
+            else if (typeof v === 'number') out[String(pid)] = { rank: v, tier: null, note: '', target: false };
+        });
+    }
+    return out;
+}
+
+window.OD.loadDraftBoard = async function(leagueId) {
+    // localStorage first (instant)
+    let local = {};
+    try {
+        const raw = localStorage.getItem(DRAFT_BOARD_LS_KEY(leagueId));
+        if (raw) local = JSON.parse(raw);
+    } catch {}
+
+    const owner = getOwnerIdentity();
+    const db = getClient();
+    if (db && isConfigured() && hasOwnerIdentity()) {
+        try {
+            const { data, error } = await applyOwnerFilter(
+                db.from('draft_boards').select('board, updated_at'), owner
+            )
+                .eq('league_id', leagueId)
+                .maybeSingle();
+            if (!error && data?.board) {
+                const norm = _normalizeDraftBoard(data.board);
+                try { localStorage.setItem(DRAFT_BOARD_LS_KEY(leagueId), JSON.stringify(norm)); } catch {}
+                return norm;
+            }
+        } catch (e) {
+            // Table may not exist yet — that's fine, fall back silently.
+            console.warn('[FW] draft_board load skipped:', e?.message || e);
+        }
+    }
+    return local;
+};
 // Run this SQL in Supabase to create the field_log table:
 //
 // create table if not exists public.field_log (
