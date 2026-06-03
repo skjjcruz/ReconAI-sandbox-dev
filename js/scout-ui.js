@@ -1214,10 +1214,10 @@ function _scoutDraftWarRoomBanner(phase) {
 
   let kicker, headline, sub, cta;
   if (live) {
-    kicker = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:7px;vertical-align:middle;box-shadow:0 0 0 3px rgba(52,211,153,.22)"></span>Draft is live';
+    kicker = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#e74c3c;margin-right:7px;vertical-align:middle;box-shadow:0 0 0 3px rgba(231,76,60,.22)"></span>Draft is live';
     headline = 'Your draft is on the clock';
-    sub = 'Jump into the war room — your board, targets, and pick analysis are ready.';
-    cta = 'Enter the draft war room →';
+    sub = 'Follow every pick, see who\'s left, and check your board — live.';
+    cta = 'Open the live draft →';
   } else {
     const wk = phase?.weeksToNext;
     if (ph === 'draft_week') {
@@ -1234,14 +1234,18 @@ function _scoutDraftWarRoomBanner(phase) {
     cta = 'Open the draft war room →';
   }
 
-  const accent = live ? 'var(--green)' : 'var(--accent)';
-  const border = live ? 'rgba(52,211,153,.45)' : 'var(--accent)';
+  // Live → red, jump straight into the live board. Upcoming → gold, open the room.
+  const accent = live ? '#e74c3c' : 'var(--accent)';
+  const border = live ? 'rgba(231,76,60,.5)' : 'var(--accent)';
   const bg = live
-    ? 'linear-gradient(135deg,rgba(52,211,153,.16),rgba(52,211,153,.03))'
+    ? 'linear-gradient(135deg,rgba(231,76,60,.16),rgba(231,76,60,.03))'
     : 'linear-gradient(135deg,rgba(212,175,55,.16),rgba(212,175,55,.03))';
+  const onClick = live
+    ? "window._draftDirectMode='live';mobileTab('draftroom')"
+    : "mobileTab('draftroom')";
 
   return `
-    <button class="scout-draft-warroom" onclick="mobileTab('draftroom')" style="display:block;width:100%;text-align:left;border:1px solid ${border};background:${bg};border-radius:var(--rl,14px);padding:16px 18px;margin:0 0 14px;cursor:pointer;font-family:inherit">
+    <button class="scout-draft-warroom" onclick="${onClick}" style="display:block;width:100%;text-align:left;border:1px solid ${border};background:${bg};border-radius:var(--rl,14px);padding:16px 18px;margin:0 0 14px;cursor:pointer;font-family:inherit">
       <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${accent};margin-bottom:6px">${kicker}</div>
       <div style="font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.02em;margin-bottom:4px">${headline}</div>
       <div style="font-size:13px;color:var(--text3);line-height:1.45;margin-bottom:12px">${sub}</div>

@@ -97,9 +97,21 @@ function enterDraftRoom(mode) {
   const entry = document.getElementById('draft-entry-view');
   const board = document.getElementById('draft-board-fullview');
   const mock  = document.getElementById('draft-mock-fullview');
+  const live  = document.getElementById('draft-live-fullview');
   if (!entry || !board || !mock) return;
 
   entry.style.display = 'none';
+  // Any time we leave the live screen, stop its polling loop.
+  if (mode !== 'live' && typeof stopLiveDraft === 'function') stopLiveDraft();
+
+  if (mode === 'live') {
+    if (live) live.style.display = '';
+    board.style.display = 'none';
+    mock.style.display  = 'none';
+    if (typeof startLiveDraft === 'function') startLiveDraft();
+    return;
+  }
+  if (live) live.style.display = 'none';
 
   if (mode === 'board') {
     board.style.display = '';
@@ -156,14 +168,18 @@ function exitDraftRoom() {
   const entry = document.getElementById('draft-entry-view');
   const board = document.getElementById('draft-board-fullview');
   const mock  = document.getElementById('draft-mock-fullview');
+  const live  = document.getElementById('draft-live-fullview');
+  if (typeof stopLiveDraft === 'function') stopLiveDraft();
   if (entry) entry.style.display = '';
   if (board) board.style.display = 'none';
   if (mock)  mock.style.display  = 'none';
+  if (live)  live.style.display  = 'none';
   _refreshDraftEntrySubtitles();
 }
 window.exitDraftRoom = exitDraftRoom;
 
 function _refreshDraftEntrySubtitles() {
+  if (typeof renderLiveDraftEntryCard === 'function') renderLiveDraftEntryCard();
   const boardSub = document.getElementById('draft-entry-board-sub');
   if (boardSub) {
     const S = window.S || {};
@@ -222,6 +238,300 @@ function renderDraftEntryPicks() {
     </div>`;
 }
 window.renderDraftEntryPicks = renderDraftEntryPicks;
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE DRAFT — follow the real draft as it happens on the phone.
+// Polls Sleeper's /draft/<id>/picks while a draft has status
+// 'drafting', shows who's on the clock, how far away the user's next
+// pick is, the running pick feed, and the user's available board
+// (DHQ-ranked, undrafted, with War-Room-synced target/lock tags).
+// ═══════════════════════════════════════════════════════════════
+let _liveDraftTimer = null;
+let _liveDraftPicks = [];
+let _liveDraftPosFilter = '';
+let _liveDraftPool = null;        // memoized ranked candidate pool
+let _liveDraftPoolLeague = null;  // league the pool was built for
+const LIVE_DRAFT_POLL_MS = 6000;
+
+// Find the draft that is currently running (status 'drafting').
+function _activeLiveDraft() {
+  const drafts = (window.S?.drafts) || [];
+  return drafts.find(d => d && d.status === 'drafting') || null;
+}
+window._activeLiveDraft = _activeLiveDraft;
+
+// Entry-view card — only visible while a draft is live. Tapping enters
+// the live screen directly.
+function renderLiveDraftEntryCard() {
+  const el = document.getElementById('draft-entry-live-card');
+  if (!el) return;
+  const draft = _activeLiveDraft();
+  if (!draft) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = `
+    <div class="draft-entry-card" onclick="enterDraftRoom('live')" style="border:1px solid rgba(231,76,60,.5);background:linear-gradient(135deg,rgba(231,76,60,.14),rgba(231,76,60,.03))">
+      <div class="draft-entry-icon" style="background:rgba(231,76,60,.14)">
+        <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e74c3c;box-shadow:0 0 0 4px rgba(231,76,60,.22)"></span>
+      </div>
+      <div class="draft-entry-body">
+        <div class="draft-entry-title">Live Draft <span style="font-size:11px;font-weight:800;color:#e74c3c;letter-spacing:.06em;margin-left:4px">● ON THE CLOCK</span></div>
+        <div class="draft-entry-sub">Follow every pick · see who's left · your board</div>
+      </div>
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`;
+}
+window.renderLiveDraftEntryCard = renderLiveDraftEntryCard;
+
+function _setLiveDraftPosFilter(pos) {
+  _liveDraftPosFilter = pos || '';
+  renderLiveDraftUI();
+}
+window._setLiveDraftPosFilter = _setLiveDraftPosFilter;
+
+function startLiveDraft() {
+  stopLiveDraft();
+  const mount = document.getElementById('draft-live');
+  if (mount && !_liveDraftPicks.length) {
+    mount.innerHTML = `<div class="scout-empty-card"><div class="scout-empty-title">Connecting to your live draft…</div><div class="scout-empty-body">Pulling the latest picks from Sleeper.</div></div>`;
+  }
+  _pollLiveDraft();
+  _liveDraftTimer = setInterval(_pollLiveDraft, LIVE_DRAFT_POLL_MS);
+}
+window.startLiveDraft = startLiveDraft;
+
+function stopLiveDraft() {
+  if (_liveDraftTimer) { clearInterval(_liveDraftTimer); _liveDraftTimer = null; }
+}
+window.stopLiveDraft = stopLiveDraft;
+
+async function _pollLiveDraft() {
+  const draft = _activeLiveDraft();
+  // Draft finished (or vanished) — render a final state and stop polling.
+  if (!draft) {
+    stopLiveDraft();
+    renderLiveDraftUI(true);
+    return;
+  }
+  try {
+    const api = window.SleeperAPI || window.App?.SleeperAPI || window;
+    const fn = api.fetchDraftPicks || window.fetchDraftPicks;
+    if (typeof fn === 'function') {
+      const picks = await fn(draft.draft_id || draft.draftId);
+      if (Array.isArray(picks)) _liveDraftPicks = picks;
+    }
+  } catch (e) {
+    console.warn('[live-draft] poll failed', e);
+  }
+  renderLiveDraftUI();
+}
+
+// Build (and memoize) the ranked pool of draftable players: everyone with a
+// DHQ value who is not already on a roster, best first. Works for rookie
+// drafts (pool ≈ rookies + FAs) and startups (pool ≈ everyone).
+function _buildLiveDraftPool() {
+  const S = window.S || {};
+  const leagueId = S.currentLeagueId || '';
+  if (_liveDraftPool && _liveDraftPoolLeague === leagueId) return _liveDraftPool;
+
+  const dyn = window.dynastyValue || (() => 0);
+  const scores = window.LI?.playerScores || window.App?.LI?.playerScores || {};
+  const pName = window.pName || (id => String(id));
+  const pPos = window.pPos || (() => '');
+  const normPos = window.normPos || (p => p);
+
+  const rostered = new Set();
+  (S.rosters || []).forEach(r => (r.players || []).forEach(pid => rostered.add(String(pid))));
+
+  const players = S.players || {};
+  const pool = [];
+  for (const pid in players) {
+    if (rostered.has(String(pid))) continue;
+    let val = 0;
+    try { val = Number(dyn(pid)) || 0; } catch {}
+    if (val <= 0) val = Number(scores[pid] || scores[String(pid)] || 0);
+    if (val <= 0) continue;
+    const p = players[pid] || {};
+    pool.push({
+      pid: String(pid),
+      name: pName(pid),
+      pos: normPos(p.position || pPos(pid)) || (p.position || ''),
+      team: p.team || '',
+      val,
+    });
+  }
+  pool.sort((a, b) => b.val - a.val);
+  _liveDraftPool = pool.slice(0, 250);
+  _liveDraftPoolLeague = leagueId;
+  return _liveDraftPool;
+}
+
+// Compute the slot on the clock + how many picks until the user is up.
+function _liveDraftClock(draft, picksMade) {
+  const S = window.S || {};
+  const teams = draft.settings?.teams || (S.rosters || []).length || 12;
+  const rounds = draft.settings?.rounds || 5;
+  const snake = (draft.type || 'snake') === 'snake';
+  const slotForOverall = (overall1) => {
+    const round = Math.floor((overall1 - 1) / teams) + 1;
+    const idx = (overall1 - 1) % teams;          // 0-based within round
+    const slot = (snake && round % 2 === 0) ? teams - idx : idx + 1;
+    return { round, slot };
+  };
+
+  const currentOverall = picksMade + 1;
+  const cur = slotForOverall(currentOverall);
+  const slotToRoster = draft.slot_to_roster_id || {};
+  const onClockRosterId = slotToRoster[cur.slot] != null ? Number(slotToRoster[cur.slot]) : null;
+
+  // My slot: prefer slot_to_roster_id reverse, fall back to draft_order by user id.
+  const myRosterId = S.myRosterId != null ? Number(S.myRosterId) : null;
+  let mySlot = null;
+  for (const slot in slotToRoster) {
+    if (Number(slotToRoster[slot]) === myRosterId) { mySlot = Number(slot); break; }
+  }
+  if (mySlot == null) {
+    const myUserId = S.myUserId || (typeof myR === 'function' ? myR()?.owner_id : null);
+    const order = draft.draft_order || {};
+    if (myUserId != null && order[myUserId] != null) mySlot = Number(order[myUserId]);
+  }
+
+  let picksUntilMe = null, myNextOverall = null;
+  if (mySlot != null) {
+    const maxOverall = teams * rounds;
+    for (let n = currentOverall; n <= maxOverall; n++) {
+      if (slotForOverall(n).slot === mySlot) { myNextOverall = n; picksUntilMe = n - currentOverall; break; }
+    }
+  }
+
+  return { teams, rounds, currentOverall, round: cur.round, onClockRosterId, mySlot, myNextOverall, picksUntilMe };
+}
+
+function _liveRosterName(rosterId) {
+  const S = window.S || {};
+  const roster = (S.rosters || []).find(r => Number(r.roster_id) === Number(rosterId));
+  if (!roster) return `Team ${rosterId ?? '?'}`;
+  const getUser = window.getUser;
+  if (typeof getUser === 'function' && roster.owner_id) return getUser(roster.owner_id);
+  return `Team ${roster.roster_id}`;
+}
+
+function renderLiveDraftUI(ended) {
+  const mount = document.getElementById('draft-live');
+  if (!mount) return;
+  const esc = window.escHtml || (s => String(s));
+  const posColor = window.posColor || (() => 'var(--silver)');
+  const pName = window.pName || (id => String(id));
+
+  const draft = _activeLiveDraft();
+  const picks = _liveDraftPicks || [];
+
+  if (ended || !draft) {
+    mount.innerHTML = `<div class="scout-empty-card">
+      <div class="scout-empty-title">Draft complete</div>
+      <div class="scout-empty-body">${picks.length} picks are in. Head to the Big Board to review the results or run a mock for next year.</div>
+      <button class="scout-secondary-btn" style="margin-top:12px" onclick="exitDraftRoom()">Back to Draft Room</button>
+    </div>`;
+    return;
+  }
+
+  const clock = _liveDraftClock(draft, picks.length);
+  const onClockName = clock.onClockRosterId != null ? _liveRosterName(clock.onClockRosterId) : 'TBD';
+  const myTurn = clock.mySlot != null && clock.picksUntilMe === 0;
+
+  // ── On-the-clock header ──
+  const untilLine = clock.picksUntilMe == null
+    ? `<span style="color:var(--text3)">No pick of yours remaining</span>`
+    : myTurn
+      ? `<span style="color:#e74c3c;font-weight:800">You're on the clock</span>`
+      : `Your pick in <strong style="color:var(--accent)">${clock.picksUntilMe}</strong> pick${clock.picksUntilMe === 1 ? '' : 's'}`;
+
+  const header = `
+    <div style="background:var(--bg2);border:1px solid ${myTurn ? 'rgba(231,76,60,.5)' : 'var(--border)'};border-radius:var(--rl);padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#e74c3c"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#e74c3c;margin-right:6px;vertical-align:middle;box-shadow:0 0 0 3px rgba(231,76,60,.22)"></span>Live · Round ${clock.round}</span>
+        <span style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace">Pick ${clock.currentOverall}</span>
+      </div>
+      <div style="font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.02em;margin-bottom:2px">${esc(onClockName)}</div>
+      <div style="font-size:13px;color:var(--text3)">on the clock · ${untilLine}</div>
+    </div>`;
+
+  // ── Recent picks feed (latest first) ──
+  const recent = picks.slice().sort((a, b) => (b.pick_no || 0) - (a.pick_no || 0)).slice(0, 10);
+  const feedRows = recent.map(pk => {
+    const md = pk.metadata || {};
+    const nm = (md.first_name || md.last_name) ? `${md.first_name || ''} ${md.last_name || ''}`.trim() : pName(pk.player_id);
+    const pos = window.normPos ? (window.normPos(md.position) || md.position || '') : (md.position || '');
+    const rd = pk.round || Math.floor(((pk.pick_no || 1) - 1) / clock.teams) + 1;
+    const inRd = clock.teams ? (((pk.pick_no || 1) - 1) % clock.teams) + 1 : pk.pick_no;
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:12px;font-weight:700;color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:34px">${rd}.${String(inRd).padStart(2,'0')}</span>
+        <span style="width:6px;height:6px;border-radius:50%;background:${posColor(pos)};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(nm)}</div>
+          <div style="font-size:12px;color:var(--text3)">${esc(pos)}${md.team ? ' · ' + esc(md.team) : ''} → ${esc(_liveRosterName(pk.roster_id))}</div>
+        </div>
+      </div>`;
+  }).join('');
+  const feed = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Latest picks</div>
+      ${recent.length ? feedRows : '<div style="font-size:13px;color:var(--text3);padding:6px 0">No picks yet — draft is about to begin.</div>'}
+    </div>`;
+
+  // ── Available board (your board: DHQ-ranked, undrafted, tags) ──
+  const taken = new Set(picks.map(p => String(p.player_id)));
+  const tags = (typeof _rookieTags === 'function' ? _rookieTags() : {}) || {};
+  const pool = _buildLiveDraftPool().filter(p => !taken.has(p.pid));
+  const filtered = _liveDraftPosFilter ? pool.filter(p => p.pos === _liveDraftPosFilter) : pool;
+
+  // Need positions for highlight
+  let needSet = new Set();
+  try {
+    const assess = window.assessTeamFromGlobal ? window.assessTeamFromGlobal(window.S?.myRosterId) : null;
+    (assess?.needs || []).forEach(n => needSet.add(typeof n === 'string' ? n : n.pos));
+  } catch {}
+
+  const posOptions = ['', 'QB', 'RB', 'WR', 'TE'];
+  const filterChips = posOptions.map(p => {
+    const active = _liveDraftPosFilter === p;
+    return `<button onclick="_setLiveDraftPosFilter('${p}')" style="font-size:12px;font-weight:700;padding:5px 11px;border-radius:8px;cursor:pointer;font-family:inherit;border:1px solid ${active ? 'var(--accent)' : 'var(--border)'};background:${active ? 'var(--accentL)' : 'var(--bg2)'};color:${active ? 'var(--accent)' : 'var(--text2)'}">${p || 'All'}</button>`;
+  }).join('');
+
+  const tagBadge = (pid) => {
+    const t = tags[pid];
+    if (t === 'watch') return `<span title="Target (synced from War Room)" style="font-size:11px;color:var(--accent)">★</span>`;
+    if (t === 'untouchable') return `<span title="Must-draft (synced from War Room)" style="font-size:11px;color:var(--green)">●</span>`;
+    return '';
+  };
+
+  const rows = filtered.slice(0, 60).map((p, i) => {
+    const need = needSet.has(p.pos);
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:12px;font-weight:700;color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:22px;text-align:right">${i + 1}</span>
+        <span style="width:6px;height:6px;border-radius:50%;background:${posColor(p.pos)};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)} ${tagBadge(p.pid)}</div>
+          <div style="font-size:12px;color:var(--text3)">${esc(p.pos)}${p.team ? ' · ' + esc(p.team) : ''}${need ? ' · <span style="color:var(--accent);font-weight:700">need</span>' : ''}</div>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace">${Math.round(p.val).toLocaleString()}</span>
+      </div>`;
+  }).join('');
+
+  const board = `
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Best available · ${filtered.length} left</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${filterChips}</div>
+      ${rows || '<div style="font-size:13px;color:var(--text3);padding:6px 0">No players match this filter.</div>'}
+      <div style="font-size:12px;color:var(--text3);margin-top:10px;line-height:1.5">★ = your War Room targets · ● = must-draft. Open the War Room for full board editing.</div>
+    </div>`;
+
+  mount.innerHTML = header + feed + board;
+}
+window.renderLiveDraftUI = renderLiveDraftUI;
 
 // ── DNA intel strip for mock draft on-the-clock ──────────────
 function _renderDNAIntelStrip(round) {

@@ -459,6 +459,9 @@
         <div style="font-size:18px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px">Draft Room</div>
         <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Rookie prospects · mock drafts · pick strategy</div>
 
+        <!-- Live Draft entry card — only shown while a draft is actually running -->
+        <div id="draft-entry-live-card" style="display:none;margin-bottom:10px"></div>
+
         <!-- Big Board entry card -->
         <div class="draft-entry-card" onclick="enterDraftRoom('board')" style="margin-bottom:10px">
           <div class="draft-entry-icon" style="background:rgba(212,175,55,.12)">
@@ -537,6 +540,21 @@
 
         <!-- Mock draft content (existing mock UI goes here) -->
         <div id="draft-mock" style="margin-bottom:14px"></div>
+      </div>
+
+      <!-- Live Draft full-screen view -->
+      <div id="draft-live-fullview" style="display:none">
+        <!-- Back header -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <button onclick="exitDraftRoom()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Draft Room
+          </button>
+          <div style="font-size:16px;font-weight:800;letter-spacing:-.02em">Live Draft</div>
+        </div>
+
+        <!-- Live draft content (rendered + polled by draft-ui.js) -->
+        <div id="draft-live"></div>
       </div>
 
       <!-- Keep these hidden stubs for JS compat -->
