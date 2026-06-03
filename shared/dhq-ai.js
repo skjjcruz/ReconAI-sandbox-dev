@@ -844,8 +844,11 @@ async function dhqAI(type, message, context, options) {
   if (newsContext) fullContext += newsContext + '\n';
   if (context) fullContext += context + '\n\n';
 
-  // Inject league memory for context-rich types
-  const memoryTypes = ['home-chat','trade-chat','waiver-chat','draft-chat','trade-scout','player-scout','pick-analysis'];
+  // Inject league memory for context-rich types.
+  // NOTE: 'pick-analysis' is intentionally excluded — it fires on every qualifying
+  // draft pick and is a 1-2 sentence reaction that needs no league-memory continuity.
+  // Skipping it removes a Supabase memory READ per pick (less network noise, snappier).
+  const memoryTypes = ['home-chat','trade-chat','waiver-chat','draft-chat','trade-scout','player-scout'];
   if (memoryTypes.includes(type)) {
     try {
       const memCtx = await buildMemoryContext(window.S?.currentLeagueId);
@@ -889,7 +892,14 @@ async function dhqAI(type, message, context, options) {
   const realTimeIntent = /\b(injur|news|update|latest|rumor|contract|sign(ed|ing)|cut|release|suspend|arrest|trade rumor|depth chart|status|headline|report)\b/i.test(lastUserContent);
   const finalWebSearch = canUseWebSearch && (useWebSearch || realTimeIntent);
 
-  const reply = await callClaude(systemPrefixed, finalWebSearch, 2, maxTokens, type);
+  // Per-pick draft stream reactions are low-stakes and high-frequency. The client
+  // (BYOK) transport retries 429/529 up to twice with a 10s backoff — which under the
+  // proxy's post-generation rate limits can bill (and surface) a DUPLICATE generation,
+  // and at best lands a stale bubble after the draft has moved on. Fail fast with no
+  // retry so each pick fires exactly one LLM call; the rule-based pick line already
+  // populated the stream, so a dropped reaction degrades gracefully.
+  const retries = (type === 'pick-analysis') ? 0 : 2;
+  const reply = await callClaude(systemPrefixed, finalWebSearch, retries, maxTokens, type);
 
   // Validate response — fast, non-blocking, appends notes if issues found
   const validated = validateAIResponse(type, reply, {

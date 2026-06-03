@@ -852,31 +852,34 @@ function buildOwnerHistory() {
             if (c.champion === rid || c.runnerUp === rid || (c.semiFinals || []).includes(rid)) playoffSeasons.push(season);
         });
 
-        // Playoff record from brackets (exclude consolation games)
+        // Playoff record — championship-path games only (exclude consolation/placement).
+        // Walk from the title game (p===1) via t#_from.w MATCHUP-NUMBER pointers. t1/t2/w/l
+        // are ROSTER IDS and must never be compared to .m (the old tracing mixed the two
+        // ID spaces and the realRounds heuristic mis-bucketed byes / two-week finals).
         let playoffWins = 0, playoffLosses = 0;
-        const numPlayoffTeams = S.leagues?.[0]?.settings?.playoff_teams || 6;
-        Object.entries(bracketData).forEach(([season, { winners, losers }]) => {
+        Object.entries(bracketData).forEach(([season, { winners }]) => {
             if (!winners?.length) return;
-            const maxRound = Math.max(...winners.map(m => m.r || 0));
-            const realRounds = Math.ceil(Math.log2(numPlayoffTeams));
-            const minPlayoffRound = maxRound - realRounds + 1;
-            // Trace real playoff matchups from championship backwards
+            const byId = {}; winners.forEach(m => { byId[m.m] = m; });
+            let start = winners.find(m => m.p === 1);
+            if (!start) {
+                const maxR = Math.max(...winners.map(m => m.r || 0));
+                const finals = winners.filter(m => (m.r || 0) === maxR);
+                if (finals.length === 1) start = finals[0];
+            }
             const realMatchIds = new Set();
-            const champGame = winners.find(m => m.r === maxRound);
-            if (champGame) {
-                realMatchIds.add(champGame.m);
-                const queue = [champGame];
+            if (start) {
+                const queue = [start];
                 while (queue.length) {
                     const g = queue.shift();
-                    const feeders = winners.filter(fm => fm.m === g.t1_from?.w || fm.m === g.t1_from?.l || fm.m === g.t2_from?.w || fm.m === g.t2_from?.l || fm.m === g.t1 || fm.m === g.t2);
-                    feeders.forEach(f => { if (!realMatchIds.has(f.m)) { realMatchIds.add(f.m); queue.push(f); } });
+                    if (!g || realMatchIds.has(g.m)) continue;
+                    realMatchIds.add(g.m);
+                    [g.t1_from, g.t2_from].forEach(fr => { if (fr && fr.w != null && byId[fr.w]) queue.push(byId[fr.w]); });
                 }
             }
             winners.forEach(m => {
-                const isReal = realMatchIds.size > 1 ? realMatchIds.has(m.m) : (m.r >= minPlayoffRound);
-                if (!isReal) return;
+                if (!realMatchIds.has(m.m)) return;
                 if (m.w === rid) playoffWins++;
-                if (m.l === rid) playoffLosses++;
+                else if (m.l === rid) playoffLosses++;
             });
         });
 

@@ -573,15 +573,26 @@ async function loadLeagueIntel(){
     const championships={}; // { season: { champion: rosterId, runnerUp: rosterId, semiFinals: [rid, rid] } }
     Object.entries(bracketData||{}).forEach(([season,{winners,losers}])=>{
       if(!winners?.length)return;
-      // Championship game = matchup with highest round number
+      // Championship game = the title game (p===1). The final round also contains the
+      // 3rd-place (p:3) game, so find(r===maxRound) can grab the wrong game. Fall back to
+      // a lone highest-round game for old brackets with no placement field.
       const maxRound=Math.max(...winners.map(m=>m.r||0));
-      const champMatch=winners.find(m=>m.r===maxRound);
+      let champMatch=winners.find(m=>m.p===1);
+      if(!champMatch){
+        const finals=winners.filter(m=>(m.r||0)===maxRound);
+        if(finals.length===1)champMatch=finals[0];
+      }
       if(champMatch){
+        // Semi-finalists = losers of the two games that FEED the title game
+        // (t1_from.w / t2_from.w are matchup numbers). Fall back to maxRound-1 losers.
+        const byId={};winners.forEach(m=>{byId[m.m]=m;});
+        let semiFinals=[champMatch.t1_from?.w,champMatch.t2_from?.w]
+          .filter(x=>x!=null).map(mid=>byId[mid]?.l).filter(x=>x!=null);
+        if(!semiFinals.length)semiFinals=winners.filter(m=>(m.r||0)===maxRound-1).map(m=>m.l).filter(Boolean);
         championships[season]={
           champion:champMatch.w||null,
           runnerUp:champMatch.l||null,
-          // Semi-finalists (second-to-last round losers)
-          semiFinals:winners.filter(m=>m.r===maxRound-1).map(m=>m.l).filter(Boolean),
+          semiFinals,
         };
       }
     });

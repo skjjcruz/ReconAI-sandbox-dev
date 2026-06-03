@@ -226,14 +226,15 @@ window.OD.callAI = async function({ type, context }) {
 window.OD.saveAIAnalysis = async function(leagueId, type, contextSummary, analysis) {
     const owner = getOwnerIdentity();
     const db = getClient();
-    if (!db || !isConfigured() || !hasOwnerIdentity()) return;
+    if (!db || !isConfigured() || !hasOwnerIdentity()) return null;
     await ensureUser(owner.username);
-    const { error } = await db.from('ai_analysis').insert({
+    const { data, error } = await db.from('ai_analysis').insert({
         ...ownerCols(owner), league_id: leagueId, type,
         context_summary: contextSummary || '',
         analysis,
-    });
-    if (error) console.warn('[FW] ai_analysis save error', error);
+    }).select('id').maybeSingle();
+    if (error) { console.warn('[FW] ai_analysis save error', error); return null; }
+    return data?.id || null;
 };
 
 window.OD.loadAIHistory = async function(leagueId) {
@@ -249,6 +250,15 @@ window.OD.loadAIHistory = async function(leagueId) {
         .limit(20);
     if (error) return [];
     return data || [];
+};
+
+window.OD.deleteAIAnalysis = async function(id) {
+    const owner = getOwnerIdentity();
+    const db = getClient();
+    if (!db || !isConfigured() || !hasOwnerIdentity() || !id) return false;
+    const { error } = await applyOwnerFilter(db.from('ai_analysis').delete(), owner).eq('id', id);
+    if (error) { console.warn('[FW] ai_analysis delete error', error); return false; }
+    return true;
 };
 
 // ══════════════════════════════════════════════════════════════════

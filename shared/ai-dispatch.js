@@ -296,6 +296,10 @@ async function callClaude(messages, useWebSearch=false, _retries=2, maxTok=600, 
         throw new Error(serverErr.message);
       }
       console.warn('[ai-dispatch] Server AI failed, falling back to client:', serverErr.message);
+      // High-frequency, low-stakes per-pick draft reactions must never double-dip
+      // (a failed server attempt followed by the whole client retry loop). Fail fast
+      // so a pick reaction is at most one round-trip; the rule-based stream line covers it.
+      if(callType === 'pick-analysis') throw serverErr;
       // Fall through to client-side if user has an API key
       if(!S.apiKey) throw serverErr;
     }

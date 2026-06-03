@@ -179,13 +179,26 @@
     return { grade: 'F', label: 'Bad Trade', color: '#E74C3C' };
   }
 
+  // ── Grudge types ───────────────────────────────────────────────
+  // Canonical trade-interaction outcomes + their acceptance-tax impact (and DNA signal).
+  // Single source of truth for both apps; calcGrudgeTax reads .impact. Exposed on
+  // window.App.GRUDGE_TYPES — previously only a component-local const in War Room's
+  // trade-calc.js, so the shared calcGrudgeTax silently returned 0 for every caller.
+  const GRUDGE_TYPES = {
+    ACCEPTED_FAIR:   { label: 'Accepted — Fair Trade',  impact: +5,  cat: 'accepted', dnaSignal: { STALWART: 3 } },
+    ACCEPTED_WON:    { label: 'Accepted — Fleeced Them', impact: -8,  cat: 'accepted', dnaSignal: { FLEECER: 3, DOMINATOR: 1 } },
+    ACCEPTED_LOST:   { label: 'Accepted — Got Fleeced',  impact: +10, cat: 'accepted', dnaSignal: { ACCEPTOR: 3, DESPERATE: 2 } },
+    REJECTED:        { label: 'Rejected',                impact: -15, cat: 'rejected', dnaSignal: { DOMINATOR: 3, FLEECER: 1 } },
+    COUNTER_FAIR:    { label: 'Counter — Fair',          impact: +3,  cat: 'counter',  dnaSignal: { STALWART: 2, FLEECER: 1 } },
+    COUNTER_LOWBALL: { label: 'Counter — Lowball',       impact: -10, cat: 'counter',  dnaSignal: { FLEECER: 3, DOMINATOR: 2 } },
+  };
+
   // ── calcGrudgeTax ──────────────────────────────────────────────
   // DNA-weighted grudge modifier from trade history between two owners.
   // grudgesList = [{ myOwnerId, theirOwnerId, type, date }]
   // Returns { total: Number, entries: Array }.
   function calcGrudgeTax(myOwnerId, theirOwnerId, grudgesList, theirDnaKey) {
     if (!myOwnerId || !theirOwnerId || !grudgesList?.length) return { total: 0, entries: [] };
-    const GRUDGE_TYPES = window.App?.GRUDGE_TYPES || {};
     const relevant = grudgesList.filter(g => g.myOwnerId === myOwnerId && g.theirOwnerId === theirOwnerId);
     const dnaMult = { FLEECER: 0.7, DOMINATOR: 1.6, STALWART: 1.2, ACCEPTOR: 0.8, DESPERATE: 0.5, NONE: 1.0 }[theirDnaKey] || 1.0;
     const now = Date.now();
@@ -207,7 +220,9 @@
     calcAcceptanceLikelihood,
     fairnessGrade,
     calcGrudgeTax,
+    GRUDGE_TYPES,
   };
+  window.App.GRUDGE_TYPES = GRUDGE_TYPES;
 })();
 
 // ── Module global exports (Vite migration) ───────────────────────────────────
