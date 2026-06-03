@@ -1197,6 +1197,59 @@ function _scoutRenderFieldIntel(items) {
   </section>`;
 }
 
+// Draft War Room banner — front-and-center entry on the home brief whenever a
+// rookie draft is upcoming or live. Taps straight into the draft war room
+// (draftroom entry view: Big Board + Dynamic Mock). Returns '' when there is
+// no draft to surface so the banner stays out of the way the rest of the year.
+function _scoutDraftWarRoomBanner(phase) {
+  const S = window.S || {};
+  const drafts = Array.isArray(S.drafts) ? S.drafts : [];
+  const live = drafts.some(d => d && d.status === 'drafting');
+  const ph = phase?.phase;
+  const upcoming = !live && (
+    drafts.some(d => d && d.status === 'pre_draft') ||
+    ph === 'pre_draft' || ph === 'draft_week'
+  );
+  if (!live && !upcoming) return '';
+
+  let kicker, headline, sub, cta;
+  if (live) {
+    kicker = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:7px;vertical-align:middle;box-shadow:0 0 0 3px rgba(52,211,153,.22)"></span>Draft is live';
+    headline = 'Your draft is on the clock';
+    sub = 'Jump into the war room — your board, targets, and pick analysis are ready.';
+    cta = 'Enter the draft war room →';
+  } else {
+    const wk = phase?.weeksToNext;
+    if (ph === 'draft_week') {
+      kicker = 'Draft week';
+      sub = "Lock your big board and run a final mock before you're on the clock.";
+    } else if (typeof wk === 'number' && wk > 0) {
+      kicker = `Draft in ~${wk} week${wk === 1 ? '' : 's'}`;
+      sub = "Build your board and simulate the room while there's still time.";
+    } else {
+      kicker = 'Rookie draft incoming';
+      sub = 'Build your board and simulate the room before draft day.';
+    }
+    headline = 'Get your draft war room ready';
+    cta = 'Open the draft war room →';
+  }
+
+  const accent = live ? 'var(--green)' : 'var(--accent)';
+  const border = live ? 'rgba(52,211,153,.45)' : 'var(--accent)';
+  const bg = live
+    ? 'linear-gradient(135deg,rgba(52,211,153,.16),rgba(52,211,153,.03))'
+    : 'linear-gradient(135deg,rgba(212,175,55,.16),rgba(212,175,55,.03))';
+
+  return `
+    <button class="scout-draft-warroom" onclick="mobileTab('draftroom')" style="display:block;width:100%;text-align:left;border:1px solid ${border};background:${bg};border-radius:var(--rl,14px);padding:16px 18px;margin:0 0 14px;cursor:pointer;font-family:inherit">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${accent};margin-bottom:6px">${kicker}</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.02em;margin-bottom:4px">${headline}</div>
+      <div style="font-size:13px;color:var(--text3);line-height:1.45;margin-bottom:12px">${sub}</div>
+      <span style="display:inline-flex;align-items:center;font-size:14px;font-weight:700;color:${accent}">${cta}</span>
+    </button>`;
+}
+window._scoutDraftWarRoomBanner = _scoutDraftWarRoomBanner;
+
 function renderWarRoomBrief() {
   const host = document.getElementById('digest-content');
   if (!host) return;
@@ -1245,6 +1298,7 @@ function renderWarRoomBrief() {
   }
 
   host.innerHTML = `<div class="scout-brief-shell">
+    ${_scoutDraftWarRoomBanner(phase)}
     <section class="scout-brief-hero">
       <div class="scout-alex-row">
         <div class="scout-alex-avatar">AI</div>
