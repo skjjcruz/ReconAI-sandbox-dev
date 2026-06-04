@@ -219,7 +219,10 @@ export default defineConfig({
     },
   ],
   root: '.',
-  base: '/ReconAI/',
+  // Relative base so the built app loads correctly no matter what path it's
+  // served from (e.g. the sandbox Pages URL /ReconAI-sandbox-dev/), instead of
+  // hard-coding /ReconAI/ which 404s its own assets on this repo.
+  base: './',
   build: {
     outDir: 'dist',
     rollupOptions: {
