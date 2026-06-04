@@ -29,7 +29,11 @@ function getSessionToken() {
         const raw = localStorage.getItem(FW_SESSION_KEY);
         if (raw) {
             const s = JSON.parse(raw);
-            if (s?.token) return s.token;
+            // Reject clearly-expired JWTs so "has a token" means "has a usable
+            // token". The server validates exp too, but this keeps the client
+            // from issuing requests that RLS will reject and falling through to
+            // a confusing empty state instead of the localStorage fallback.
+            if (s?.token && !_jwtExpired(s.token)) return s.token;
         }
     } catch {}
     // Legacy Sleeper session
@@ -41,6 +45,20 @@ function getSessionToken() {
         if (Date.now() >= new Date(s.expiresAt).getTime() - 5 * 60 * 1000) return null;
         return s.token;
     } catch { return null; }
+}
+
+// Best-effort JWT expiry check. Returns true only when we can decode an `exp`
+// claim that is in the past (30s skew). Non-JWT / undecodable tokens are
+// treated as not-expired so we never reject a token we don't understand.
+function _jwtExpired(token) {
+    try {
+        const part = String(token).split('.')[1];
+        if (!part) return false;
+        const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'));
+        const claims = JSON.parse(json);
+        if (typeof claims?.exp !== 'number') return false;
+        return Date.now() >= (claims.exp * 1000) - 30 * 1000;
+    } catch { return false; }
 }
 
 function getAppSession() {
@@ -117,6 +135,15 @@ function getCurrentUserId() {
 // username = null (RLS account policy requires it, to block username spoof).
 // Legacy Sleeper session falls back to username.
 function getOwnerIdentity() {
+    // SECURITY: a cloud identity requires a valid (unexpired) session token.
+    // The token is the only thing the server trusts — RLS keys on JWT claims,
+    // not on these localStorage strings. Without a token, getClient() would
+    // fall back to the anon key, so any "authenticated" read/write would go
+    // out as the anon role (denied by RLS, but a footgun). Gating identity on
+    // the token guarantees every user-scoped call carries Authorization:
+    // Bearer <token> and never proceeds anon-only. A bare username/user-id in
+    // localStorage is not a credential.
+    if (!getSessionToken()) return { userId: null, username: null };
     const userId = getCurrentUserId();
     if (userId) return { userId, username: null };
     const username = getCurrentUsername();
