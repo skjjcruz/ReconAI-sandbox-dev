@@ -418,12 +418,16 @@ function analyzeTradePatterns(winners, losers) {
     const posSold = {};
     let earlyBuys = 0, lateSells = 0, totalTimedTrades = 0;
     let partnerDNA = {};
+    let tradesWon = 0, tradesLost = 0, tradesFair = 0;
 
     Object.entries(ownerProfiles).forEach(([rid, prof]) => {
       const ridNum = parseInt(rid);
       if (!ridSet.has(ridNum)) return;
       totalTrades += prof.trades || 0;
       totalValueGained += prof.avgValueDiff || 0;
+      tradesWon += prof.tradesWon || 0;
+      tradesLost += prof.tradesLost || 0;
+      tradesFair += prof.tradesFair || 0;
 
       Object.entries(prof.posAcquired || {}).forEach(([pos, cnt]) => {
         posBought[pos] = (posBought[pos] || 0) + cnt;
@@ -456,6 +460,10 @@ function analyzeTradePatterns(winners, losers) {
       positionsBought: posBought,
       positionsSold: posSold,
       partnerPreference: topPartner ? topPartner[0] : 'Unknown',
+      tradesWon,
+      tradesLost,
+      tradesFair,
+      tradeWinRate: (tradesWon + tradesLost + tradesFair) > 0 ? +(tradesWon / (tradesWon + tradesLost + tradesFair)).toFixed(2) : 0,
     };
   }
 
@@ -477,35 +485,38 @@ function analyzeTradePatterns(winners, losers) {
   });
 
   // Last 5 trades breakdown for the user
-  const myLast5 = tradeHistory
-    .filter(t => t.roster_ids?.includes(myRid))
-    .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-    .slice(0, 5)
-    .map(t => {
-      const mySide = t.sides?.[myRid] || { players: [], picks: [], totalValue: 0 };
-      const otherRid = t.roster_ids?.find(r => r !== myRid);
-      const theirSide = otherRid ? (t.sides?.[otherRid] || { players: [], picks: [], totalValue: 0 }) : mySide;
-      const myVal = mySide.totalValue || 0;
-      const theirVal = theirSide.totalValue || 0;
-      const net = myVal - theirVal;
-      const pn = pid => S?.players?.[pid]?.full_name || pid;
-      return {
-        season: t.season, week: t.week,
-        gave: (theirSide.players || []).slice(0, 3).map(pn),
-        got: (mySide.players || []).slice(0, 3).map(pn),
-        gavePicks: (theirSide.picks || []).length,
-        gotPicks: (mySide.picks || []).length,
-        myVal, theirVal, net,
-        result: net > theirVal * 0.05 ? 'won' : net < -myVal * 0.05 ? 'lost' : 'fair',
-        fairness: t.fairness || 0,
-      };
-    });
+  const pn = pid => S?.players?.[pid]?.full_name || pid;
+  const mapMyTrade = t => {
+    const mySide = t.sides?.[myRid] || { players: [], picks: [], totalValue: 0 };
+    const otherRid = t.roster_ids?.find(r => r !== myRid);
+    const theirSide = otherRid ? (t.sides?.[otherRid] || { players: [], picks: [], totalValue: 0 }) : mySide;
+    const myVal = mySide.totalValue || 0;
+    const theirVal = theirSide.totalValue || 0;
+    const net = myVal - theirVal;
+    return {
+      season: t.season, week: t.week, ts: t.ts || 0,
+      gave: (theirSide.players || []).slice(0, 3).map(pn),
+      got: (mySide.players || []).slice(0, 3).map(pn),
+      gavePicks: (theirSide.picks || []).length,
+      gotPicks: (mySide.picks || []).length,
+      myVal, theirVal, net, netDhq: net, // netDhq alias: the trades-tab template reads trade.netDhq
+      result: net > theirVal * 0.05 ? 'won' : net < -myVal * 0.05 ? 'lost' : 'fair',
+      fairness: t.fairness || 0,
+    };
+  };
+  const myTradesMapped = tradeHistory.filter(t => t.roster_ids?.includes(myRid)).map(mapMyTrade);
+  const myLast5 = [...myTradesMapped].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 5);
+  // All-time most-lopsided trades (same clean shape as myLast5) for the Biggest Win/Loss KPI.
+  const myBiggestWin = myTradesMapped.filter(t => t.net > 0).sort((a, b) => b.net - a.net)[0] || null;
+  const myBiggestLoss = myTradesMapped.filter(t => t.net < 0).sort((a, b) => a.net - b.net)[0] || null;
 
   return {
     winnerTradeProfile,
     leagueTradeProfile,
     myTradeProfile,
     myLast5,
+    myBiggestWin,
+    myBiggestLoss,
     winnerTiming: {
       earlyBuys: wTotal > 0 ? +(wEarly / wTotal).toFixed(2) : 0,
       lateSells: wTotal > 0 ? +(wLate / wTotal).toFixed(2) : 0,
@@ -740,7 +751,9 @@ function runLeagueAnalytics() {
   }
 
   try {
-    const { winners, losers, winnerSeasons } = identifyWinners(S.rosters);
+    const winnerResult = identifyWinners(S.rosters);
+    const { winners, losers, winnerSeasons } = winnerResult;
+    const winnerSource = winnerResult.source || 'standings';
     const draft = analyzeDraftPatterns(winners, losers);
     const waivers = analyzeWaiverPatterns(winners, losers);
     const roster = analyzeRosterConstruction(winners, losers, S.rosters);
@@ -753,6 +766,8 @@ function runLeagueAnalytics() {
       winners: Array.from(winners),
       losers: Array.from(losers),
       winnerSeasons,
+      winnerSource,
+      winnerCount: winners.size,
       draft,
       waivers,
       roster,

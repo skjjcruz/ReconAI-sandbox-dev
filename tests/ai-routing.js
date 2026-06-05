@@ -176,9 +176,12 @@ testIfEdgeAvailable('edge pricing constants match verified provider rates', () =
 group('client routing');
 
 test('simple Alex/recon tasks route to fast tier', () => {
-  ['home-chat', 'memory-summary', 'power-posts', 'recon-chat'].forEach(type => {
+  ['memory-summary', 'power-posts', 'recon-chat'].forEach(type => {
     assertRouteTier(sources.client, type, 'fast', 'client dispatcher');
   });
+  // home-chat runs on the standard tier: it's Alex's flagship conversational
+  // surface and needs a model that can hold the persona's voice.
+  assertRouteTier(sources.client, 'home-chat', 'standard', 'client dispatcher');
 });
 
 test('medium analysis tasks route to standard tier', () => {

@@ -22,11 +22,11 @@
     out.steps = Array.isArray(out.steps) ? out.steps : [];
     out.legacyKeys = Array.isArray(out.legacyKeys) ? out.legacyKeys : [];
     out.accent = out.accent || '#D4AF37';
-    out.title = out.title || 'Welcome to the GM Room';
-    out.kicker = out.kicker || 'Alex Ingram / GM Chief of Staff';
-    out.intro = out.intro || 'I will get you oriented fast. The goal is simple: know where the decisions live, where the leverage is, and where to ask me for help.';
-    out.finishTitle = out.finishTitle || 'Briefing Complete';
-    out.finishText = out.finishText || 'You are cleared to operate. I will keep the board current while you work the room.';
+    out.title = out.title || 'Welcome to the war room';
+    out.kicker = out.kicker || 'Alex Ingram / Your AI GM';
+    out.intro = out.intro || 'I will get you oriented fast. The goal is simple: know where the decisions live, where the leverage is, and where to pull me in.';
+    out.finishTitle = out.finishTitle || 'We are ready';
+    out.finishText = out.finishText || 'That is the room. Start with the highest-signal move, and bring me in before you pull any trigger.';
     return out;
   }
 
@@ -181,6 +181,18 @@
       .dhq-tutorial-panel.is-center{left:50%;top:50%;transform:translate(-50%,-50%)}
       .dhq-tutorial-panel.is-anchored{width:calc(100vw - 32px);max-width:660px;grid-template-columns:minmax(0,1fr)}
       .dhq-tutorial-main{min-width:0}
+      .dhq-tutorial-alex{display:flex;align-items:center;gap:10px;margin-bottom:13px}
+      .dhq-tutorial-alex-face{width:40px;height:40px;border-radius:9px;flex-shrink:0;object-fit:cover;border:2px solid var(--dhq-tutorial-accent,#D4AF37);background:linear-gradient(135deg,#d4af37,#b8941e);display:flex;align-items:center;justify-content:center;font-weight:900;color:#0a0a0a;font-size:13px;letter-spacing:.02em}
+      .dhq-tutorial-alex-id{display:flex;flex-direction:column;line-height:1.1}
+      .dhq-tutorial-alex-id b{color:var(--dhq-tutorial-accent,#D4AF37);font-size:14px;font-weight:900;letter-spacing:.02em}
+      .dhq-tutorial-alex-id small{color:rgba(255,255,255,.5);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+      .dhq-tutorial-choices{display:flex;flex-direction:column;gap:8px;margin:12px 0 6px}
+      .dhq-tutorial-choice{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);border-radius:9px;padding:11px 13px;color:rgba(255,255,255,.82);font:inherit;cursor:pointer;transition:border-color .15s,background .15s}
+      .dhq-tutorial-choice:hover{border-color:rgba(212,175,55,.45)}
+      .dhq-tutorial-choice.is-active{border-color:var(--dhq-tutorial-accent,#D4AF37);background:rgba(212,175,55,.1)}
+      .dhq-tutorial-choice b{display:block;color:#fff;font-size:14px;font-weight:850;margin-bottom:2px}
+      .dhq-tutorial-choice.is-active b{color:var(--dhq-tutorial-accent,#D4AF37)}
+      .dhq-tutorial-choice span{display:block;color:rgba(255,255,255,.58);font-size:12px;line-height:1.35}
       .dhq-tutorial-kicker{color:var(--dhq-tutorial-accent,#D4AF37);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.11em;margin-bottom:7px}
       .dhq-tutorial-title{font-size:clamp(22px,3.2vw,32px);line-height:1.02;font-weight:900;color:#fff;letter-spacing:0;margin:0 0 8px}
       .dhq-tutorial-copy{font-size:14px;line-height:1.48;color:rgba(255,255,255,.76);margin:0 0 12px;max-width:58ch}
@@ -226,6 +238,37 @@
       general: { name: 'The General' },
     };
     return Object.entries(source).slice(0, 7).map(([key, value]) => ({ key, name: value?.name || key }));
+  }
+
+  function alexHeaderHtml(config) {
+    if (config.alexAvatar === false) return '';
+    let faceInner = 'AI';
+    try {
+      const id = localStorage.getItem('wr_alex_avatar') || 'badge';
+      const av = (window.ALEX_AVATARS || []).find(a => a.id === id);
+      if (av && av.src) faceInner = `<img src="${escapeHtml(av.src)}" alt="Alex" style="width:100%;height:100%;object-fit:cover;border-radius:7px">`;
+    } catch {}
+    return `
+      <div class="dhq-tutorial-alex">
+        <span class="dhq-tutorial-alex-face">${faceInner}</span>
+        <span class="dhq-tutorial-alex-id"><b>Alex Ingram</b><small>AI General Manager</small></span>
+      </div>
+    `;
+  }
+
+  function renderChoices(step) {
+    if (!Array.isArray(step.choices) || !step.choices.length) return '';
+    let current = '';
+    try { current = (step.choiceKey && localStorage.getItem(step.choiceKey)) || ''; } catch {}
+    return `
+      <div class="dhq-tutorial-choices" aria-label="${escapeHtml(step.choicePrompt || 'Choose one')}">
+        ${step.choices.map(c => `
+          <button class="dhq-tutorial-choice${c.value === current ? ' is-active' : ''}" type="button" data-tutorial-choice="${escapeHtml(c.value)}">
+            <b>${escapeHtml(c.label)}</b>${c.desc ? `<span>${escapeHtml(c.desc)}</span>` : ''}
+          </button>
+        `).join('')}
+      </div>
+    `;
   }
 
   function renderStylePicker(config) {
@@ -365,10 +408,12 @@
       ${target ? spotlightHtml(target) : ''}
       <section class="dhq-tutorial-panel ${centered ? 'is-center' : 'is-anchored'}" style="${centered ? '' : `left:${Math.round(pos.left)}px;top:${Math.round(pos.top)}px`}">
         <div class="dhq-tutorial-main">
+          ${alexHeaderHtml(config)}
           <div class="dhq-tutorial-kicker">${escapeHtml(step.kicker || `Step ${index + 1} of ${steps.length}`)}</div>
           <h2 class="dhq-tutorial-title">${escapeHtml(step.title)}</h2>
           <p class="dhq-tutorial-copy">${escapeHtml(step.desc)}</p>
           ${chips.length ? `<div class="dhq-tutorial-meta">${chips.map(chip => `<span class="dhq-tutorial-chip">${escapeHtml(chip)}</span>`).join('')}</div>` : ''}
+          ${renderChoices(step)}
           ${renderStylePicker({ ...config, alexPicker: step.alexPicker })}
           <div class="dhq-tutorial-progress">
             <div class="dhq-tutorial-rail"><div class="dhq-tutorial-fill" style="width:${progress}%"></div></div>
@@ -419,6 +464,18 @@
       if (styleKey) {
         try { localStorage.setItem('wr_alex_style', styleKey); } catch {}
         root.querySelectorAll('.dhq-tutorial-style').forEach(btn => btn.classList.toggle('is-active', btn.dataset.alexStyle === styleKey));
+      }
+      const choiceBtn = evt.target?.closest?.('[data-tutorial-choice]');
+      if (choiceBtn) {
+        const value = choiceBtn.dataset.tutorialChoice;
+        const step = activeRun?.steps?.[activeRun.index];
+        if (step?.choiceKey) { try { localStorage.setItem(step.choiceKey, value); } catch {} }
+        root.querySelectorAll('.dhq-tutorial-choice').forEach(btn => btn.classList.toggle('is-active', btn.dataset.tutorialChoice === value));
+        try {
+          window.dispatchEvent(new CustomEvent('dhq:tutorial-choice', {
+            detail: { key: step?.choiceKey || null, group: step?.choiceGroup || null, value },
+          }));
+        } catch {}
       }
     });
   }

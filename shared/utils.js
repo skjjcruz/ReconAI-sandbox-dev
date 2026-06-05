@@ -147,6 +147,28 @@ function getLeaguePositions(opts) {
   return positions;
 }
 
+// ── NFL draft-capital position label ────────────────────────────
+// Formats a prospect's REAL NFL draft slot as "R{round}.{pickInRound}".
+// CSV/Sleeper data store the OVERALL pick (e.g. 33). The in-round slot is
+// derived against the 32-team NFL draft — NOT the fantasy league size — so
+// pick 33 → R2.01, not "R2.33". The authoritative `round` always fixes the
+// round; the ×32 convention is exact for rounds 1-2 (where dynasty capital
+// matters) and drifts by the comp-pick count in deep rounds.
+// NOTE: this is the NFL draft-capital domain. Fantasy-league draft picks
+// (Sleeper pick_no) use league `totalTeams` instead — see league-detail.js.
+const NFL_PICKS_PER_ROUND = 32;
+function formatNFLDraftSlot(round, overallPick) {
+  const rd = Number(round) || 0;
+  const overall = Number(overallPick) || 0;
+  if (rd <= 0) return overall > 0 ? '#' + overall : '';
+  if (overall <= 0) return 'R' + rd;
+  const pickInRound = Math.max(1, overall - (rd - 1) * NFL_PICKS_PER_ROUND);
+  return 'R' + rd + '.' + String(pickInRound).padStart(2, '0');
+}
+
+window.formatNFLDraftSlot = formatNFLDraftSlot;
+window.App.formatNFLDraftSlot = formatNFLDraftSlot;
+
 // Also expose a normPos-safe check
 function isValidLeaguePosition(pos) {
   const np = typeof normPos === 'function' ? normPos(pos) : pos;

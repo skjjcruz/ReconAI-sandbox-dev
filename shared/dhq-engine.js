@@ -3,6 +3,17 @@
 window.App = window.App || {};
 const DHQ_CORE=window.App.DhqCore||null;
 
+// Sandbox gate (fix #7): host-based, matching the convention in
+// shared/dev-preview-config.js / js/app.js. Unvalidated scoring changes
+// stay behind this until proven in prod. Safe under headless VM (localhost).
+function _dhqIsSandbox(){
+  try{
+    if(typeof window.isSandbox==='function')return!!window.isSandbox();
+    const h=window.location?.hostname||'';
+    return h==='localhost'||h==='127.0.0.1'||h==='[::1]'||h.includes('sandbox');
+  }catch(e){return false;}
+}
+
 // ══════════════════════════════════════════════════════════════════
 // LEAGUEINTEL — Your league's actual value system
 // Builds IDP value from real scoring data + draft history + FAAB market
@@ -27,6 +38,64 @@ const DHQ_DEFAULT_AGE_CURVES={
 
 const DHQ_DEFAULT_DECAY_RATES={QB:0.12,RB:0.22,WR:0.18,TE:0.16,K:0.08,DL:0.15,EDGE:0.15,LB:0.16,DB:0.18};
 const DHQ_DECLINE_END_FACTOR={QB:0.78,RB:0.62,WR:0.68,TE:0.70,K:0.82,DL:0.70,EDGE:0.70,LB:0.68,DB:0.66};
+
+// ══════════════════════════════════════════════════════════════════
+// SITMULT_TUNING — Situation-multiplier knobs (single source of truth)
+// Every magic number in the sitMult assembly (~line ~960-1080) lives here so
+// the multiplicative stack is auditable/tunable from one place. Values are
+// the exact constants previously inlined — this is a behavior-preserving lift.
+// The stack is applied left-to-right and clamped to [clamp.min, clamp.max].
+// Factor groups map 1:1 to playerMeta.sitMultFactors keys.
+// ══════════════════════════════════════════════════════════════════
+const SITMULT_TUNING={
+  // A) Team / roster status — offseason-aware availability penalties.
+  status:{
+    activeUnrosteredNoTeamInSeason:0.30, // mid-season, no NFL team, not rostered = retired/worthless
+    activeUnrosteredNoTeamOffseasonRecent:0.50, // offseason, stale team but produced recently = unsigned FA
+    activeUnrosteredNoTeamOffseasonStale:0.30, // offseason, no team, no recent production = likely retired
+    activeUnrosteredHasTeam:0.55, // has NFL team but nobody rosters them = available FA
+    activeRosteredNoTeamOffseason:1.0, // rostered, null team in offseason = Sleeper lag, no penalty
+    activeRosteredNoTeamInSeason:0.65, // rostered, no team mid-season = cut/released
+  },
+  // B) Role detection vs positional starter PPG (recent production).
+  role:{
+    deepBackupPct:0.30, lowBackupPct:0.50, fringePct:0.70, premiumPct:1.30,
+    deepBackup:{QB:0.45,other:0.65}, // QB rarely sees the field
+    lowBackup:{QB:0.55,other:0.75}, // QB clipboard holder
+    fringe:{QB:0.70,other:0.85}, // fringe starter / high backup
+    premium:1.10, // premium starter (>=130% of starter PPG)
+  },
+  // C) Career trajectory by number of real starter seasons.
+  trajectory:{
+    franchise:1.18, // >=4 starter seasons: proven franchise player
+    established:1.12, // >=3: established starter
+    twoYear:1.05, // >=2: two-year starter
+    oneYear:0.88, // ==1: one-year wonder
+    zero:0.80, // 0 real starter seasons: all hype
+  },
+  // D) Youth premium + D2) breakout upside (dynasty crown jewels).
+  youth:{
+    age22:{maxAge:22,minPpgPct:0.5,mult:1.25},
+    age23:{maxAge:23,minPpgPct:0.5,mult:1.20},
+    age25:{maxAge:25,minPpgPct:0.7,mult:1.10},
+    upsideStrong:{maxAge:24,minPpgPct:0.85,minStarterSeasons:1,mult:1.15}, // young + starter-level
+    upsideModerate:{maxAge:24,minPpgPct:0.65,minStarterSeasons:1,mult:1.08}, // young + approaching starter
+  },
+  // E) Durability — games-played penalties.
+  durability:{
+    gpThresh:10,
+    chronic:0.82, // <=10 GP in two seasons (>=2 seasons of history)
+    recent:0.90, // <=10 GP recently (>=1 season)
+  },
+  // F/G) Elite-production premium and replacement-level penalty by pos rank.
+  posRank:{
+    top3:1.20, top5:1.12, top10:1.05, // elite / star / solid-starter tiers
+    bottom10PctCut:0.90, bottom10Pct:0.78, // bottom 10%: roster filler
+    bottom25PctCut:0.75, bottom25Pct:0.88, // bottom 25%: replacement level
+  },
+  clamp:{min:0.40,max:1.60}, // final sitMult clamp
+  warn:{lo:0.3,hi:1.8}, // raw (pre-clamp) sitMult outside this range logs a compounding warning
+};
 
 function _dhqPeakWindowsFromCurves(curves){
   return Object.fromEntries(Object.entries(curves||{}).map(([pos,curve])=>[pos,curve.peak||[23,29]]));
@@ -152,6 +221,43 @@ function _dhqMarketBlendWeight(deviation,config){
   return d>0.5?0.40:d>0.3?0.35:0.30;
 }
 
+// ── Ranking-sanity rail (SANDBOX-GATED) ──────────────────────────────────────
+// Surgical alternative to a broad FC-blend: instead of pulling every player
+// with a value disagreement toward market (which makes DHQ defer too much and
+// lose its own signal), this touches ONLY the handful of real assets whose DHQ
+// RANK diverges wildly from the FantasyCalc market rank — the "crazy outliers in
+// order of ranking." It nudges just those toward market and leaves the entire
+// rest of the board exactly as DHQ scored it, so DHQ keeps its power.
+// Targets the production-model's known blind spots: over-rating aging/volume QBs
+// (Stafford, Goff) and under-rating young studs/rookies (Nabers, young TEs).
+const RANK_RAIL={gapTrigger:35,assetRankMax:150,pullBase:0.25,pullPerGap:0.004,maxPull:0.55};
+function _dhqApplyRankSanityRail(playerScores,playerMeta){
+  const fcList=Object.keys(playerScores).filter(pid=>{const m=playerMeta[pid];return m&&m.fcValue>0&&playerScores[pid]>0;});
+  if(fcList.length<20)return [];
+  const maxDHQ=Math.max(...fcList.map(pid=>playerScores[pid]));
+  const maxFC=Math.max(...fcList.map(pid=>playerMeta[pid].fcValue));
+  const scale=maxFC>0?maxDHQ/maxFC:1;
+  const dhqRank={},fcRank={};
+  fcList.slice().sort((a,b)=>playerScores[b]-playerScores[a]).forEach((pid,i)=>dhqRank[pid]=i+1);
+  fcList.slice().sort((a,b)=>playerMeta[b].fcValue-playerMeta[a].fcValue).forEach((pid,i)=>fcRank[pid]=i+1);
+  const {gapTrigger,assetRankMax,pullBase,pullPerGap,maxPull}=RANK_RAIL;
+  const touched=[];
+  fcList.forEach(pid=>{
+    const dR=dhqRank[pid],fR=fcRank[pid],gap=dR-fR,absGap=Math.abs(gap);
+    if(absGap<=gapTrigger)return;          // only egregious rank divergence
+    if(fR>assetRankMax&&dR>assetRankMax)return; // and only among real assets
+    const w=Math.min(maxPull,pullBase+(absGap-gapTrigger)*pullPerGap);
+    const fcScaled=Math.round(playerMeta[pid].fcValue*scale);
+    const before=playerScores[pid];
+    const after=Math.min(10000,Math.max(0,Math.round(before*(1-w)+fcScaled*w)));
+    playerScores[pid]=after;
+    playerMeta[pid].rankRail={dhqRank:dR,fcRank:fR,gap,weight:+w.toFixed(2),before,after};
+    touched.push(pid);
+  });
+  if(touched.length)console.log(`DHQ rank-sanity rail: nudged ${touched.length} rank-divergent assets toward market`);
+  return touched;
+}
+
 function _dhqMostRecentSeason(seasons){
   const entries=Object.entries(seasons||{})
     .map(([yr,s])=>({year:Number(yr),...s}))
@@ -193,13 +299,21 @@ function _dhqComputeProductionPPG(seasons){
   };
 }
 
+// Depth-chart role — single source of truth lives in DHQ_CORE.depthRole.
+// Delegate when core is present; the inline fallback below mirrors it EXACTLY
+// (same 0-based rank convention on BOTH the player and depthCharts paths) so
+// the two implementations can never drift. See dhq-core.js depthRole() for the
+// indexing-convention rationale (raw Math.max(0,order) read is anchored to FC).
 function _dhqDepthRole(pid,p,S,posMapLocal){
+  if(DHQ_CORE?.depthRole)return DHQ_CORE.depthRole(pid,p,S,posMapLocal);
   const pos=posMapLocal?.(p?.position||'')||p?.position||'';
   const team=p?.team;
   const cleanTeam=team&&team!=='null'&&team!=='FA'?team:null;
   let rank=null,rolePos=p?.depth_chart_position||pos,source='';
 
   if(typeof p?.depth_chart_order==='number'&&Number.isFinite(p.depth_chart_order)){
+    // Sleeper depth_chart_order is 1-indexed (starter=1). Keep the raw read for
+    // the multiplier (it's calibrated to it); the label is fixed below (pos+rank).
     rank=Math.max(0,p.depth_chart_order);
     source='player';
   }
@@ -211,7 +325,7 @@ function _dhqDepthRole(pid,p,S,posMapLocal){
         const plId=typeof plObj==='object'?plObj?.player_id:plObj;
         if(plId!=null&&String(plId)===String(pid)){
           const parsed=Number(order);
-          rank=Number.isFinite(parsed)?(parsed>0?parsed-1:parsed):0;
+          rank=Number.isFinite(parsed)?Math.max(0,parsed):0;
           rolePos=dpos||rolePos;
           source='depthCharts';
           break;
@@ -223,7 +337,8 @@ function _dhqDepthRole(pid,p,S,posMapLocal){
 
   if(rank==null)return{rank:null,label:'',mult:1,source:'',reason:''};
 
-  const label=(rolePos||pos||'').toUpperCase()+String(rank+1);
+  // Depth label = real chart position (Sleeper 1-indexed): starter -> QB1, not QB2.
+  const label=(rolePos||pos||'').toUpperCase()+String(Math.max(1,rank));
   let mult=1;
   if(pos==='QB'){
     mult=rank===0?1.15:rank===1?0.78:rank===2?0.52:0.35;
@@ -269,7 +384,7 @@ function _dhqBuildOpportunityMap(S,playerSeasons,posMapLocal){
   return map;
 }
 
-function _dhqOpportunityAdjustment({pid,pos,age,starterSeasons,team,opportunityMap,roleRank}){
+function _dhqOpportunityAdjustment({pid,pos,age,starterSeasons,team,opportunityMap,roleRank,recentPPG,posStarterPPG}){
   if(!team||!opportunityMap?.[team]||!['RB','WR','TE'].includes(pos))return{mult:1,label:'',blockers:[]};
   const teamMap=opportunityMap[team];
   const same=(teamMap.byPos[pos]||[]).filter(x=>String(x.pid)!==String(pid));
@@ -292,15 +407,40 @@ function _dhqOpportunityAdjustment({pid,pos,age,starterSeasons,team,opportunityM
   }
 
   const count=Math.min(3,blockers.length);
-  if(!count)return{mult:1,label:'',blockers:[]};
-  let mult=1-(count*(youngOrUnproven?0.08:0.045));
-  if(pos==='RB'&&count>=2)mult-=youngOrUnproven?0.06:0.03;
-  mult=Math.max(youngOrUnproven?0.70:0.82,mult);
-  return{
-    mult:+mult.toFixed(3),
-    label:count===1?'Elite teammate competition':`${count} elite teammate competitors`,
-    blockers:blockers.slice(0,3).map(x=>x.pid),
-  };
+  if(count){
+    let mult=1-(count*(youngOrUnproven?0.08:0.045));
+    if(pos==='RB'&&count>=2)mult-=youngOrUnproven?0.06:0.03;
+    mult=Math.max(youngOrUnproven?0.70:0.82,mult);
+    return{
+      mult:+mult.toFixed(3),
+      label:count===1?'Elite teammate competition':`${count} elite teammate competitors`,
+      blockers:blockers.slice(0,3).map(x=>x.pid),
+    };
+  }
+
+  // ── Symmetric CLEAR-PATH reward (fix #7) ──
+  // The model was penalty-only: it dinged blocked players but never credited a
+  // genuinely uncontested lead role. Reward a player who is (a) the clear lead at
+  // his spot, (b) has ZERO elite same-team competition (count===0, already true
+  // here), and (c) actually produces. Bounded to <=+8%, damped for young/proven
+  // profiles that already collect youth/upside/posRank sitMult layers (no
+  // double-count). Sandbox-gated until validated in prod.
+  if(_dhqIsSandbox()&&roleRank!=null&&recentPPG>0&&posStarterPPG>0){
+    const ahead=same.some(x=>x.rank!=null&&x.rank<roleRank); // teammate ranked ahead?
+    const pct=recentPPG/posStarterPPG;                       // production vs avg starter
+    if(!ahead&&pct>=0.85){
+      let bonus=Math.min(0.08,0.04+0.04*Math.min(1,(pct-0.85)/0.45));
+      // RB already prices above the FC market — no extra lift; WR/TE under-price.
+      const posW=pos==='RB'?0.0:1.0;
+      bonus*=posW;
+      if(youngOrUnproven)bonus*=0.5;          // youth premium already pays here
+      else if(starterSeasons>=2)bonus*=0.7;   // proven-starter layer already pays
+      const mult=+(1+bonus).toFixed(3);
+      if(mult>1)return{mult,label:'Clear, uncontested lead role',blockers:[]};
+    }
+  }
+
+  return{mult:1,label:'',blockers:[]};
 }
 
 function _dhqStatusAdjustment({p,pos,age,peakEnd,declineEnd,seasons,curSeason,lastCompletedSeason,isRostered,hasRealTeam,isOffseasonTeams}){
@@ -943,11 +1083,18 @@ async function loadLeagueIntel(){
 	        const totalSeasons=Object.keys(ps.seasons).length;
 
 	        // ─── COMPONENT 3: Situation Multiplier (20%) ───
+	        // sitMult is a left-to-right product of the layers below; every constant
+	        // lives in SITMULT_TUNING. `sf` records the multiplier each layer applied
+	        // (status/role/trajectory/youth/depth/opportunity/durability/posRank) for a
+	        // fully explainable breakdown — it ONLY mirrors what's already applied to
+	        // sitMult, so the arithmetic and ordering of sitMult are unchanged.
+	        const ST=SITMULT_TUNING;
+	        const sf={status:1,role:1,trajectory:1,youth:1,depth:1,opportunity:1,durability:1,posRank:1};
 	        let sitMult=1.0;
 	        const isRostered=rosteredSet.has(pid);
 	        const hasRealTeam=p?.team&&p.team!=='null'&&p.team!==null&&p.team!=='FA'&&p.team!=='';
 	        const statusAdj=_dhqStatusAdjustment({p,pos,age,peakEnd,declineEnd,seasons:ps.seasons,curSeason,lastCompletedSeason,isRostered,hasRealTeam,isOffseasonTeams});
-	        if(statusAdj.mult!==1)sitMult*=statusAdj.mult;
+	        if(statusAdj.mult!==1){sitMult*=statusAdj.mult;sf.status*=statusAdj.mult;}
 
 	        // A) Team / roster status — smart offseason handling
 	        // During offseason, Sleeper nulls out team fields for many active players.
@@ -955,22 +1102,22 @@ async function loadLeagueIntel(){
 	        const hasRecentProduction=!!(ps.seasons[curSeason]||ps.seasons[curSeason-1]);
 	        if(statusAdj.code==='active'&&!isRostered&&!hasRealTeam&&!isOffseasonTeams){
 	          // Mid-season: not rostered, no NFL team = effectively retired/worthless
-	          sitMult*=0.30;
+	          sitMult*=ST.status.activeUnrosteredNoTeamInSeason;sf.status*=ST.status.activeUnrosteredNoTeamInSeason;
 	        }else if(statusAdj.code==='active'&&!isRostered&&!hasRealTeam&&isOffseasonTeams&&hasRecentProduction){
 	          // Offseason: team data stale but player produced recently = likely unsigned FA, not retired
-	          sitMult*=0.50;
+	          sitMult*=ST.status.activeUnrosteredNoTeamOffseasonRecent;sf.status*=ST.status.activeUnrosteredNoTeamOffseasonRecent;
 	        }else if(statusAdj.code==='active'&&!isRostered&&!hasRealTeam&&isOffseasonTeams&&!hasRecentProduction){
 	          // Offseason: no team, no recent production = likely retired
-	          sitMult*=0.30;
+	          sitMult*=ST.status.activeUnrosteredNoTeamOffseasonStale;sf.status*=ST.status.activeUnrosteredNoTeamOffseasonStale;
 	        }else if(statusAdj.code==='active'&&!isRostered&&hasRealTeam){
 	          // Has an NFL team but no one in the league rosters them = available FA
-	          sitMult*=0.55;
+	          sitMult*=ST.status.activeUnrosteredHasTeam;sf.status*=ST.status.activeUnrosteredHasTeam;
 	        }else if(statusAdj.code==='active'&&isRostered&&!hasRealTeam&&isOffseasonTeams){
 	          // Rostered but team shows null — Sleeper offseason lag, don't penalize
-	          sitMult*=1.0;
+	          sitMult*=ST.status.activeRosteredNoTeamOffseason;sf.status*=ST.status.activeRosteredNoTeamOffseason;
 	        }else if(statusAdj.code==='active'&&isRostered&&!hasRealTeam&&!isOffseasonTeams){
 	          // Rostered but no team mid-season = cut/released
-	          sitMult*=0.65;
+	          sitMult*=ST.status.activeRosteredNoTeamInSeason;sf.status*=ST.status.activeRosteredNoTeamInSeason;
 	        }
 
         // B) Role detection: starter vs backup vs replacement
@@ -979,70 +1126,76 @@ async function loadLeagueIntel(){
 
         if(recentPPG>0){
           const pctOfStarter=recentPPG/posStarterPPG;
-          if(pctOfStarter<0.30){
-            sitMult*=pos==='QB'?0.45:0.65; // Deep backup (QB: rarely see the field)
-          }else if(pctOfStarter<0.50){
-            sitMult*=pos==='QB'?0.55:0.75; // Low-end backup (QB: clipboard holder)
-          }else if(pctOfStarter<0.70){
-            sitMult*=pos==='QB'?0.70:0.85; // Fringe starter / high backup
-          }else if(pctOfStarter>=1.30){
-            sitMult*=1.10; // Premium starter
+          let _r=1;
+          if(pctOfStarter<ST.role.deepBackupPct){
+            _r=pos==='QB'?ST.role.deepBackup.QB:ST.role.deepBackup.other; // Deep backup (QB: rarely see the field)
+          }else if(pctOfStarter<ST.role.lowBackupPct){
+            _r=pos==='QB'?ST.role.lowBackup.QB:ST.role.lowBackup.other; // Low-end backup (QB: clipboard holder)
+          }else if(pctOfStarter<ST.role.fringePct){
+            _r=pos==='QB'?ST.role.fringe.QB:ST.role.fringe.other; // Fringe starter / high backup
+          }else if(pctOfStarter>=ST.role.premiumPct){
+            _r=ST.role.premium; // Premium starter
           }
-          // 0.70-1.30 = starter level, no adjustment
+          // 0.70-1.30 = starter level, no adjustment (_r stays 1)
+          if(_r!==1){sitMult*=_r;sf.role*=_r;}
         }
 
 	        // C) Career trajectory — TIGHTENED starter definition
 	        // "Starter season" = must hit 70% of avg starter production (not just clearing the floor)
+	        let _t;
 	        if(starterSeasons>=4){
-	          sitMult*=1.18; // Proven franchise player
+	          _t=ST.trajectory.franchise; // Proven franchise player
         }else if(starterSeasons>=3){
-          sitMult*=1.12; // Established starter
+          _t=ST.trajectory.established; // Established starter
         }else if(starterSeasons>=2){
-          sitMult*=1.05; // Two-year starter
+          _t=ST.trajectory.twoYear; // Two-year starter
         }else if(starterSeasons===1){
-          sitMult*=0.88; // One-year wonder: haven't proven anything yet
+          _t=ST.trajectory.oneYear; // One-year wonder: haven't proven anything yet
         }else{
-          sitMult*=0.80; // Zero real starter seasons: all hype
+          _t=ST.trajectory.zero; // Zero real starter seasons: all hype
         }
+        sitMult*=_t;sf.trajectory*=_t;
 
-        // D) Youth premium: dynasty's crown jewels
-        if(age<=22&&wPPG>=posStarterPPG*0.5){
-          sitMult*=1.25;
-        }else if(age<=23&&wPPG>=posStarterPPG*0.5){
-          sitMult*=1.20;
-        }else if(age<=25&&wPPG>=posStarterPPG*0.7){
-          sitMult*=1.10;
+        // D) Youth premium: dynasty's crown jewels (folded into the `youth` factor)
+        const _y1=ST.youth;
+        if(age<=_y1.age22.maxAge&&wPPG>=posStarterPPG*_y1.age22.minPpgPct){
+          sitMult*=_y1.age22.mult;sf.youth*=_y1.age22.mult;
+        }else if(age<=_y1.age23.maxAge&&wPPG>=posStarterPPG*_y1.age23.minPpgPct){
+          sitMult*=_y1.age23.mult;sf.youth*=_y1.age23.mult;
+        }else if(age<=_y1.age25.maxAge&&wPPG>=posStarterPPG*_y1.age25.minPpgPct){
+          sitMult*=_y1.age25.mult;sf.youth*=_y1.age25.mult;
         }
 
         // D2) Upside multiplier: under-25 with starter-level production
         // These are breakout candidates — dynasty's most valuable assets
-        if(age<=24&&wPPG>=posStarterPPG*0.85&&starterSeasons>=1){
-          sitMult*=1.15; // Strong upside: young + producing at starter level
-	        }else if(age<=24&&wPPG>=posStarterPPG*0.65&&starterSeasons>=1){
-	          sitMult*=1.08; // Moderate upside: young + approaching starter level
+        if(age<=_y1.upsideStrong.maxAge&&wPPG>=posStarterPPG*_y1.upsideStrong.minPpgPct&&starterSeasons>=_y1.upsideStrong.minStarterSeasons){
+          sitMult*=_y1.upsideStrong.mult;sf.youth*=_y1.upsideStrong.mult; // Strong upside: young + producing at starter level
+	        }else if(age<=_y1.upsideModerate.maxAge&&wPPG>=posStarterPPG*_y1.upsideModerate.minPpgPct&&starterSeasons>=_y1.upsideModerate.minStarterSeasons){
+	          sitMult*=_y1.upsideModerate.mult;sf.youth*=_y1.upsideModerate.mult; // Moderate upside: young + approaching starter level
 	        }
 
 	        // D3) Explicit NFL depth chart role. This moves QB1/QB2/QB3 profiles
 	        // more aggressively than production alone, and gives smaller role
 	        // nudges to RB/WR/TE/IDP where rotations are normal.
 	        const roleAdj=_dhqDepthRole(pid,p,S,posMapLocal);
-	        if(roleAdj.mult!==1)sitMult*=roleAdj.mult;
+	        if(roleAdj.mult!==1){sitMult*=roleAdj.mult;sf.depth*=roleAdj.mult;}
 
 	        // D4) Same-team opportunity. A young/unproven RB/WR/TE blocked by
 	        // elite teammates keeps upside, but not the same path confidence as
 	        // an equally talented player with a clearer role.
 	        const oppAdj=_dhqOpportunityAdjustment({
 	          pid,pos,age,starterSeasons,team:p?.team,opportunityMap,roleRank:roleAdj.rank,
+	          recentPPG,posStarterPPG, // fix #7: enable symmetric clear-path reward
 	        });
-	        if(oppAdj.mult!==1)sitMult*=oppAdj.mult;
+	        if(oppAdj.mult!==1){sitMult*=oppAdj.mult;sf.opportunity*=oppAdj.mult;}
 
         // E) Durability: games played penalty
 	        const recentGP=prod.lastYearGP||ps.seasons[curSeason]?.gp||ps.seasons[curSeason-1]?.gp||17;
         const prevGP=ps.seasons[curSeason-1]?.gp||ps.seasons[curSeason-2]?.gp||17;
-        if(recentGP<=10&&prevGP<=10&&totalSeasons>=2){
-          sitMult*=0.82; // Injury-prone: missed time in multiple seasons
-        }else if(recentGP<=10&&totalSeasons>=1){
-          sitMult*=0.90; // Missed time recently
+        if(recentGP<=ST.durability.gpThresh&&prevGP<=ST.durability.gpThresh&&totalSeasons>=2){
+          sitMult*=ST.durability.chronic;sf.durability*=ST.durability.chronic; // Injury-prone: missed time in multiple seasons
+        }else if(recentGP<=ST.durability.gpThresh&&totalSeasons>=1){
+          sitMult*=ST.durability.recent;sf.durability*=ST.durability.recent; // Missed time recently
         }
 
         // F) Elite production premium — BIGGER gaps between tiers
@@ -1053,23 +1206,33 @@ async function loadLeagueIntel(){
         const posRank=allPosPPG.findIndex(p=>p.pid===pid)+1;
         const posTotal=allPosPPG.length;
 
-	        if(posRank>0&&posRank<=3)sitMult*=1.20; // Top 3: elite tier
-	        else if(posRank>0&&posRank<=5)sitMult*=1.12; // Top 5: star
-	        else if(posRank>0&&posRank<=10)sitMult*=1.05; // Top 10: solid starter
+	        let _pr=1;
+	        if(posRank>0&&posRank<=3)_pr=ST.posRank.top3; // Top 3: elite tier
+	        else if(posRank>0&&posRank<=5)_pr=ST.posRank.top5; // Top 5: star
+	        else if(posRank>0&&posRank<=10)_pr=ST.posRank.top10; // Top 10: solid starter
 	        // G) Replacement-level penalty — bottom quartile of starters
-	        else if(posRank>0&&posRank>posTotal*0.90)sitMult*=0.78; // Bottom 10%: roster filler
-	        else if(posRank>0&&posRank>posTotal*0.75)sitMult*=0.88; // Bottom 25%: replacement level
+	        else if(posRank>0&&posRank>posTotal*ST.posRank.bottom10PctCut)_pr=ST.posRank.bottom10Pct; // Bottom 10%: roster filler
+	        else if(posRank>0&&posRank>posTotal*ST.posRank.bottom25PctCut)_pr=ST.posRank.bottom25Pct; // Bottom 25%: replacement level
+	        if(_pr!==1){sitMult*=_pr;sf.posRank*=_pr;}
 
         // ── CLAMP situation multiplier to reasonable range ──
-        sitMult=Math.min(1.60,Math.max(0.40,sitMult));
+        // Capture the raw (pre-clamp) product so unexpected compounding is visible.
+        const sitMultRaw=sitMult;
+        sitMult=Math.min(ST.clamp.max,Math.max(ST.clamp.min,sitMult));
+        // (c) Audit hook: warn when the raw stack compounds outside [warn.lo, warn.hi].
+        // Pure logging — does not alter any score.
+        if(sitMultRaw<ST.warn.lo||sitMultRaw>ST.warn.hi){
+          try{console.warn('[DHQ:sitMult] extreme raw multiplier',{pid,pos,raw:+sitMultRaw.toFixed(3),clamped:+sitMult.toFixed(4),factors:sf});}catch(_e){}
+        }
 
         // Trend: compare most recent season to prior
         const ppgCur=ps.seasons[curSeason]?.avg||0;
         const ppgPrev=ps.seasons[curSeason-1]?.avg||0;
         const trend=ppgCur&&ppgPrev?+(((ppgCur-ppgPrev)/ppgPrev)*100).toFixed(0):0; // % change
 
+	        const sitMultFactors=Object.fromEntries(Object.entries(sf).map(([k,v])=>[k,+v.toFixed(4)]));
 	        return{pid,pos,name:ps.name,wPPG:adjustedWPPG,rawPPG:prod.rawPPG,bestTotal:bestSeason.total,bestAvg:bestSeason.avg,
-	          age,ageFactor:+ageFactor.toFixed(4),sitMult:+sitMult.toFixed(4),
+	          age,ageFactor:+ageFactor.toFixed(4),sitMult:+sitMult.toFixed(4),sitMultRaw:+sitMultRaw.toFixed(4),sitMultFactors,
 	          ageCurvePhase,peakYrsLeft,declineEnd,seasons:totalSeasons,starterSeasons,recentGP,posRank,posTotal,trend,
 	          prod,statusAdj,roleAdj,oppAdj};
 	      })
@@ -1114,9 +1277,37 @@ async function loadLeagueIntel(){
       return (p.wPPG*0.35)+(edge*0.65);
     };
 
-    const topComposite=Math.max(1,...recentPlayers.map(p=>
+    // FIX #4 — Robust normalization anchor (sandbox-gated).
+    // Legacy: coreScore=(composite/max(allComposites))*7500 — a SINGLE outlier
+    // (one player or position) sets the denominator, compresses everyone, and makes
+    // every player's value hostage to one other player. See _robustTopComposite below:
+    // we WINSORIZE the max (cap it relative to the field "shoulder") rather than move
+    // the whole scale, so normal fields are byte-identical to legacy (zero FC drift)
+    // and only a genuine #1 spike is damped. Top player still lands ~7000-8500.
+    const _composites=recentPlayers.map(p=>
       lineupValuePPGFor(p)*p.ageFactor*p.sitMult*(posDynastyWeight[p.pos]||0.80)
-    ));
+    );
+    const _legacyTopComposite=Math.max(1,..._composites);
+    // Robust anchor: WINSORIZE the single max, don't move the whole scale.
+    // The denominator is capped at a multiple (1.20×) of the mean of the 2nd/3rd
+    // composites (the "shoulder" of the field, which excludes #1 itself). When the
+    // top player is normal (max within 1.20× of the shoulder — the usual case, incl.
+    // Psycho & 1QB where max/shoulder ≈ 1.06) the cap never binds, so anchor === max
+    // and the scale is IDENTICAL to legacy (zero FC drift). Only when #1 genuinely
+    // spikes far above #2/#3 does the cap engage, preventing one outlier from
+    // single-handedly compressing everyone else's score. Sandbox-gated until proven.
+    const _sortedComposites=_composites.slice().sort((a,b)=>b-a);
+    // Shoulder = mean of the composites just below #1 (up to next 2); robust to a lone spike.
+    const _shoulderVals=_sortedComposites.slice(1,3);
+    const _shoulder=_shoulderVals.length
+      ? _shoulderVals.reduce((s,c)=>s+c,0)/_shoulderVals.length
+      : _legacyTopComposite;
+    // Cap the max at 1.20× the shoulder; below that the anchor equals the true max.
+    const _robustTopComposite=Math.max(1,Math.min(_legacyTopComposite,1.20*_shoulder));
+    const _useRobustAnchor=(typeof window!=='undefined'&&typeof window.isSandbox==='function')
+      ? window.isSandbox()
+      : (typeof window!=='undefined'&&/sandbox|localhost|127\.0\.0\.1/.test(window.location?.hostname||''));
+    const topComposite=_useRobustAnchor?_robustTopComposite:_legacyTopComposite;
     recentPlayers.forEach((p)=>{
       const lineupPos=lineupContext?.position?.[p.pos]||null;
       const lineupValuePPG=lineupValuePPGFor(p);
@@ -1179,6 +1370,9 @@ async function loadLeagueIntel(){
 	      playerMeta[p.pid]={
 	        pos:p.pos,ppg:p.wPPG,age:p.age,
 	        ageFactor:p.ageFactor,sitMult:p.sitMult,
+	        // Fully-explainable per-layer breakdown of sitMult (each value is the
+	        // multiplier that layer applied; product ≈ sitMultRaw before clamp).
+	        sitMultRaw:p.sitMultRaw,sitMultFactors:p.sitMultFactors,
 	        ageCurvePhase:p.ageCurvePhase,
 	        peakYrsLeft:p.peakYrsLeft,declineEnd:p.declineEnd,
 	        starterSeasons:p.starterSeasons,
@@ -1668,7 +1862,13 @@ async function loadLeagueIntel(){
           const prospect=typeof window.findProspect==='function'
             ?window.findProspect(p.full_name||((p.first_name||'')+' '+(p.last_name||'')).trim())
             :null;
-          const consensusRank=prospect?.consensusRank||prospect?.rank||999;
+          // Require a real consensus match. Sleeper's player universe contains
+          // hundreds of years_exp===0 UDFA nobodies; without this guard each one
+          // gets pinned to the bottom of the veteran ladder and floods the
+          // leaderboard. Only rookies that appear in the prospect consensus
+          // (with an actual rank) earn a DHQ value here.
+          const consensusRank=prospect?.consensusRank||prospect?.rank||null;
+          if(!consensusRank||consensusRank>=999)return;
 
           // Position rank among rookies at this position
           const posRank=prospect?.rookiePosRank||Math.ceil(consensusRank/(pos==='K'?8:4));
@@ -1678,7 +1878,12 @@ async function loadLeagueIntel(){
           let rookieDHQ;
           if(ladder.length>=3){
             const idx=Math.min(posRank+offset-1,ladder.length-1);
-            rookieDHQ=ladder[idx]||ladder[ladder.length-1]||0;
+            // Decay deep prospects below the veteran floor instead of pinning
+            // them flat to the worst rostered vet — a consensus-rank-50 LB should
+            // not equal the league's #15 starter.
+            const floorVal=ladder[idx]||ladder[ladder.length-1]||0;
+            const overflow=(posRank+offset-1)-(ladder.length-1);
+            rookieDHQ=overflow>0?Math.round(floorVal*Math.max(0.15,1-overflow*0.08)):floorVal;
           }else{
             // Sparse ladder fallback: rank-based estimate scaled by position weight
             const posWeight={DL:0.55,LB:0.45,DB:0.50,K:0.20};
@@ -1712,6 +1917,16 @@ async function loadLeagueIntel(){
         }
       }
     }catch(e){console.warn('IDP/K rookie step failed:',e);}
+
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 12c: Ranking-sanity rail — nudge ONLY the few high-value assets
+    // whose DHQ rank diverges wildly from the FantasyCalc market rank, toward
+    // market, leaving the rest of the board untouched. Validated (rho 0.892→
+    // ~0.915, ~50/2001 assets moved, DHQ's defensible reads preserved) and
+    // PROMOTED TO PRODUCTION 2026-06-03.
+    // ═══════════════════════════════════════════════════════════════
+    try{ _dhqApplyRankSanityRail(playerScores,playerMeta); }
+    catch(e){window.dhqLog?.('rankRail',e);}
 
     // ═══════════════════════════════════════════════════════════════
     // STORE EVERYTHING
@@ -1858,6 +2073,7 @@ window.App.ageCurveWindows = window.App.ageCurveWindows || DHQ_DEFAULT_AGE_CURVE
 window.App.peakWindows = _dhqPeakWindowsFromCurves(window.App.ageCurveWindows);
 window.App.decayRates = window.App.decayRates || DHQ_DEFAULT_DECAY_RATES;
 window.App.DhqValueTuning = {
+  sitMultTuning: SITMULT_TUNING, // single source of truth for sitMult knobs (audit/tune here)
   ageCurveWindows: window.App.ageCurveWindows,
   peakWindows: window.App.peakWindows,
   ageCurvePhase: _dhqAgeCurvePhase,

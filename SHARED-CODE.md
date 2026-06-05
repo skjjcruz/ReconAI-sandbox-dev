@@ -27,6 +27,7 @@ live to War Room after the next GitHub Pages deploy and War Room cache-bust.
 | `pick-value-model.js` | Dynamic dynasty pick valuation (3-phase exponential decay, KTC-calibrated) | `App.LI.dhqPickValueFn` |
 | `dhq-core.js` | Standalone DHQ calculation helpers and lab engine | `App.DhqCore.*`, `calculateValues()` |
 | `dhq-engine.js` | League Intel engine — scores every player using real league data | `App.LI`, `App.loadLeagueIntel()`, `App.calcOptimalPPG()` |
+| `nfl-fit.js` | "Alex NFL Fit" — real-situation scouting signals + narrative (loads after `dhq-engine.js`) | `App.computeNFLFit()`, `App.fetchNFLFitNews()` |
 | `dhq-providers.js` | Provider scoring logic | `dynastyValue()`, `getPlayerAction()` |
 | `dhq-ai.js` | AI integration (Claude/Gemini) | `App.askAlex()` |
 | `ai-dispatch.js` | AI message queue and routing | `App.AI.*` |
@@ -44,7 +45,7 @@ live to War Room after the next GitHub Pages deploy and War Room cache-bust.
 
 ### Load Order (required)
 
-`app-config.js` → `constants.js` → `utils.js` → `dhq-core.js` and `intelligence-context.js` before `dhq-engine.js` → everything else
+`app-config.js` → `constants.js` → `utils.js` → `dhq-core.js` and `intelligence-context.js` before `dhq-engine.js` → `nfl-fit.js` (after `dhq-engine.js`) → everything else
 
 `app-config.js` must load before `supabase-client.js`, `espn-api.js`,
 `mfl-api.js`, `yahoo-api.js`, and AI/provider modules so all backend

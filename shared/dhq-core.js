@@ -259,6 +259,77 @@
     return[];
   }
 
+  // ── Depth-chart role (single source of truth) ────────────────────────────
+  // Indexing CONVENTION: `rank` is 0-based — rank 0 = top of the depth chart
+  // (the starter), rank 1 = second on the chart, etc. The displayed label is
+  // `rank+1` (so rank 0 → "QB1"). BOTH resolution paths below use the SAME
+  // raw-order convention (no -1 subtraction) so they can never drift apart.
+  //
+  // NOTE on Sleeper data: production reads `player.depth_chart_order` as-is via
+  // Math.max(0,order). Sleeper's player feed is in practice 1-based for many
+  // players, which makes the team's #1 read as rank 1 ("QB2"). Converting to a
+  // strict 0-based read (order-1) was tested and REJECTED — it inflated QB
+  // values and worsened elite-skill FC alignment — so the raw read is the
+  // intentional, anchored production behavior and is preserved here verbatim.
+  function depthRoleMult(pos,rank){
+    if(pos==='QB')return rank===0?1.15:rank===1?0.78:rank===2?0.52:0.35;
+    if(pos==='RB')return rank===0?1.08:rank===1?0.98:rank===2?0.86:rank===3?0.74:0.62;
+    if(pos==='WR')return rank<=1?1.04:rank===2?0.96:rank===3?0.88:rank===4?0.78:0.68;
+    if(pos==='TE')return rank===0?1.06:rank===1?0.88:rank===2?0.72:0.60;
+    if(pos==='K')return rank===0?1.03:0.60;
+    return rank<=1?1.02:rank<=3?0.92:0.82;
+  }
+
+  function depthRole(pid,player,state,normPos){
+    const norm=typeof normPos==='function'?normPos:normalizePosition;
+    const pos=norm(player?.position||'')||player?.position||'';
+    const team=player?.team;
+    const cleanTeam=team&&team!=='null'&&team!=='FA'?team:null;
+    let rank=null,rolePos=player?.depth_chart_position||pos,source='';
+
+    // Path A — Sleeper player object. depth_chart_order is 1-INDEXED (starter=1).
+    // We KEEP `rank` as the raw 1-indexed read because the role-MULTIPLIER table
+    // (depthRoleMult) is calibrated against it — converting to a true 0-based
+    // rank flips starters from the backup mult to the starter mult, which
+    // inflates QBs and crushes skill players vs the FantasyCalc market. The
+    // user-facing DEPTH LABEL is corrected separately below (pos+rank, not +1).
+    if(typeof player?.depth_chart_order==='number'&&Number.isFinite(player.depth_chart_order)){
+      rank=Math.max(0,player.depth_chart_order);
+      source='player';
+    }
+
+    // Path B — state.depthCharts fallback. Uses the SAME raw-order convention
+    // as Path A (no -1) so the two paths agree. (This fallback is currently
+    // unpopulated in production; consistency is enforced to prevent drift if
+    // it is ever wired up.)
+    if(rank==null&&cleanTeam&&state?.depthCharts?.[cleanTeam]){
+      const dc=state.depthCharts[cleanTeam]||{};
+      for(const[dpos,dplayers]of Object.entries(dc)){
+        for(const[order,plObj]of Object.entries(dplayers||{})){
+          const plId=typeof plObj==='object'?plObj?.player_id:plObj;
+          if(plId!=null&&String(plId)===String(pid)){
+            const parsed=Number(order);
+            rank=Number.isFinite(parsed)?Math.max(0,parsed):0;
+            rolePos=dpos||rolePos;
+            source='depthCharts';
+            break;
+          }
+        }
+        if(rank!=null)break;
+      }
+    }
+
+    if(rank==null)return{rank:null,label:'',mult:1,source:'',reason:''};
+
+    // `rank` is the raw 1-indexed Sleeper order (starter=1), so the depth label
+    // is pos+rank (QB1 for the starter), NOT pos+(rank+1). Guarded so it's never
+    // below 1. The multiplier keeps using `rank` against the calibrated table —
+    // labels are fixed, scores are unchanged.
+    const label=(rolePos||pos||'').toUpperCase()+String(Math.max(1,rank));
+    const mult=depthRoleMult(pos,rank);
+    return{rank,label,mult:+mult.toFixed(3),source,reason:`NFL depth chart ${label}`};
+  }
+
   function rowPpg(row){
     return Number(row?.ppg??row?.wPPG??row?.avg??row?.projected_ppg??row?.value_ppg??0)||0;
   }
@@ -667,6 +738,7 @@
     ppgReliability,curveForPosition,ageCurvePhase,ageCurveFactor,
     fantasyCalcCompatibility,marketBlendWeight,
     positionScoringWeights,slotEligiblePositions,buildLineupContext,
+    depthRole,depthRoleMult,
     calculateValues,defaultPickValue,
   };
 

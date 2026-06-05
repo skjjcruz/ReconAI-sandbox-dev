@@ -18,34 +18,82 @@ async function sleeperFetch(path) {
   return res.json();
 }
 
-// ── Player DB cache (shared across pages via sessionStorage) ─────
+// ── IndexedDB key/value cache for payloads too big for Web Storage's ~5MB quota.
+// The Sleeper players map is ~15MB, so the old sessionStorage write always threw
+// QuotaExceededError and was silently swallowed — the cache never persisted and
+// /players/nfl was re-downloaded on every load. IndexedDB has ample room. Degrades
+// to a no-op cache miss if IDB is unavailable so callers always fall back to a
+// refetch. Named uniquely (not WrIDB) to avoid a top-level collision with War
+// Room's core.js when both load in the same global script scope.
+const _sleeperIDB = (() => {
+  const DB_NAME = 'reconai-sleeper', STORE = 'kv';
+  let _dbPromise = null;
+  function open() {
+    if (_dbPromise) return _dbPromise;
+    _dbPromise = new Promise((resolve, reject) => {
+      if (typeof window.indexedDB === 'undefined') return reject(new Error('indexedDB unavailable'));
+      const req = window.indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => { const db = req.result; if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('indexedDB open failed'));
+    });
+    _dbPromise.catch(() => { _dbPromise = null; }); // allow retry after a failed open
+    return _dbPromise;
+  }
+  return {
+    get(key) {
+      return open().then(db => new Promise((resolve, reject) => {
+        const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(key);
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => reject(req.error);
+      }));
+    },
+    set(key, value) {
+      return open().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('indexedDB write aborted'));
+      }));
+    },
+  };
+})();
+
+// ── Player DB cache (persisted in IndexedDB via _sleeperIDB) ─────
 let _playersCache = null;
 let _playersCacheTime = 0;
+let _playersInflight = null;
 const PLAYERS_TTL = 60 * 60 * 1000; // 1 hour
 
 async function fetchPlayers() {
   // Check memory cache
   if (_playersCache && Date.now() - _playersCacheTime < PLAYERS_TTL) return _playersCache;
-  // Check sessionStorage
-  try {
-    const cached = sessionStorage.getItem('fw_players_cache');
-    if (cached) {
-      const d = JSON.parse(cached);
-      if (Date.now() - d.ts < PLAYERS_TTL) {
-        _playersCache = d.data;
-        _playersCacheTime = d.ts;
-        return d.data;
+  // Dedup concurrent callers so the ~15MB payload is fetched at most once.
+  if (_playersInflight) return _playersInflight;
+  _playersInflight = (async () => {
+    // Check the persistent IndexedDB cache
+    try {
+      const cached = await _sleeperIDB.get('fw_players_cache');
+      if (cached && cached.data && Date.now() - cached.ts < PLAYERS_TTL) {
+        _playersCache = cached.data;
+        _playersCacheTime = cached.ts;
+        return cached.data;
       }
-    }
-  } catch (e) { /* sessionStorage may be unavailable */ }
-  // Fetch fresh
-  const data = await sleeperFetch('/players/nfl');
-  _playersCache = data;
-  _playersCacheTime = Date.now();
+    } catch (e) { /* IDB unavailable — fall through to refetch */ }
+    // Fetch fresh
+    const data = await sleeperFetch('/players/nfl');
+    _playersCache = data;
+    _playersCacheTime = Date.now();
+    // Fire-and-forget persist — never block returning data on the write.
+    _sleeperIDB.set('fw_players_cache', { data, ts: Date.now() }).catch(() => {});
+    return data;
+  })();
   try {
-    sessionStorage.setItem('fw_players_cache', JSON.stringify({ data, ts: Date.now() }));
-  } catch (e) { /* quota exceeded or unavailable */ }
-  return data;
+    return await _playersInflight;
+  } finally {
+    _playersInflight = null;
+  }
 }
 
 // ── Stats cache per season ───────────────────────────────────────

@@ -61,8 +61,12 @@ const PROVIDERS = {
 };
 
 const AI_ROUTES = {
-  // Frequent Alex surfaces should stay inexpensive.
-  'home-chat': 'fast',
+  // Home chat is Alex's flagship conversational surface and carries the richest
+  // persona instructions — it needs a model that can actually hold the voice, so
+  // it runs on standard (still Gemini-balanced, still inexpensive), matching the
+  // hosted edge-function route for the same surface.
+  'home-chat': 'standard',
+  // Background/utility surfaces stay on the cheapest tier.
   'memory-summary': 'fast',
   'power-posts': 'fast',
   'recon-chat': 'fast',

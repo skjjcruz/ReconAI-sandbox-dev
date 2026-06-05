@@ -23,6 +23,7 @@
     "test:alex-evals": "node tests/alex-evals.js",
     "dhq:audit": "node scripts/dhq-fc-audit.cjs",
     "dhq:lab": "node scripts/dhq-value-lab.cjs",
+    "dhq:whatif": "node scripts/dhq-whatif.cjs",
     "dhq:playground": "vite --host 0.0.0.0",
     "prepare": "husky",
     "dev": "vite",
