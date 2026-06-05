@@ -165,17 +165,23 @@ function.
 
 ## Backend Ownership
 
-The production Supabase project is shared, but each Edge Function has one
-source repo:
+The two apps deploy to **separate Supabase projects**, each from its own
+`.github/workflows/deploy-functions.yml`:
 
-- **ReconAI owns provider proxies:** `espn-proxy`, `mfl-proxy`, `yahoo-proxy`.
-- **War Room owns account, billing, admin, and server AI:** `ai-analyze`,
-  `get-session-token`, `set-password`, `fw-signup`, `fw-signin`,
-  `fw-create-checkout`, `fw-stripe-webhook`, `admin-list-users`.
+- **ReconAI** → project `sxshiqyxhhifvtfqawbq`. Deploys the provider proxies:
+  `espn-proxy`, `mfl-proxy`, `yahoo-proxy`.
+- **War Room** → project `hovnqztlbsgsywrbidbh`. Deploys account, billing,
+  admin, and server AI: `ai-analyze`, `get-session-token`, `set-password`,
+  `fw-signup`, `fw-signin`, `fw-create-checkout`, `fw-stripe-webhook`,
+  `admin-list-users`, plus its own `mfl-proxy` (see note below).
 - `yahoo-auth` is retired; `yahoo-proxy` is the single Yahoo OAuth/API surface.
 
-Deploy functions by explicit name from the owning repo so one app does not
-overwrite the other's backend surface.
+**`mfl-proxy` exists in both repos by design** — each project needs its own
+copy. ReconAI's is an anon-tolerant, rate-limited CORS relay (Scout-app users
+may be anonymous). War Room's requires a valid app session token
+(`requireActiveAppSession`), because dashboard users are always signed in.
+They are not a deploy collision: each deploys only to its own project, so
+deploy each function by explicit name from its owning repo.
 
 ### DHQ Labs
 
