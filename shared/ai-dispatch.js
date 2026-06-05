@@ -182,6 +182,27 @@ function trackAIEvent(eventName, payload = {}) {
   } catch (_err) {}
 }
 
+// Best-effort structured league/team context for the server's generic-path
+// enrichment (AI_GENERIC_ENRICH). Mirrors the field names ai-analyze's
+// detectLeagueFormat / buildTeamModeBlock read. Returns {} when state is
+// unavailable so callClaude never throws on this.
+function dhqServerEnrichmentFields(){
+  try {
+    const S = window.S || window.App?.S || {};
+    const league = S.leagues?.find(l => l.league_id === S.currentLeagueId) || S.leagues?.[0] || null;
+    const assess = (typeof assessTeamFromGlobal === 'function')
+      ? assessTeamFromGlobal(S.myRosterId)
+      : (typeof window.assessTeamFromGlobal === 'function' ? window.assessTeamFromGlobal(S.myRosterId) : null);
+    const out = {};
+    if (league?.roster_positions) out.rosterPositions = league.roster_positions;
+    if (league?.scoring_settings) out.scoringSettings = league.scoring_settings;
+    if (assess?.tier) out.teamTier = assess.tier;
+    if (assess?.window) out.teamWindow = assess.window;
+    if (typeof assess?.healthScore === 'number') out.healthScore = assess.healthScore;
+    return out;
+  } catch (e) { return {}; }
+}
+
 // ── Core AI call ──────────────────────────────────────────────
 // Priority: 1) Server-side via OD.callAI (no user key needed)
 //           2) Client-side via user's API key (existing behavior)
@@ -216,7 +237,7 @@ async function callClaude(messages, useWebSearch=false, _retries=2, maxTok=600, 
     routeTier = routeTier === 'deep' ? 'deep' : 'premium';
   }
 
-  const sys = (typeof DHQ_IDENTITY !== 'undefined') ? DHQ_IDENTITY : 'Dynasty FF advisor. Values from DHQ (0-10000 scale, league-derived). Be specific with player names and DHQ values. Sleeper-ready messages when asked.';
+  const sys = (typeof DHQ_IDENTITY !== 'undefined') ? DHQ_IDENTITY : 'Dynasty FF advisor. Values from DHQ (0-10000 scale, league-derived). Be specific with player names and DHQ values. NEVER recommend players with DHQ < 500 or under 5.0 PPG (6+ games); if no quality targets exist, say "HOLD YOUR FAAB" rather than inventing one. Sleeper-ready messages when asked.';
   const analyticsType = callType || 'recon-chat';
   const aiStartedAt = Date.now();
   trackAIEvent('alex_prompt_sent', {
@@ -256,6 +277,11 @@ async function callClaude(messages, useWebSearch=false, _retries=2, maxTok=600, 
           userMessage: lastUserMsg?.content || '',
           maxTokens: maxTok,
           useWebSearch: useWebSearch,
+          // Additive structured context for the server's generic-path enrichment
+          // (AI_GENERIC_ENRICH). Lets ai-analyze build the same league-format /
+          // team-mode / quality blocks the structured path gets. Older servers
+          // ignore unknown fields, so this is safe to send unconditionally.
+          ...dhqServerEnrichmentFields(),
         }),
       });
       const reply = result?.analysis || result?.response || result?.text ||

@@ -1041,6 +1041,47 @@ function dhqBuildBehaviorContext() {
 }
 
 // Full context builder — assembles labeled JSON sections for detailed prompts
+// ── Pure rule-text generators (no window/DOM/App access) ─────────
+// These mirror the server's buildTeamModeBlock / buildQualityThresholdBlock
+// (supabase/functions/ai-analyze) so the chat path and the structured
+// ai-analyze path emit the SAME discipline. Kept free of window/App access so
+// they can be unit-tested directly and later shared with the Deno runtime.
+function dhqTeamModeBlock(tier, teamWindow) {
+  let modeBlock = '[TEAM_MODE]\n';
+  if (tier === 'REBUILDING' || teamWindow === 'REBUILDING') {
+    modeBlock += 'Mode: REBUILD\n';
+    modeBlock += 'Rules:\n';
+    modeBlock += '- ONLY recommend youth (age 25 or younger) and draft picks\n';
+    modeBlock += '- Sell aging veterans (27+ with declining production) for picks/youth\n';
+    modeBlock += '- FAAB: only bid on young upside or emergency injury replacements\n';
+    modeBlock += '- Never recommend "depth" pickups of veterans\n';
+    modeBlock += '- Patience is a strategy — don\'t make moves just to make moves\n';
+  } else if (tier === 'ELITE' || tier === 'CONTENDER' || teamWindow === 'CONTENDING') {
+    modeBlock += 'Mode: CONTEND (win now)\n';
+    modeBlock += 'Rules:\n';
+    modeBlock += '- Recommend proven starters who produce THIS season\n';
+    modeBlock += '- Trade future picks for upgrades at weak spots\n';
+    modeBlock += '- FAAB: bid aggressively on difference-makers who would start\n';
+    modeBlock += '- Don\'t recommend speculative youth projects that won\'t help now\n';
+  } else {
+    modeBlock += 'Mode: CROSSROADS (must commit to a direction)\n';
+    modeBlock += 'Rules:\n';
+    modeBlock += '- Team must pick: push for contention or begin rebuild\n';
+    modeBlock += '- No half-measures — don\'t recommend generic "add depth"\n';
+    modeBlock += '- Analyze which direction makes more sense given age profile and picks\n';
+  }
+  return modeBlock;
+}
+
+function dhqQualityRulesBlock() {
+  return '[QUALITY_RULES]\n'
+    + '- NEVER recommend players with DHQ below 500 — not worth a roster spot\n'
+    + '- NEVER recommend players averaging below 5.0 PPG with 6+ games — below replacement\n'
+    + '- NEVER recommend "depth for depth\'s sake" — a bad player wastes a roster spot\n'
+    + '- If no quality free agents exist, say "HOLD YOUR FAAB — no impactful targets available"\n'
+    + '- Remaining FAAB is a weapon for mid-season breakouts and injuries — preserve it\n';
+}
+
 function dhqContext(includeOwners) {
   const parts = [];
   const roster = dhqBuildRosterContext(false);
@@ -1110,39 +1151,10 @@ function dhqContext(includeOwners) {
   const tier = myAssess?.tier || '';
   const teamWindow = myAssess?.window || '';
 
-  let modeBlock = '[TEAM_MODE]\n';
-  if (tier === 'REBUILDING' || teamWindow === 'REBUILDING') {
-    modeBlock += 'Mode: REBUILD\n';
-    modeBlock += 'Rules:\n';
-    modeBlock += '- ONLY recommend youth (age 25 or younger) and draft picks\n';
-    modeBlock += '- Sell aging veterans (27+ with declining production) for picks/youth\n';
-    modeBlock += '- FAAB: only bid on young upside or emergency injury replacements\n';
-    modeBlock += '- Never recommend "depth" pickups of veterans\n';
-    modeBlock += '- Patience is a strategy — don\'t make moves just to make moves\n';
-  } else if (tier === 'ELITE' || tier === 'CONTENDER' || teamWindow === 'CONTENDING') {
-    modeBlock += 'Mode: CONTEND (win now)\n';
-    modeBlock += 'Rules:\n';
-    modeBlock += '- Recommend proven starters who produce THIS season\n';
-    modeBlock += '- Trade future picks for upgrades at weak spots\n';
-    modeBlock += '- FAAB: bid aggressively on difference-makers who would start\n';
-    modeBlock += '- Don\'t recommend speculative youth projects that won\'t help now\n';
-  } else {
-    modeBlock += 'Mode: CROSSROADS (must commit to a direction)\n';
-    modeBlock += 'Rules:\n';
-    modeBlock += '- Team must pick: push for contention or begin rebuild\n';
-    modeBlock += '- No half-measures — don\'t recommend generic "add depth"\n';
-    modeBlock += '- Analyze which direction makes more sense given age profile and picks\n';
-  }
-  parts.push(modeBlock);
+  parts.push(dhqTeamModeBlock(tier, teamWindow));
 
   // ── Quality thresholds ───────────────────────────────────────
-  let qualityBlock = '[QUALITY_RULES]\n';
-  qualityBlock += '- NEVER recommend players with DHQ below 500 — not worth a roster spot\n';
-  qualityBlock += '- NEVER recommend players averaging below 5.0 PPG with 6+ games — below replacement\n';
-  qualityBlock += '- NEVER recommend "depth for depth\'s sake" — a bad player wastes a roster spot\n';
-  qualityBlock += '- If no quality free agents exist, say "HOLD YOUR FAAB — no impactful targets available"\n';
-  qualityBlock += '- Remaining FAAB is a weapon for mid-season breakouts and injuries — preserve it\n';
-  parts.push(qualityBlock);
+  parts.push(dhqQualityRulesBlock());
 
   return parts.join('\n\n');
 }
@@ -1178,6 +1190,8 @@ Object.assign(window.App, {
   dhqBuildMentalityContext,
   dhqBuildLeagueContext,
   dhqBuildLeagueFormatBlock,
+  dhqTeamModeBlock,
+  dhqQualityRulesBlock,
   dhqCurrentLeagueProfile,
   dhqBuildOwnerProfiles,
   dhqBuildToneContext,
@@ -1202,6 +1216,8 @@ Object.assign(window, {
   dhqBuildMentalityContext,
   dhqBuildLeagueContext,
   dhqBuildLeagueFormatBlock,
+  dhqTeamModeBlock,
+  dhqQualityRulesBlock,
   dhqCurrentLeagueProfile,
   dhqBuildOwnerProfiles,
   dhqBuildToneContext,
