@@ -1,0 +1,1041 @@
+pid,name,pos,team,age,fc_value,fc_rank,fc_scaled_today,dhq_today,dhq_depthfix,dhq_depthfix_nflfit,dev_today_pct,dev_depthfix_pct,dev_combined_pct,depthfix_delta,nflfit_delta,nfl_fit_label,role,opportunity,sitMult_after
+4984,Josh Allen,QB,BUF,30,10094,2,6895,7122,6891,6934,3,3,3,-231,43,Clear role,QB1,,1.6
+4046,Patrick Mahomes,QB,KC,30,5607,25,3830,5616,5753,5777,47,55,55,137,24,Clear role,QB1,,1.6
+6797,Justin Herbert,QB,LAC,28,5689,23,3886,4855,5057,5175,25,34,37,202,118,Clear role,QB1,,1.5375
+4881,Lamar Jackson,QB,BAL,29,7189,10,4910,4734,4891,5011,-4,3,5,157,120,Clear role,QB1,,1.3977
+3163,Jared Goff,QB,DET,31,3144,73,2147,4598,4900,4987,114,136,138,302,87,Clear role,QB1,,1.6
+3294,Dak Prescott,QB,DAL,32,4195,40,2865,4372,4620,4734,53,67,70,248,114,Clear role,QB1,,1.5323
+11564,Drake Maye,QB,NE,23,8823,6,6026,4130,4170,4451,-31,-28,-24,40,281,Clear ascending path,QB1,,1.3307
+421,Matthew Stafford,QB,LAR,38,2674,87,1826,4206,4309,4320,130,144,143,103,11,Clear role,QB1,,1.6
+6770,Joe Burrow,QB,CIN,29,6805,17,4648,3960,3931,4023,-15,-13,-11,-29,92,Clear role,QB1,,1.1218
+9509,Bijan Robinson,RB,ATL,24,10427,1,7122,4151,3508,3779,-42,-49,-46,-643,271,Clear ascending path,RB1,,1.222
+6804,Jordan Love,QB,GB,27,4018,45,2744,3501,3631,3711,28,37,39,130,80,Clear role,QB1,,1.3266
+4892,Baker Mayfield,QB,TB,31,3322,68,2269,3423,3604,3690,51,64,67,181,86,Clear role,QB1,,1.3266
+9221,Jahmyr Gibbs,RB,DET,24,9809,4,6700,3957,3345,3604,-41,-48,-45,-612,259,Clear ascending path,RB1,,1.1405
+11560,Caleb Williams,QB,CHI,24,7115,12,4860,3318,3335,3547,-32,-29,-25,17,212,Clear ascending path,QB1,,1.0674
+6813,Jonathan Taylor,RB,IND,27,5292,27,3615,4133,3449,3471,14,-1,-1,-684,22,Clear role,RB1,,1.6
+6904,Jalen Hurts,QB,PHI,27,5692,22,3888,3285,3289,3374,-16,-13,-11,4,85,Clear role,QB1,,0.8879
+5870,Daniel Jones,QB,IND,29,2585,88,1766,3072,3238,3313,74,90,93,166,75,Clear role,QB1,,1.2437
+7523,Trevor Lawrence,QB,JAX,26,5109,29,3490,3025,3014,3141,-13,-11,-8,-11,127,"Clear role, no competition",QB1,,0.8673
+13269,Fernando Mendoza,QB,LV,22,4230,39,2889,2826,2979,3048,-2,7,8,153,69,,,,1
+13287,Jeremiyah Love,RB,ARI,21,6602,18,4509,3008,2841,2916,-33,-35,-34,-167,75,,,,1
+4943,Sam Darnold,QB,SEA,28,2906,80,1985,2748,2850,2909,38,48,50,102,59,Clear role,QB1,,1.2437
+9226,De'Von Achane,RB,MIA,24,5978,20,4083,3132,2647,2856,-23,-33,-28,-485,209,Clear ascending path,RB1,,1.1405
+8183,Brock Purdy,QB,SF,26,4506,35,3078,2679,2665,2773,-13,-11,-7,-14,108,"Clear role, no competition",QB1,,0.7586
+9488,Jaxon Smith-Njigba,WR,SEA,24,9241,5,6312,3177,2596,2759,-50,-57,-55,-581,163,Clear ascending path,LWR1,,1.1032
+11563,Bo Nix,QB,DEN,26,5046,30,3447,2585,2635,2739,-25,-21,-18,50,104,"Clear role, no competition",QB1,,0.704
+12508,Jaxson Dart,QB,NYG,23,5505,26,3760,2539,2541,2686,-32,-30,-27,2,145,Clear ascending path,QB1,,0.8449
+6768,Tua Tagovailoa,QB,ATL,28,1673,135,1143,2485,2615,2669,117,136,140,130,54,Clear role,QB1,,1.3977
+9493,Puka Nacua,WR,LAR,25,8587,7,5865,3235,2614,2641,-45,-54,-54,-621,27,,RWR1,Elite teammate competition,0.8883
+7564,Ja'Marr Chase,WR,CIN,26,9822,3,6709,2954,2406,2443,-56,-63,-63,-548,37,,LWR1,Elite teammate competition,0.8509
+6794,Justin Jefferson,WR,MIN,26,7047,13,4813,2758,2361,2436,-43,-49,-48,-397,75,"Clear role, no competition",LWR1,,1.3008
+6786,CeeDee Lamb,WR,DAL,27,6306,19,4307,2835,2378,2398,-34,-43,-43,-457,20,,RWR1,Elite teammate competition,1.172
+4034,Christian McCaffrey,RB,SF,29,4163,41,2843,2705,2353,2374,-5,-14,-14,-352,21,Clear role,RB1,,1.6
+9758,C.J. Stroud,QB,HOU,24,3452,61,2358,2177,2221,2352,-8,-3,2,44,131,Clear ascending path,QB1,,0.9857
+11566,Jayden Daniels,QB,WAS,25,7155,11,4887,2332,2173,2241,-52,-54,-53,-159,68,"Clear role, no competition",QB1,,0.5322
+5849,Kyler Murray,QB,MIN,28,2958,79,2020,2122,2154,2195,5,10,12,32,41,Clear role,QB1,,1.0199
+5850,Josh Jacobs,RB,GB,28,2737,84,1869,2335,2047,2094,25,13,15,-288,47,Clear role,RB1,,1.5161
+5859,A.J. Brown,WR,NE,28,3963,47,2707,2452,2043,2090,-9,-22,-21,-409,47,Clear role,LWR1,,1.264
+11604,Brock Bowers,TE,LV,23,7686,8,5250,2171,1961,2048,-59,-61,-60,-210,87,Clear ascending path,TE1,,1.1448
+7547,Amon-Ra St. Brown,WR,DET,26,7346,9,5018,2406,1951,2014,-52,-60,-59,-455,63,,SWR1,Elite teammate competition,0.7941
+1373,Geno Smith,QB,NYJ,35,1532,155,1046,1853,1963,2011,77,94,97,110,48,Clear role,QB1,,1.3977
+9228,Bryce Young,QB,CAR,24,2725,85,1861,1806,1836,1934,-3,2,7,30,98,Clear ascending path,QB1,,0.9241
+12527,Ashton Jeanty,RB,LV,22,6951,14,4748,2131,1838,1907,-55,-60,-59,-293,69,Clear ascending path,RB1,,0.8266
+8130,Trey McBride,TE,ARI,26,6931,15,4734,1987,1781,1851,-58,-61,-60,-206,70,"Clear role, no competition",TE1,,0.9136
+8112,Drake London,WR,ATL,24,5897,21,4028,2193,1811,1829,-46,-54,-53,-382,18,,LWR1,Elite teammate competition,0.9073
+6790,D'Andre Swift,RB,CHI,27,2132,102,1456,1991,1760,1798,37,25,27,-231,38,Clear role,RB1,,1.3126
+6801,Tee Higgins,WR,CIN,27,3240,69,2213,2033,1781,1793,-8,-17,-17,-252,12,,RWR2,2 elite teammate competitors,1.06
+3257,Jacoby Brissett,QB,ARI,33,1564,151,1068,1690,1785,1760,58,73,69,95,-25,Buried on the depth chart,QB2,,0.7944
+4866,Saquon Barkley,RB,PHI,29,3650,53,2493,1897,1692,1725,-24,-30,-29,-205,33,Clear role,RB1,,1.3126
+12522,Cam Ward,QB,TEN,24,4013,46,2741,1655,1640,1706,-40,-38,-36,-15,66,Clear ascending path,QB1,,0.7274
+8138,James Cook,RB,BUF,26,4963,32,3390,1917,1618,1701,-43,-51,-48,-299,83,"Clear role, no competition",RB1,,0.8145
+4217,George Kittle,TE,SF,32,2106,105,1438,1737,1622,1631,21,17,17,-115,9,,TE1,Elite teammate competition,1.5768
+8150,Kyren Williams,RB,LAR,25,3393,64,2318,1810,1522,1603,-22,-32,-29,-288,81,"Clear role, no competition",RB1,,0.896
+11632,Malik Nabers,WR,NYG,22,6927,16,4731,1749,1537,1566,-63,-66,-66,-212,29,,LWR1,Elite teammate competition,0.5459
+8137,George Pickens,WR,DAL,25,4515,34,3084,1762,1512,1526,-43,-49,-49,-250,14,,LWR2,Elite teammate competition,0.8189
+12545,Tyler Shough,QB,NO,26,3357,67,2293,1711,1493,1505,-25,-33,-33,-218,12,,QB2,,0.4
+5846,DK Metcalf,WR,PIT,28,2126,104,1452,1715,1453,1483,18,3,5,-262,30,Clear role,LWR1,,1.264
+12507,Omarion Hampton,RB,LAC,23,5681,24,3880,1599,1377,1454,-59,-63,-62,-222,77,Clear ascending path,RB1,,0.621
+13275,Ty Simpson,QB,LAR,23,2559,90,1748,1756,1388,1400,0,-18,-18,-368,12,,,,1
+12526,Tetairoa McMillan,WR,CAR,23,5030,31,3436,1548,1337,1392,-55,-60,-58,-211,55,Clear ascending path,LWR1,,0.7641
+5022,Dallas Goedert,TE,PHI,31,1333,175,910,1442,1363,1368,58,55,54,-79,5,,TE1,Elite teammate competition,1.4716
+12506,Harold Fannin,TE,CLE,21,3381,65,2309,1408,1322,1364,-39,-41,-39,-86,42,Clear ascending path,TE1,,0.937
+8144,Chris Olave,WR,NO,25,3877,48,2648,1636,1346,1358,-38,-47,-47,-290,12,,LWR1,Elite teammate competition,0.7773
+12517,Colston Loveland,TE,CHI,22,5155,28,3521,1458,1336,1356,-59,-61,-60,-122,20,,TE1,Elite teammate competition,0.6785
+10866,Aidan O'Connell,QB,LV,27,0,,,1487,1331,1331,,,,-156,0,,QB2,,0.4
+5892,David Montgomery,RB,HOU,28,2021,109,1380,1448,1303,1327,5,-2,-1,-145,24,Clear role,RB1,,1.3126
+5045,Courtland Sutton,WR,DEN,30,1795,130,1226,1509,1298,1321,23,9,11,-211,23,Clear role,LWR1,,1.264
+4983,DJ Moore,WR,BUF,29,2316,95,1582,1503,1265,1315,-5,-17,-15,-238,50,,LWR1,Elite teammate competition,1.172
+11584,Bucky Irving,RB,TB,23,3236,70,2210,1419,1225,1309,-36,-43,-39,-194,84,Clear ascending path,RB1,,0.7764
+6819,Michael Pittman,WR,PIT,28,1824,126,1246,1431,1278,1302,15,6,7,-153,24,Clear role,RWR2,,1.264
+13279,Carnell Tate,WR,TEN,21,4351,37,2972,1475,1250,1275,-50,-57,-56,-225,25,,,,1
+8155,Breece Hall,RB,NYJ,25,4025,44,2749,1431,1206,1266,-48,-55,-53,-225,60,"Clear role, no competition",RB1,,0.7757
+12514,Emeka Egbuka,WR,TB,23,4493,36,3069,1384,1203,1249,-55,-59,-58,-181,46,Clear ascending path,RWR1,,0.7641
+12512,Quinshon Judkins,RB,CLE,22,3844,51,2626,1351,1177,1244,-49,-54,-51,-174,67,Clear ascending path,RB1,,0.8266
+9224,Chase Brown,RB,CIN,26,3731,52,2548,1402,1180,1240,-45,-52,-50,-222,60,"Clear role, no competition",RB1,,0.7636
+12529,TreVeyon Henderson,RB,NE,23,3642,54,2488,1344,1159,1234,-46,-52,-49,-185,75,Clear ascending path,RB1,,0.7935
+2133,Davante Adams,WR,LAR,33,2164,97,1478,1335,1167,1211,-10,-18,-16,-168,44,,LWR2,2 elite teammate competitors,1.2898
+3214,Hunter Henry,TE,NE,31,1289,184,880,1254,1193,1209,43,40,41,-61,16,Clear role,TE1,,1.4172
+9229,Anthony Richardson,QB,IND,24,996,224,680,1356,1187,1191,99,80,80,-169,4,,QB2,,0.4
+12518,Tyler Warren,TE,IND,24,4694,33,3206,1285,1171,1189,-60,-62,-62,-114,18,,TE1,Elite teammate competition,0.6568
+7569,Nico Collins,WR,HOU,27,4269,38,2916,1425,1148,1181,-51,-59,-58,-277,33,Clear role,LWR1,,0.6929
+5012,Mark Andrews,TE,BAL,30,1566,150,1070,1213,1154,1160,13,11,11,-59,6,,TE1,Elite teammate competition,1.1945
+96,Aaron Rodgers,QB,PIT,42,1296,183,885,1117,1131,1149,26,32,33,14,18,Clear role,QB1,,1.3266
+8151,Kenneth Walker,RB,KC,25,4138,42,2826,1297,1114,1147,-54,-59,-58,-183,33,"Clear role, no competition",RB1,,0.8173
+5001,Dalton Schultz,TE,HOU,29,975,226,666,1183,1132,1145,78,76,77,-51,13,Clear role,TE1,,1.2883
+5844,T.J. Hockenson,TE,MIN,28,1544,152,1055,1189,1130,1144,13,11,11,-59,14,Clear role,TE1,,1.2228
+5947,Jakobi Meyers,WR,JAX,29,1629,142,1113,1261,1141,1136,13,6,5,-120,-5,Buried on the depth chart,RWR3,,1.0988
+11559,Michael Penix,QB,ATL,26,1791,131,1223,1269,1125,1133,4,-5,-5,-144,8,,QB2,,0.4
+13281,Jordyn Tyson,WR,NO,21,3857,50,2634,1283,1083,1124,-51,-58,-56,-200,41,,,,1
+11635,Ladd McConkey,WR,LAC,24,3875,49,2647,1298,1110,1122,-51,-57,-56,-188,12,,SWR1,Elite teammate competition,0.699
+9997,Zay Flowers,WR,BAL,25,3479,59,2376,1331,1107,1118,-44,-52,-52,-224,11,,SWR1,Elite teammate competition,0.673
+11631,Brian Thomas,WR,JAX,23,3220,71,2199,1219,1063,1105,-45,-50,-48,-156,42,Clear ascending path,LWR1,,0.7641
+5967,Tony Pollard,RB,TEN,29,1596,149,1090,1188,1086,1103,9,3,4,-102,17,Clear role,RB1,,1.3126
+11565,J.J. McCarthy,QB,MIN,23,1533,154,1047,1228,1096,1102,17,8,8,-132,6,,QB2,,0.4
+13286,Jadarian Price,RB,SEA,22,3468,60,2369,1234,1038,1095,-48,-55,-53,-196,57,,,,1
+13294,Makai Lemon,WR,PHI,22,3626,55,2477,1246,1050,1090,-50,-56,-55,-196,40,,,,1
+13298,KC Concepcion,WR,CLE,21,2963,78,2024,1241,1076,1088,-39,-45,-45,-165,12,,,,1
+7588,Javonte Williams,RB,DAL,26,3066,74,2094,1225,1031,1085,-41,-49,-47,-194,54,"Clear role, no competition",RB1,,0.7757
+5927,Terry McLaurin,WR,WAS,30,2136,100,1459,1218,1059,1078,-17,-25,-24,-159,19,Clear role,LWR1,,0.9838
+7591,Justin Fields,QB,KC,27,930,228,635,1228,1066,1070,93,73,73,-162,4,,QB2,,0.4
+13272,Carson Beck,QB,ARI,23,1621,144,1107,1180,1052,1069,7,-2,-1,-128,17,,,,1
+9484,Tucker Kraft,TE,GB,25,3361,66,2296,1135,1043,1054,-51,-53,-53,-92,11,,TE1,Elite teammate competition,0.6961
+10229,Rashee Rice,WR,KC,26,3413,63,2331,1175,1009,1049,-50,-55,-54,-166,40,"Clear role, no competition",SWR2,,0.539
+8146,Garrett Wilson,WR,NYJ,25,4115,43,2811,1182,1007,1039,-58,-63,-62,-175,32,"Clear role, no competition",LWR1,,0.6125
+1166,Kirk Cousins,QB,LV,37,1165,208,796,949,995,1022,19,29,32,46,27,Clear role,QB1,,1.0199
+11628,Marvin Harrison,WR,ARI,23,3414,62,2332,1148,1010,1021,-51,-55,-55,-138,11,,LWR1,Elite teammate competition,0.6391
+13330,Kenyon Sadiq,TE,NYJ,21,2867,82,1958,1067,1016,1021,-46,-46,-46,-51,5,,,,1
+13349,Eli Stowers,TE,PHI,23,2439,92,1666,1046,996,1008,-37,-38,-38,-50,12,,,,1
+4033,David Njoku,TE,LAC,29,1262,191,862,1042,990,995,21,19,19,-52,5,,TE1,Elite teammate competition,1.1338
+11620,Rome Odunze,WR,CHI,24,3607,56,2464,1128,978,989,-54,-59,-59,-150,11,,LWR1,Elite teammate competition,0.5858
+12481,Cam Skattebo,RB,NYG,24,3220,72,2199,1063,926,988,-52,-56,-54,-137,62,Clear ascending path,RB2,,0.5165
+7527,Mac Jones,QB,SF,27,1054,219,720,1103,975,979,53,40,40,-128,4,,QB2,,0.4
+7553,Kyle Pitts,TE,ATL,25,2973,77,2031,1048,964,973,-48,-51,-51,-84,9,,TE1,Elite teammate competition,0.7923
+3198,Derrick Henry,RB,BAL,32,2711,86,1852,1015,957,967,-45,-47,-46,-58,10,Clear role,RB1,,1.5161
+1466,Travis Kelce,TE,KC,36,1608,145,1098,999,931,938,-9,-12,-12,-68,7,,TE1,Elite teammate competition,1.3797
+11562,Spencer Rattler,QB,NO,25,121,343,83,965,916,934,1063,1045,1068,-49,18,"Clear role, no competition",QB1,,0.4838
+8148,Jameson Williams,WR,DET,25,2870,81,1960,1049,917,926,-46,-52,-51,-132,9,,RWR2,2 elite teammate competitors,0.6012
+10859,Sam LaPorta,TE,DET,25,3031,75,2070,990,911,921,-52,-55,-54,-79,10,,TE1,2 elite teammate competitors,0.619
+12493,Oronde Gadsden,TE,LAC,22,2028,108,1385,955,894,902,-31,-33,-33,-61,8,,TE2,Elite teammate competition,0.5633
+7543,Travis Etienne,RB,NO,27,2786,83,1903,1002,862,889,-47,-53,-52,-140,27,Clear role,RB2,,0.684
+9999,Will Levis,QB,TEN,26,151,334,103,985,889,889,856,789,789,-96,0,,QB4,,0.4
+9756,Jordan Addison,WR,MIN,24,2327,94,1589,971,870,877,-39,-43,-43,-101,7,,RWR3,,0.7013
+2307,Marcus Mariota,QB,WAS,32,323,302,221,821,883,867,271,315,303,62,-16,Buried on the depth chart,QB2,,0.6658
+7525,DeVonta Smith,WR,PHI,27,3484,58,2380,1028,845,858,-57,-63,-63,-183,13,,LWR1,Elite teammate competition,0.6446
+2216,Mike Evans,WR,SF,32,1929,117,1318,959,846,854,-27,-34,-33,-113,8,,LWR1,2 elite teammate competitors,0.8692
+9754,Quentin Johnston,WR,LAC,24,1850,124,1264,943,842,849,-25,-31,-31,-101,7,,LWR3,Elite teammate competition,0.6452
+6806,J.K. Dobbins,RB,DEN,27,1506,158,1029,951,829,847,-8,-17,-15,-122,18,Clear role,RB2,,0.7284
+6111,Jake Browning,QB,TB,30,0,,,879,861,843,,,,-18,-18,Buried on the depth chart,QB2,,0.4963
+6826,Cole Kmet,TE,CHI,27,254,313,173,853,842,843,393,401,399,-11,1,,TE2,Elite teammate competition,0.8001
+8126,Wan'Dale Robinson,WR,TEN,25,1948,113,1331,921,810,837,-31,-37,-35,-111,27,"Clear role, no competition",SWR2,,0.7003
+6783,Jerry Jeudy,WR,CLE,27,1253,194,856,933,823,836,9,-1,0,-110,13,Clear role,RWR1,,0.956
+13289,Drew Allar,QB,PIT,22,1202,201,821,883,827,827,8,4,4,-56,0,,,,1
+13345,Jonah Coleman,RB,DEN,22,2158,98,1474,865,793,822,-41,-44,-43,-72,29,,,,1
+12524,Shedeur Sanders,QB,CLE,24,1473,162,1006,854,779,814,-15,-20,-17,-75,35,Clear ascending path,QB1,,0.5009
+4017,Deshaun Watson,QB,CLE,30,1314,180,898,920,801,806,2,-8,-8,-119,5,Buried on the depth chart,QB3,,0.4
+4066,Evan Engram,TE,DEN,31,680,258,464,827,797,805,78,78,78,-30,8,Clear role,TE1,,1.1464
+7526,Jaylen Waddle,WR,DEN,27,3025,76,2066,903,768,790,-56,-62,-61,-135,22,Clear role,RWR2,,0.6599
+13276,Omar Cooper,WR,NYJ,22,2507,91,1712,1131,783,789,-34,-53,-53,-348,6,,,,1
+13303,Cade Klubnik,QB,NYJ,22,1103,211,753,817,801,784,8,10,7,-16,-17,,,,1
+12519,Luther Burden,WR,CHI,22,3607,57,2464,868,760,776,-65,-68,-68,-108,16,,RWR2,Elite teammate competition,0.4473
+13346,Denzel Boston,WR,CLE,22,2329,93,1591,1015,761,772,-36,-51,-50,-254,11,,,,1
+8161,Malik Willis,QB,MIA,27,2585,89,1766,851,739,755,-52,-57,-56,-112,16,Clear role,QB1,,0.4274
+4037,Chris Godwin,WR,TB,30,1507,157,1029,809,732,744,-21,-27,-26,-77,12,Clear role,SWR2,,0.784
+4035,Alvin Kamara,RB,NO,30,1329,176,908,784,733,741,-14,-17,-16,-51,8,Clear role,RB1,,1.2459
+9487,Parker Washington,WR,JAX,24,2133,101,1457,802,733,740,-45,-48,-48,-69,7,,SWR4,,0.506
+9500,Josh Downs,WR,IND,24,1910,121,1305,813,720,726,-38,-43,-43,-93,6,,SWR1,Elite teammate competition,0.558
+5854,Drew Lock,QB,SEA,29,0,,,855,725,725,,,,-130,0,Buried on the depth chart,QB3,,0.4
+10236,Dalton Kincaid,TE,BUF,26,1884,122,1287,752,695,701,-42,-44,-44,-57,6,,TE1,Elite teammate competition,0.7202
+12498,Mason Taylor,TE,NYJ,22,826,236,564,718,689,701,27,26,28,-29,12,Clear ascending path,TE1,,0.6413
+12489,RJ Harvey,RB,DEN,25,1939,116,1324,788,665,699,-40,-48,-46,-123,34,"Clear role, no competition",RB1,,0.6095
+8142,Alec Pierce,WR,IND,26,2144,99,1464,795,691,698,-46,-51,-51,-104,7,,LWR2,Elite teammate competition,0.5736
+5906,Dawson Knox,TE,BUF,29,136,338,93,706,692,692,659,669,669,-14,0,,TE2,Elite teammate competition,0.8824
+9753,Zach Charbonnet,RB,SEA,25,1823,127,1245,781,657,691,-37,-45,-43,-124,34,"Clear role, no competition",RB1,,0.7272
+2306,Jameis Winston,QB,NYG,32,341,300,233,714,697,689,206,210,204,-17,-8,Buried on the depth chart,QB2,,0.4963
+6803,Brandon Aiyuk,WR,SF,28,1249,196,853,734,677,682,-14,-18,-18,-57,5,,WR4,2 elite teammate competitors,0.5861
+4993,Mike Gesicki,TE,CIN,30,345,299,236,692,673,674,193,195,194,-19,1,,TE1,2 elite teammate competitors,0.8609
+13404,Garrett Nussmeier,QB,KC,24,866,234,592,764,674,674,29,18,17,-90,0,,,,1
+4039,Cooper Kupp,WR,SEA,32,521,274,356,704,663,661,98,93,91,-41,-2,Buried on the depth chart,SWR3,Elite teammate competition,0.8466
+11603,AJ Barner,TE,SEA,24,1395,169,953,698,652,657,-27,-29,-29,-46,5,,TE2,Elite teammate competition,0.4957
+5857,Noah Fant,TE,NO,28,83,357,57,662,653,653,1061,1087,1087,-9,0,,TE2,Elite teammate competition,0.7501
+9480,Brenton Strange,TE,JAX,25,1605,147,1096,679,638,652,-38,-40,-39,-41,14,"Clear role, no competition",TE1,,0.5982
+13306,Taylen Green,QB,CLE,23,730,252,499,664,648,641,33,34,32,-16,-7,,,,1
+13311,Chris Bell,WR,MIA,21,1953,112,1334,698,607,626,-48,-53,-52,-91,19,,,,1
+10232,Michael Wilson,WR,ARI,26,1994,110,1362,705,617,623,-48,-53,-53,-88,6,,SWR2,Elite teammate competition,0.4807
+13278,Max Klare,TE,LAR,22,1348,173,921,635,612,613,-31,-31,-32,-23,1,,,,1
+6011,Gardner Minshew,QB,ARI,30,205,324,140,563,596,609,302,341,348,33,13,Clear role,QB1,,0.5983
+3161,Carson Wentz,QB,MIN,33,28,380,19,685,599,600,3505,3053,3058,-86,1,Buried on the depth chart,QB3,,0.4
+8121,Romeo Doubs,WR,NE,26,1636,140,1117,653,571,591,-42,-47,-46,-82,20,"Clear role, no competition",SWR2,,0.6366
+12534,Kyle Monangai,RB,CHI,23,1850,125,1264,648,585,591,-49,-52,-52,-63,6,,RB3,Elite teammate competition,0.4963
+5133,Tyler Conklin,TE,DET,30,0,,,583,578,578,,,,-5,0,,TE2,2 elite teammate competitors,0.583
+3271,Tyler Higbee,TE,LAR,33,69,362,47,586,576,576,1147,1152,1152,-10,0,,TE1,2 elite teammate competitors,0.8305
+13288,Nicholas Singleton,RB,TEN,22,1911,120,1305,643,561,572,-51,-56,-55,-82,11,,,,1
+8210,Chig Okonkwo,TE,WAS,26,1607,146,1098,596,556,569,-46,-48,-47,-40,13,"Clear role, no competition",TE1,,0.7292
+12510,Jalen Milroe,QB,SEA,23,727,253,497,637,557,566,28,16,17,-80,9,,,,1
+11624,Xavier Worthy,WR,KC,23,1943,115,1327,620,533,556,-53,-58,-57,-87,23,Clear ascending path,RWR1,,0.61
+8167,Christian Watson,WR,GB,27,2130,103,1455,658,546,554,-55,-61,-61,-112,8,,LWR3,2 elite teammate competitors,0.4
+8228,Jaylen Warren,RB,PIT,27,1722,133,1176,626,538,554,-47,-53,-52,-88,16,Clear role,RB2,,0.5829
+6125,Jeffery Simmons,DL,TEN,28,0,,,554,553,553,,,,-1,0,,LDT1,,0.6365
+6130,Devin Singletary,RB,NYG,28,120,344,82,572,550,550,598,596,588,-22,0,,RB3,Elite teammate competition,0.733
+5848,Marquise Brown,WR,PHI,28,277,308,189,600,544,545,217,197,196,-56,1,,SWR2,Elite teammate competition,0.7429
+13274,Germie Bernard,WR,PIT,22,1817,128,1241,605,521,544,-51,-57,-55,-84,23,,,,1
+13301,Antonio Williams,WR,WAS,21,1817,129,1241,591,521,544,-52,-57,-55,-70,23,,,,1
+4199,Aaron Jones,RB,MIN,31,1326,177,906,561,535,539,-38,-39,-39,-26,4,Clear role,RB1,,1.168
+8110,Jake Ferguson,TE,DAL,27,1921,118,1312,588,528,534,-55,-58,-58,-60,6,,TE1,2 elite teammate competitors,0.5571
+4137,James Conner,RB,ARI,31,726,254,496,542,527,531,9,10,10,-15,4,Clear role,RB1,,1.0216
+7611,Rhamondre Stevenson,RB,NE,28,1635,141,1117,594,512,528,-47,-53,-51,-82,16,Clear role,RB2,,0.6551
+4981,Calvin Ridley,WR,TEN,31,622,263,425,569,519,526,34,26,27,-50,7,Clear role,RWR1,,0.784
+8134,Khalil Shakir,WR,BUF,26,1471,163,1005,581,515,520,-42,-47,-47,-66,5,,SWR3,Elite teammate competition,0.5295
+12490,Bhayshul Tuten,RB,JAX,23,2255,96,1540,576,497,520,-63,-67,-65,-79,23,Clear ascending path,RB1,,0.5332
+13319,Oscar Delp,TE,NO,22,1079,216,737,533,506,518,-28,-29,-28,-27,12,,,,1
+4177,Mack Hollins,WR,NE,32,0,,,329,516,513,,,,187,-3,Buried on the depth chart,RWR6,,0.4934
+12530,Travis Hunter,WR,JAX,23,2061,106,1408,560,495,512,-60,-64,-63,-65,17,Clear ascending path,SWR2,,0.4621
+10213,Tre Tucker,WR,LV,25,901,230,615,561,492,511,-9,-17,-15,-69,19,,RWR2,Elite teammate competition,0.5288
+7594,Chuba Hubbard,RB,CAR,26,1948,114,1331,569,480,502,-57,-63,-61,-89,22,"Clear role, no competition",RB1,,0.6611
+12484,Jayden Higgins,WR,HOU,23,1706,134,1165,534,468,486,-54,-58,-57,-66,18,Clear ascending path,RWR2,,0.5134
+11638,Ricky Pearsall,WR,SF,25,1972,111,1347,531,452,476,-61,-65,-64,-79,24,,RWR2,2 elite teammate competitors,0.4
+13337,Emmett Johnson,RB,KC,22,1640,139,1120,485,460,476,-57,-58,-56,-25,16,,,,1
+7021,Rico Dowdle,RB,PIT,27,1670,137,1141,536,468,473,-53,-58,-57,-68,5,,RB3,Elite teammate competition,0.4743
+9502,Tank Dell,WR,HOU,26,1102,212,753,547,470,473,-27,-35,-35,-77,3,,SWR6,,0.4
+12486,Dillon Gabriel,QB,CLE,25,109,350,74,520,459,459,603,538,538,-61,0,,QB2,,0.4
+11597,Theo Johnson,TE,NYG,25,567,271,387,483,455,458,25,21,21,-28,3,,TE2,Elite teammate competition,0.4474
+13400,Justin Joly,TE,DEN,21,964,227,658,416,445,455,-37,-30,-29,29,10,,,,1
+12533,Jacory Croskey-Merritt,RB,WAS,25,1603,148,1095,513,432,454,-53,-59,-57,-81,22,"Clear role, no competition",RB1,,0.6095
+11655,Tyrone Tracy,RB,NYG,26,1342,174,917,533,449,453,-42,-49,-49,-84,4,,RB1,Elite teammate competition,0.5956
+13320,Zachariah Branch,WR,ATL,22,1622,143,1108,503,447,451,-55,-58,-58,-56,4,,,,1
+13268,Elijah Sarratt,WR,BAL,23,1538,153,1051,490,442,450,-53,-56,-56,-48,8,,,,1
+13417,De'Zhaun Stribling,WR,SF,23,1527,156,1043,499,435,440,-52,-57,-57,-64,5,,,,1
+7585,Davis Mills,QB,HOU,27,138,336,94,499,434,435,431,377,373,-65,1,,QB2,,0.4
+8111,Cade Otton,TE,TB,27,1055,218,721,457,423,431,-37,-39,-39,-34,8,Clear role,TE1,,0.6725
+9508,Tyjae Spears,RB,TEN,24,1194,202,816,461,406,430,-44,-49,-46,-55,24,Clear ascending path,RB2,,0.5269
+12511,Will Howard,QB,PIT,24,383,292,262,484,427,427,85,69,67,-57,0,,,,1
+13317,Ted Hurst,WR,TB,21,1479,161,1010,469,421,424,-54,-57,-57,-48,3,,,,1
+11627,Troy Franklin,WR,DEN,23,1003,223,685,449,415,418,-34,-37,-37,-34,3,,SWR5,,0.4893
+11637,Keon Coleman,WR,BUF,23,1251,195,854,462,414,418,-46,-50,-50,-48,4,,LWR2,Elite teammate competition,0.4294
+10222,Jayden Reed,WR,GB,26,1880,123,1284,483,409,417,-62,-67,-67,-74,8,,SWR2,2 elite teammate competitors,0.4
+12502,Gunnar Helm,TE,TEN,23,1382,170,944,435,406,417,-54,-56,-55,-29,11,Clear ascending path,TE1,,0.5233
+13421,Eli Raridon,TE,NE,22,1025,222,700,440,414,417,-37,-39,-39,-26,3,,,,1
+8131,Isaiah Likely,TE,NYG,26,1921,119,1312,459,408,416,-65,-68,-67,-51,8,,TE1,Elite teammate competition,0.4969
+11646,Jalen Coker,WR,CAR,24,1456,164,994,466,403,407,-53,-58,-58,-63,4,,SWR3,,0.4
+12474,Woody Marks,RB,HOU,25,1299,182,887,448,386,406,-49,-55,-53,-62,20,"Clear role, no competition",RB2,,0.5531
+7049,Jauan Jennings,WR,MIN,28,1211,199,827,471,391,403,-43,-51,-50,-80,12,Clear role,SWR2,,0.6186
+12501,Matthew Golden,WR,GB,22,2031,107,1387,454,390,399,-67,-71,-70,-64,9,,RWR1,2 elite teammate competitors,0.4
+6149,Darius Slayton,WR,NYG,29,109,351,74,421,396,393,469,450,446,-25,-3,Buried on the depth chart,RWR4,Elite teammate competition,0.6098
+7567,Kenneth Gainwell,RB,TB,27,1653,138,1129,441,378,385,-61,-65,-65,-63,7,,RB2,Elite teammate competition,0.453
+7600,Pat Freiermuth,TE,PIT,27,740,249,505,405,379,385,-20,-22,-22,-26,6,Clear role,TE1,,0.6725
+11618,Jalen McMillan,WR,TB,24,1412,168,964,434,378,383,-55,-59,-59,-56,5,,LWR3,,0.4
+13335,Cole Payton,QB,PHI,23,322,303,220,417,386,382,90,81,79,-31,-4,,,,1
+12497,Tory Horton,WR,SEA,23,1091,213,745,427,377,381,-43,-48,-48,-50,4,,RWR4,Elite teammate competition,0.4
+12499,Elic Ayomanor,WR,TEN,23,986,225,673,421,378,381,-37,-42,-42,-43,3,,LWR3,,0.4308
+9504,Kayshon Boutte,WR,NE,24,1108,210,757,434,377,380,-43,-48,-48,-57,3,,LWR5,,0.4
+7083,Tyler Huntley,QB,BAL,28,87,355,59,430,369,370,629,547,538,-61,1,,QB2,,0.4
+13405,Kaytron Allen,RB,WAS,23,1455,165,994,421,362,369,-58,-62,-62,-59,7,,,,1
+8159,Desmond Ridder,QB,,26,0,,,437,367,367,,,,-70,0,,,,0.4
+13285,Malachi Fields,WR,NYG,22,1489,160,1017,399,360,367,-61,-63,-63,-39,7,,,,1
+13305,Mike Washington,RB,LV,22,1379,171,942,397,353,364,-58,-61,-60,-44,11,,,,1
+12469,Dylan Sampson,RB,CLE,21,1289,185,880,406,355,359,-54,-58,-58,-51,4,,RB2,,0.4
+19,Joe Flacco,QB,CIN,41,245,315,167,346,361,357,107,123,119,15,-4,Buried on the depth chart,QB2,,0.6053
+8136,Rachaad White,RB,WAS,27,1496,159,1022,405,352,357,-60,-64,-64,-53,5,,RB3,,0.5298
+12487,Terrance Ferguson,TE,LAR,23,1086,214,742,383,352,355,-48,-51,-51,-31,3,,TE2,2 elite teammate competitors,0.4
+13353,Chris Brazzell,WR,CAR,22,1427,167,975,387,347,355,-60,-63,-63,-40,8,,,,1
+5995,Justice Hill,RB,BAL,28,165,332,113,368,350,351,226,221,219,-18,1,,RB2,Elite teammate competition,0.5027
+11586,Blake Corum,RB,LAR,25,1671,136,1141,414,339,346,-64,-69,-69,-75,7,,RB2,Elite teammate competition,0.4
+3202,Austin Hooper,TE,ATL,31,0,,,348,342,342,,,,-6,0,,TE2,Elite teammate competition,0.5547
+13402,Skyler Bell,WR,BUF,23,1300,181,888,384,335,337,-57,-61,-61,-49,2,,,,1
+12538,Brady Cook,QB,NYJ,24,0,,,385,336,336,,,,-49,0,,QB3,,0.4
+7002,Juwan Johnson,TE,NO,29,1262,192,862,368,328,333,-57,-61,-60,-40,5,,TE1,Elite teammate competition,0.657
+11292,Tommy DeVito,QB,NE,27,0,,,395,330,330,,,,-65,0,,QB2,,0.4
+8132,Tyler Allgeier,RB,ARI,26,1445,166,987,385,320,327,-61,-66,-66,-65,7,,RB3,,0.4222
+8408,Jordan Mason,RB,MIN,27,1362,172,930,363,311,321,-61,-65,-65,-52,10,Clear role,RB2,,0.4885
+13350,Joe Fagnano,QB,BAL,25,123,342,84,300,321,321,257,296,291,21,0,,,,1
+3976,Mitchell Trubisky,QB,TEN,31,0,,,397,319,319,,,,-78,0,Buried on the depth chart,QB2,,0.4
+12540,Chimere Dike,WR,TEN,24,801,240,547,358,314,316,-35,-41,-41,-44,2,,SWR4,,0.4
+6865,Colby Parkinson,TE,LAR,27,571,269,390,350,310,312,-10,-18,-18,-40,2,,TE3,2 elite teammate competitors,0.4
+8676,Rashid Shaheed,WR,SEA,27,1265,190,864,370,308,312,-57,-63,-63,-62,4,,RWR2,Elite teammate competition,0.4086
+4972,Mason Rudolph,QB,PIT,30,0,,,379,310,310,,,,-69,0,Buried on the depth chart,QB2,,0.4
+6853,Van Jefferson,WR,WAS,29,0,,,337,312,308,,,,-25,-4,Buried on the depth chart,SWR3,,0.5587
+5973,Josh Oliver,TE,MIN,29,0,,,311,304,304,,,,-7,0,,TE2,,0.528
+12860,Theo Wease,WR,MIA,24,0,,,339,303,303,,,,-36,0,,RWR2,Elite teammate competition,0.4
+13401,Michael Trigg,TE,DAL,23,761,247,520,319,298,303,-39,-41,-40,-21,5,,,,1
+9486,Dontayvion Wicks,WR,PHI,24,773,244,528,342,300,302,-35,-41,-41,-42,2,,LWR3,Elite teammate competition,0.4
+11610,Malik Washington,WR,MIA,25,1085,215,741,347,298,302,-53,-58,-58,-49,4,,SWR3,Elite teammate competition,0.4
+4454,Kendrick Bourne,WR,ARI,30,0,,,330,305,301,,,,-25,-4,Buried on the depth chart,RWR5,Elite teammate competition,0.4176
+1234,Russell Wilson,QB,,37,0,,,300,300,300,,,,0,0,,,,0.4
+2028,Derek Carr,QB,,34,0,,,300,300,300,,,,0,0,,,,0.4
+827,Tyrod Taylor,QB,GB,36,101,353,69,316,306,299,358,357,346,-10,-7,Buried on the depth chart,QB2,,0.4963
+2449,Stefon Diggs,WR,,32,1325,179,905,356,290,296,-61,-67,-66,-66,6,,,,0.4
+8205,Isiah Pacheco,RB,DET,27,1275,188,871,336,289,295,-61,-66,-65,-47,6,,RB2,Elite teammate competition,0.4594
+13293,Ja'Kobi Lane,WR,BAL,22,1272,189,869,321,288,295,-63,-66,-65,-33,7,,,,1
+9482,Michael Mayer,TE,LV,24,673,259,460,318,289,292,-31,-35,-35,-29,3,,TE2,Elite teammate competition,0.4
+10219,Chris Rodriguez,RB,JAX,26,1326,178,906,348,284,290,-62,-68,-67,-64,6,"Clear role, no competition",RB2,,0.4
+8180,Jalen Nailor,WR,LV,27,1279,187,874,329,276,281,-62,-67,-67,-53,5,,SWR3,Elite teammate competition,0.4
+11647,Kimani Vidal,RB,LAC,24,766,245,523,343,279,281,-34,-45,-45,-64,2,,RB4,Elite teammate competition,0.4
+11589,Trey Benson,RB,ARI,23,1027,221,701,317,275,279,-55,-59,-59,-42,4,Clear ascending path,RB2,,0.4
+12500,Quinn Ewers,QB,MIA,23,232,319,158,323,277,277,104,81,80,-46,0,,QB2,,0.4
+12535,Isaac TeSlaa,WR,DET,24,1222,198,835,319,271,276,-62,-66,-66,-48,5,,LWR3,2 elite teammate competitors,0.4
+12470,Riley Leonard,QB,IND,23,387,290,264,308,267,269,17,4,5,-41,2,,QB4,,0.4
+12509,Tre' Harris,WR,LAC,24,1262,193,862,310,263,269,-64,-68,-68,-47,6,,RWR2,Elite teammate competition,0.4
+12536,Jaylin Noel,WR,HOU,23,1181,205,807,306,261,266,-62,-67,-66,-45,5,,SWR3,,0.4
+9494,Marvin Mims,WR,DEN,24,472,279,322,300,255,265,-7,-18,-16,-45,10,,SWR3,,0.4
+11581,MarShawn Lloyd,RB,GB,25,1192,203,814,312,263,265,-62,-67,-67,-49,2,,,,1
+11583,Jonathon Brooks,RB,CAR,22,1752,132,1197,304,256,264,-75,-78,-77,-48,8,,RB4,,0.4
+11600,Ja'Tavion Sanders,TE,CAR,23,408,288,279,282,261,263,1,-3,-3,-21,2,,TE1,,0.4
+9225,Tank Bigsby,RB,PHI,23,1182,204,807,302,256,261,-63,-67,-67,-46,5,,RB2,Elite teammate competition,0.4
+9511,Keaton Mitchell,RB,LAC,24,1236,197,844,309,256,261,-63,-69,-68,-53,5,,RB2,Elite teammate competition,0.4
+5409,Tanner Hudson,TE,CIN,31,0,,,275,260,260,,,,-15,0,Buried on the depth chart,TE4,2 elite teammate competitors,0.4
+8172,Greg Dulcich,TE,MIA,26,896,231,612,292,256,259,-52,-57,-57,-36,3,,TE2,Elite teammate competition,0.4
+4018,Joe Mixon,RB,,29,278,307,190,333,256,257,75,39,39,-77,1,,,,0.4
+8154,Brian Robinson,RB,ATL,27,1281,186,875,304,251,257,-65,-70,-70,-53,6,,RB2,Elite teammate competition,0.4054
+8698,Jake Tonges,TE,SF,26,830,235,567,290,253,255,-49,-54,-54,-37,2,,TE3,2 elite teammate competitors,0.4
+11576,Braelon Allen,RB,NYJ,22,1206,200,824,295,250,255,-64,-69,-68,-45,5,,RB2,Elite teammate competition,0.4
+4950,Christian Kirk,WR,SF,29,451,281,308,287,246,253,-7,-17,-16,-41,7,Buried on the depth chart,SWR3,2 elite teammate competitors,0.5593
+12485,Tez Johnson,WR,TB,24,428,282,292,287,250,252,-2,-12,-12,-37,2,,SWR4,,0.4
+11592,Erick All,TE,CIN,25,0,,,267,249,249,,,,-18,0,,TE5,2 elite teammate competitors,0.4
+11626,Xavier Legette,WR,CAR,25,497,276,339,284,243,245,-16,-26,-26,-41,2,,RWR2,,0.4
+4179,Joshua Dobbs,QB,,31,0,,,304,244,244,,,,-60,0,,,,0.4
+12476,Devin Neal,RB,NO,22,419,283,286,280,241,243,-2,-13,-13,-39,2,,RB4,Elite teammate competition,0.4
+13380,Brenen Thompson,WR,LAC,22,906,229,619,263,246,243,-58,-59,-60,-17,-3,,,,1
+4351,Tim Patrick,WR,NYJ,32,0,,,251,243,241,,,,-8,-2,Buried on the depth chart,LWR4,,0.4439
+5872,Deebo Samuel,WR,,30,731,251,499,305,239,241,-39,-51,-50,-66,2,,,,0.4
+13282,Jack Endries,TE,CIN,22,594,266,406,318,238,239,-22,-39,-39,-80,1,,,,1
+5970,Greg Dortch,WR,DET,28,0,,,263,236,236,,,,-27,0,,SWR4,2 elite teammate competitors,0.4435
+8122,Zonovan Knight,RB,ARI,25,0,,,309,235,235,,,,-74,0,,RB4,,0.4
+13324,Matt Hibner,TE,BAL,24,478,278,326,250,230,232,-23,-27,-27,-20,2,,,,1
+13347,Demond Claiborne,RB,MIN,22,1165,209,796,269,230,230,-66,-70,-70,-39,0,,,,1
+13338,Kevin Coleman,WR,MIA,22,826,237,564,235,226,227,-58,-59,-59,-9,1,,,,1
+13408,Tanner Koziol,TE,JAX,22,453,280,309,243,227,227,-21,-24,-25,-16,0,,,,1
+13414,Kaelon Black,RB,SF,24,1056,217,721,271,223,226,-62,-68,-68,-48,3,,,,1
+13420,Bryce Lance,WR,NO,23,825,238,564,235,222,226,-58,-59,-59,-13,4,,,,1
+3634,Kalif Raymond,WR,CHI,31,0,,,245,228,225,,,,-17,-3,Buried on the depth chart,SWR3,Elite teammate competition,0.514
+4219,Jeremy McNichols,RB,WAS,30,0,,,228,224,223,,,,-4,-1,Buried on the depth chart,RB4,,0.4307
+12492,Pat Bryant,WR,DEN,23,811,239,554,256,217,220,-54,-60,-59,-39,3,,SWR4,,0.4
+13302,Adam Randall,RB,BAL,21,1035,220,707,249,220,220,-65,-68,-68,-29,0,,,,1
+2711,Taylor Heinicke,QB,,32,0,,,271,215,215,,,,-56,0,,,,0.4
+6271,Olamide Zaccheaus,WR,ATL,28,46,370,31,231,211,212,645,603,584,-20,1,,SWR3,Elite teammate competition,0.5299
+7670,Joshua Palmer,WR,BUF,26,0,,,249,212,212,,,,-37,0,,RWR4,Elite teammate competition,0.4
+9479,Darnell Washington,TE,PIT,24,233,318,159,224,211,212,41,37,37,-13,1,Clear ascending path,TE2,,0.4
+6039,Ty Johnson,RB,BUF,28,61,365,42,216,211,211,414,428,415,-5,0,,RB3,Elite teammate competition,0.538
+5257,Tim Boyle,QB,,30,0,,,254,210,210,,,,-44,0,,,,0.4
+9501,DeMario Douglas,WR,NE,25,291,305,199,243,209,210,22,9,8,-34,1,,SWR3,,0.4
+3321,Tyreek Hill,WR,,31,877,232,599,258,206,209,-57,-64,-64,-52,3,,,,0.4
+9506,Sean Tucker,RB,TB,24,645,261,441,249,205,207,-44,-52,-52,-44,2,,RB3,Elite teammate competition,0.4
+11625,Adonai Mitchell,WR,NYJ,23,719,255,491,239,204,206,-51,-57,-57,-35,2,,RWR2,,0.4
+13296,Caleb Douglas,WR,MIA,22,765,246,523,240,201,206,-54,-60,-60,-39,5,,,,1
+12547,Kyle Williams,WR,NE,23,872,233,596,232,202,205,-61,-65,-65,-30,3,,SWR4,,0.4
+6845,Zack Moss,RB,,27,0,,,266,202,202,,,,-64,0,,,,0.4
+5987,Alexander Mattison,RB,,27,0,,,263,199,199,,,,-64,0,,,,0.4
+11783,Ryan Flournoy,WR,DAL,26,413,286,282,230,195,196,-18,-29,-29,-35,1,,SWR5,2 elite teammate competitors,0.4
+11643,Jaylen Wright,RB,MIA,23,735,250,502,227,191,194,-55,-61,-60,-36,3,,RB3,Elite teammate competition,0.4
+11579,Audric Estime,RB,NO,22,114,348,78,225,193,193,188,157,154,-32,0,,RB6,Elite teammate competition,0.4
+13434,Will Kacmarek,TE,MIA,23,418,284,286,204,192,193,-29,-30,-31,-12,1,,,,1
+12483,Jack Bech,WR,LV,23,1170,207,799,222,186,191,-72,-76,-75,-36,5,,LWR4,Elite teammate competition,0.4
+12521,Elijah Arroyo,TE,SEA,23,775,243,529,213,188,191,-60,-63,-63,-25,3,,TE1,Elite teammate competition,0.4
+4464,Nick Mullens,QB,JAX,31,0,,,233,190,190,,,,-43,0,Buried on the depth chart,QB2,,0.4
+12495,Ollie Gordon,RB,MIA,22,748,248,511,221,187,190,-57,-62,-62,-34,3,,RB2,Elite teammate competition,0.4
+12467,Jordan James,RB,SF,22,786,241,537,241,182,186,-55,-65,-64,-59,4,,,,1
+13423,Eli Heidenreich,RB,PIT,22,784,242,535,245,182,186,-54,-65,-64,-63,4,,,,1
+11256,Tyson Bagent,QB,CHI,25,78,358,53,210,184,185,296,254,256,-26,1,,QB2,,0.4
+8188,Tyquan Thornton,WR,KC,25,197,326,135,212,184,184,57,42,40,-28,0,,LWR4,Elite teammate competition,0.4
+7571,Rashod Bateman,WR,BAL,26,350,297,239,213,181,182,-11,-22,-22,-32,1,,LWR2,Elite teammate competition,0.4
+12504,Kaleb Johnson,RB,PIT,22,1179,206,805,205,173,178,-75,-78,-77,-32,5,,RB1,,0.4
+13411,Zavion Thomas,WR,CHI,22,621,264,424,194,178,178,-54,-57,-57,-16,0,,,,1
+7090,Darnell Mooney,WR,NYG,28,692,257,473,211,174,177,-55,-62,-62,-37,3,,SWR2,Elite teammate competition,0.4
+13333,Deion Burks,WR,IND,23,563,272,385,181,176,177,-53,-53,-53,-5,1,,,,1
+4040,JuJu Smith-Schuster,WR,NYG,29,39,373,27,197,177,176,630,581,577,-20,-1,Buried on the depth chart,RWR6,Elite teammate competition,0.4157
+12457,Jaydon Blue,RB,DAL,22,671,260,458,208,174,176,-55,-61,-61,-34,2,,RB2,Elite teammate competition,0.4
+11435,Emanuel Wilson,RB,SEA,27,715,256,488,202,163,171,-59,-66,-64,-39,8,,RB3,,0.4
+13270,CJ Daniels,WR,LAR,24,544,273,372,200,170,170,-46,-53,-53,-30,0,,,,1
+5937,Diontae Johnson,WR,,29,0,,,217,165,165,,,,-52,0,,,,0.4
+12503,Isaiah Bond,WR,CLE,22,415,285,283,185,163,164,-35,-41,-41,-22,1,,SWR4,,0.4
+2309,Amari Cooper,WR,,31,0,,,207,157,157,,,,-50,0,,,,0.4
+8225,Daniel Bellinger,TE,TEN,25,41,372,28,166,157,157,493,481,481,-9,0,,TE2,,0.4
+10226,Andrei Iosivas,WR,CIN,26,177,328,121,181,154,155,50,32,31,-27,1,,SWR3,2 elite teammate competitors,0.4
+6154,David Sills,WR,TB,30,0,,,163,148,148,,,,-15,0,Buried on the depth chart,RWR6,,0.4
+11575,Ray Davis,RB,BUF,26,577,268,394,177,142,144,-55,-63,-63,-35,2,,RB2,Elite teammate competition,0.4
+6943,Gabe Davis,WR,,26,0,,,176,143,143,,,,-33,0,,,,0.4
+13307,Marlin Klein,TE,HOU,23,379,294,259,151,143,143,-42,-43,-43,-8,0,,,,1
+420,Marquand Manuel,DB,,40,0,,,141,141,142,,,,0,1,,,,1
+2955,CJ Conway,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+3666,David Mims,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+3674,Jordan Sefon,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+3694,Mikell Everette,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+3700,Arjen Colquhoun,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+3740,Tre Jones,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+3744,Rohan Gaines,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+3791,Jered Bell,DB,,26,0,,,141,141,142,,,,0,1,,,,1
+3807,Corey Tindal,DB,,26,0,,,141,141,142,,,,0,1,,,,1
+3833,Matt Smalley,DB,,24,0,,,141,141,142,,,,0,1,,,,1
+3898,Bryce Cheek,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+3927,Jamal Golden,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+3933,Malcolm Jackson,DB,,24,0,,,141,141,142,,,,0,1,,,,1
+4347,Daniel Henry,DB,BAL,22,0,,,141,141,142,,,,0,1,,,,1
+4824,Duplicate Player,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+5150,Heath Harding,DB,ATL,21,0,,,141,141,142,,,,0,1,,,,1
+5810,Trey Walker,DB,,23,0,,,141,141,142,,,,0,1,,,,1
+5931,Blace Brown,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6095,Kiy Hester,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6162,Darius West,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6166,Brandon Snyder,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6241,Jontrell Rocquemore,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6242,Aaron Wade,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6245,Gaje Ferguson,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6475,Delvon Randall,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6655,Taj-Amir Torres,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6690,Duplicate Player,DB,PHI,21,0,,,141,141,142,,,,0,1,,,,1
+6715,Anthony Smithson,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+6746,Duplicate Player,DB,,23,0,,,141,141,142,,,,0,1,,,,1
+6979,Damar Hamlin,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+7034,David Dowell,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+7057,Baylen Buchanan,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+7501,Evan Foster,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+8354,Player Invalid,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+12537,Ryan-DUP Cooper-DUP,DB,,24,0,,,141,141,142,,,,0,1,,,,1
+12843,Trey Rucker,DB,,25,0,,,141,141,142,,,,0,1,,,,1
+12846,Fentrell Cypress,DB,,24,0,,,141,141,142,,,,0,1,,,,1
+12890,R.J. Delancy,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+12952,Kahzir Brown,DB,,23,0,,,141,141,142,,,,0,1,,,,1
+12987,Kendall Paul,DB,,24,0,,,141,141,142,,,,0,1,,,,1
+12994,Jordan Taylor,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13070,Kendall Bohler,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13106,Evan Slocum,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13109,Gavin Holmes,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13112,Jordan Wright,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13138,Tommy McCormick,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13168,Jerrin Thompson,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13178,Virgil Lemons,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13360,Emmanuel McNeil-Warren,DB,CLE,22,0,,,141,141,142,,,,0,1,,,,1
+13367,Colton Hood,DB,NYG,21,0,,,141,141,142,,,,0,1,,,,1
+13368,Jermod McCoy,DB,LV,20,0,,,141,141,142,,,,0,1,,,,1
+13369,Brandon Cisse,DB,GB,20,0,,,141,141,142,,,,0,1,,,,1
+13370,Chris Johnson,DB,MIA,21,0,,,141,141,142,,,,0,1,,,,1
+13371,Dillon Thieneman,DB,CHI,21,0,,,141,141,142,,,,0,1,,,,1
+13376,Caleb Downs,DB,DAL,21,0,,,141,141,142,,,,0,1,,,,1
+13382,Keionte Scott,DB,TB,24,0,,,141,141,142,,,,0,1,,,,1
+13384,A.J. Haulcy,DB,IND,22,0,,,141,141,142,,,,0,1,,,,1
+13385,Mansoor Delane,DB,KC,22,0,,,141,141,142,,,,0,1,,,,1
+13386,D'Angelo Ponds,DB,NYJ,21,0,,,141,141,142,,,,0,1,,,,1
+13389,Avieon Terrell,DB,ATL,21,0,,,141,141,142,,,,0,1,,,,1
+13393,Brent Austin,DB,DEN,22,0,,,141,141,142,,,,0,1,,,,1
+13396,Julian Neal,DB,SEA,23,0,,,141,141,142,,,,0,1,,,,1
+13397,Keith Abney,DB,DET,21,0,,,141,141,142,,,,0,1,,,,1
+13398,Treydan Stukes,DB,LV,24,0,,,141,141,142,,,,0,1,,,,1
+13399,Genesis Smith,DB,LAC,21,0,,,141,141,142,,,,0,1,,,,1
+13406,Kamari Ramsey,DB,HOU,21,0,,,141,141,142,,,,0,1,,,,1
+13452,Bud Clark,DB,SEA,24,0,,,141,141,142,,,,0,1,,,,1
+13454,Davison Igbinosun,DB,BUF,22,0,,,141,141,142,,,,0,1,,,,1
+13462,Jakobe Thomas,DB,MIN,22,0,,,141,141,142,,,,0,1,,,,1
+13469,Tacario Davis,DB,CIN,21,0,,,141,141,142,,,,0,1,,,,1
+13470,Daylen Everette,DB,PIT,22,0,,,141,141,142,,,,0,1,,,,1
+13474,Jalen Huskey,DB,JAX,23,0,,,141,141,142,,,,0,1,,,,1
+13478,Ephesians Prysock,DB,SF,23,0,,,141,141,142,,,,0,1,,,,1
+13485,Will Lee,DB,CAR,22,0,,,141,141,142,,,,0,1,,,,1
+13489,Malik Muhammad,DB,CHI,21,0,,,141,141,142,,,,0,1,,,,1
+13496,Devin Moore,DB,DAL,22,0,,,141,141,142,,,,0,1,,,,1
+13500,Jadon Canady,DB,KC,23,0,,,141,141,142,,,,0,1,,,,1
+13508,Hezekiah Masses,DB,LV,21,0,,,141,141,142,,,,0,1,,,,1
+13509,Lorenzo Styles,DB,NO,23,0,,,141,141,142,,,,0,1,,,,1
+13510,Karon Prunty,DB,NE,24,0,,,141,141,142,,,,0,1,,,,1
+13511,Jalon Kilgore,DB,BUF,21,0,,,141,141,142,,,,0,1,,,,1
+13513,Charles Demmings,DB,MIN,23,0,,,141,141,142,,,,0,1,,,,1
+13514,Chandler Rivers,DB,BAL,22,0,,,141,141,142,,,,0,1,,,,1
+13517,Michael Taaffe,DB,MIA,23,0,,,141,141,142,,,,0,1,,,,1
+13522,Zakee Wheatley,DB,CAR,24,0,,,141,141,142,,,,0,1,,,,1
+13523,Dalton Johnson,DB,LV,23,0,,,141,141,142,,,,0,1,,,,1
+13544,Domani Jackson,DB,GB,23,0,,,141,141,142,,,,0,1,,,,1
+13556,TJ Hall,DB,NO,22,0,,,141,141,142,,,,0,1,,,,1
+13561,Cole Wisniewski,DB,PHI,24,0,,,141,141,142,,,,0,1,,,,1
+13564,Michael Dansby,DB,SEA,25,0,,,141,141,142,,,,0,1,,,,1
+13565,Andre Fuller,DB,SEA,24,0,,,141,141,142,,,,0,1,,,,1
+13567,VJ Payne,DB,NYJ,22,0,,,141,141,142,,,,0,1,,,,1
+13569,Toriano Pride,DB,BUF,22,0,,,141,141,142,,,,0,1,,,,1
+13576,Robert Spears-Jennings,DB,PIT,22,0,,,141,141,142,,,,0,1,,,,1
+13578,Miles Scott,DB,DEN,24,0,,,141,141,142,,,,0,1,,,,1
+13594,Latrell McCutchin,DB,TEN,23,0,,,141,141,142,,,,0,1,,,,1
+13605,Noah Avinger,DB,LAC,21,0,,,141,141,142,,,,0,1,,,,1
+13611,Marcus Allen,DB,MIN,22,0,,,141,141,142,,,,0,1,,,,1
+13613,Tyreek Chappell,DB,MIN,23,0,,,141,141,142,,,,0,1,,,,1
+13616,Da'Veawn Armstead,DB,MIN,21,0,,,141,141,142,,,,0,1,,,,1
+13618,Jacob Thomas,DB,MIN,21,0,,,141,141,142,,,,0,1,,,,1
+13627,Devin Grant,DB,LAC,21,0,,,141,141,142,,,,0,1,,,,1
+13633,Rodney Shelley,DB,LAC,21,0,,,141,141,142,,,,0,1,,,,1
+13634,Jerry Wilson,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13635,Avery Smith,DB,LAC,22,0,,,141,141,142,,,,0,1,,,,1
+13637,Dashawn Jones,DB,NO,21,0,,,141,141,142,,,,0,1,,,,1
+13641,Jeremiah McClendon,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13649,Devin Neal,DB,JAX,21,0,,,141,141,142,,,,0,1,,,,1
+13653,Preston Hodge,DB,JAX,21,0,,,141,141,142,,,,0,1,,,,1
+13654,Devon Marshall,DB,JAX,21,0,,,141,141,142,,,,0,1,,,,1
+13655,Jalen Stroman,DB,SF,21,0,,,141,141,142,,,,0,1,,,,1
+13668,Tony Grimes,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13672,Wydett Williams,DB,ARI,21,0,,,141,141,142,,,,0,1,,,,1
+13675,Fred Davis,DB,WAS,21,0,,,141,141,142,,,,0,1,,,,1
+13679,Jalen McMurray,DB,TEN,21,0,,,141,141,142,,,,0,1,,,,1
+13680,Bishop Fitzgerald,DB,TEN,21,0,,,141,141,142,,,,0,1,,,,1
+13691,Myles Rowser,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13692,Marc Stampley,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13694,Kani Walker,DB,BUF,21,0,,,141,141,142,,,,0,1,,,,1
+13707,Jaylon Guilbeau,DB,CAR,22,0,,,141,141,142,,,,0,1,,,,1
+13713,KC Eziomume,DB,CHI,21,0,,,141,141,142,,,,0,1,,,,1
+13717,Devin Pringle,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13720,Ceyair Wright,DB,CIN,23,0,,,141,141,142,,,,0,1,,,,1
+13722,Isaiah Nwokobia,DB,CIN,23,0,,,141,141,142,,,,0,1,,,,1
+13723,Devan Boykin,DB,PIT,21,0,,,141,141,142,,,,0,1,,,,1
+13724,Daylan Carnell,DB,PIT,23,0,,,141,141,142,,,,0,1,,,,1
+13727,Lardarius Webb,DB,BAL,23,0,,,141,141,142,,,,0,1,,,,1
+13737,Silas Walters,DB,BAL,21,0,,,141,141,142,,,,0,1,,,,1
+13738,Colby Humphrey,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13740,Aamaris Brown,DB,DET,21,0,,,141,141,142,,,,0,1,,,,1
+13742,De'Shawn Rucker,DB,DET,21,0,,,141,141,142,,,,0,1,,,,1
+13745,Zion Washington,DB,CLE,21,0,,,141,141,142,,,,0,1,,,,1
+13751,Michael Coats,DB,CLE,24,0,,,141,141,142,,,,0,1,,,,1
+13753,DeCarlos Nicholson,DB,,24,0,,,141,141,142,,,,0,1,,,,1
+13765,Stephen Hall,DB,HOU,21,0,,,141,141,142,,,,0,1,,,,1
+13769,Collin Wright,DB,HOU,21,0,,,141,141,142,,,,0,1,,,,1
+13786,Austin Brown,DB,IND,22,0,,,141,141,142,,,,0,1,,,,1
+13790,Zelmar Vedder,DB,KC,21,0,,,141,141,142,,,,0,1,,,,1
+13793,Xavier Nwankpa,DB,KC,22,0,,,141,141,142,,,,0,1,,,,1
+13794,DeShon Singleton,DB,KC,23,0,,,141,141,142,,,,0,1,,,,1
+13803,Tanner Wall,DB,LV,26,0,,,141,141,142,,,,0,1,,,,1
+13811,Drey Norwood,DB,LAR,23,0,,,141,141,142,,,,0,1,,,,1
+13814,Nick Andersen,DB,LAR,24,0,,,141,141,142,,,,0,1,,,,1
+13817,Louis Moore,DB,MIA,25,0,,,141,141,142,,,,0,1,,,,1
+13820,Tucker Large,DB,PHI,21,0,,,141,141,142,,,,0,1,,,,1
+13823,Kapena Gushiken,DB,PHI,23,0,,,141,141,142,,,,0,1,,,,1
+13828,Channing Canada,DB,NE,21,0,,,141,141,142,,,,0,1,,,,1
+13841,Deshawn McCuin,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13845,Elijah Culp,DB,ARI,21,0,,,141,141,142,,,,0,1,,,,1
+13848,Matthew McDoom,DB,BAL,21,0,,,141,141,142,,,,0,1,,,,1
+13851,Jahquez Robinson,DB,BAL,21,0,,,141,141,142,,,,0,1,,,,1
+13853,Cam Miller,DB,CAR,21,0,,,141,141,142,,,,0,1,,,,1
+13854,Malik Spencer,DB,WAS,21,0,,,141,141,142,,,,0,1,,,,1
+13857,Bryce Phillips,DB,KC,21,0,,,141,141,142,,,,0,1,,,,1
+13858,Caleb Offord,DB,LV,24,0,,,141,141,142,,,,0,1,,,,1
+13863,Murvin Kenion,DB,GB,21,0,,,141,141,142,,,,0,1,,,,1
+13868,Thaddeus Dixon,DB,NYG,24,0,,,141,141,142,,,,0,1,,,,1
+13874,Mory Bamba,DB,NYJ,25,0,,,141,141,142,,,,0,1,,,,1
+13876,Duce Chestnut,DB,,23,0,,,141,141,142,,,,0,1,,,,1
+13877,Maximus Pulley,DB,PHI,21,0,,,141,141,142,,,,0,1,,,,1
+13881,Al'zillion Hamilton,DB,LAR,21,0,,,141,141,142,,,,0,1,,,,1
+13887,Nyzier Fourqurean,DB,LAR,24,0,,,141,141,142,,,,0,1,,,,1
+13892,Jeadyn Lukus,DB,TEN,22,0,,,141,141,142,,,,0,1,,,,1
+13896,Devin Lafayette,DB,LV,21,0,,,141,141,142,,,,0,1,,,,1
+13903,D'Arco Perkins-McAllister,DB,KC,21,0,,,141,141,142,,,,0,1,,,,1
+13914,Devyn Perkins,DB,LV,21,0,,,141,141,142,,,,0,1,,,,1
+13917,Marlen Sewell,DB,KC,21,0,,,141,141,142,,,,0,1,,,,1
+13938,Jordan Dunbar,DB,BUF,21,0,,,141,141,142,,,,0,1,,,,1
+13953,Nate Evans,DB,CLE,21,0,,,141,141,142,,,,0,1,,,,1
+13959,Ayden Garnes,DB,TB,23,0,,,141,141,142,,,,0,1,,,,1
+13960,Ja'Qurious Conley,DB,TB,21,0,,,141,141,142,,,,0,1,,,,1
+13965,Kenneth Harris,DB,NE,21,0,,,141,141,142,,,,0,1,,,,1
+13969,Jy Gilmore,DB,TB,21,0,,,141,141,142,,,,0,1,,,,1
+13974,Malcolm DeWalt,DB,ATL,21,0,,,141,141,142,,,,0,1,,,,1
+13977,Devonta Smith,DB,CAR,21,0,,,141,141,142,,,,0,1,,,,1
+13983,Ahmari Harvey,DB,DEN,23,0,,,141,141,142,,,,0,1,,,,1
+13985,William Wright,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13986,Parker Robertson,DB,DEN,24,0,,,141,141,142,,,,0,1,,,,1
+13992,Paul Manning,DB,DEN,21,0,,,141,141,142,,,,0,1,,,,1
+13997,Kekoura Tarnue,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+13999,Ian Conerly-Goodly,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+14000,Randy Franklin,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+14012,Jahari Rogers,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+14016,DQ Smith,DB,,21,0,,,141,141,142,,,,0,1,,,,1
+14025,Peter Manuma,DB,NE,21,0,,,141,141,142,,,,0,1,,,,1
+14033,Larry Worth,DB,SF,21,0,,,141,141,142,,,,0,1,,,,1
+14042,Tamon Lynum,DB,PIT,21,0,,,141,141,142,,,,0,1,,,,1
+14045,Marlon Jones,DB,GB,21,0,,,141,141,142,,,,0,1,,,,1
+14052,Jai'Onte' McMillan,DB,IND,21,0,,,141,141,142,,,,0,1,,,,1
+8125,Calvin Austin,WR,NYG,27,194,327,133,165,135,135,24,5,5,-30,0,,SWR3,Elite teammate competition,0.4
+11651,Isaac Guerendo,RB,SF,25,175,329,120,172,133,133,43,15,15,-39,0,,RB2,Elite teammate competition,0.4
+13322,Sam Roush,TE,CHI,22,291,306,199,152,130,132,-24,-32,-32,-22,2,,,,1
+13348,J'Mari Taylor,RB,JAX,24,633,262,432,148,131,132,-66,-69,-69,-17,1,,,,1
+6001,Drew Sample,TE,CIN,30,0,,,139,130,130,,,,-9,0,,TE2,2 elite teammate competitors,0.4
+13424,Seth McGowan,RB,IND,24,586,267,400,161,130,130,-60,-66,-67,-31,0,,,,1
+392,Mike Vrabel,LB,,44,0,,,131,127,128,,,,-4,1,,,,1
+693,Joey Porter,LB,,43,0,,,131,127,128,,,,-4,1,,,,1
+3286,Demarcus Robinson,WR,SF,31,5,391,3,142,128,128,4633,4167,4167,-14,0,Buried on the depth chart,SWR5,2 elite teammate competitors,0.4
+3656,Ejiro Ederaine,LB,,24,0,,,131,127,128,,,,-4,1,,,,1
+3665,Ivan McLennan,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3706,Jason Neill,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3737,Shiro Davis,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3746,Darreon Herring,LB,,24,0,,,131,127,128,,,,-4,1,,,,1
+3754,Akil Blount,LB,,24,0,,,131,127,128,,,,-4,1,,,,1
+3757,Tyler Gray,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3782,Myke Tavarres,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3843,Kyrie Wilson,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3845,Jabriel Washington,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3855,Jared Barber,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3876,Michael Wakefield,LB,,24,0,,,131,127,128,,,,-4,1,,,,1
+3884,Jarrett Grace,LB,,25,0,,,131,127,128,,,,-4,1,,,,1
+3885,James Ross,LB,,24,0,,,131,127,128,,,,-4,1,,,,1
+4296,JT Jones,LB,,32,0,,,131,127,128,,,,-4,1,,,,1
+4579,Josh Banderas,LB,DEN,22,0,,,131,127,128,,,,-4,1,,,,1
+4769,Tevin Floyd,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+4901,Ray Lewis,LB,,44,0,,,131,127,128,,,,-4,1,,,,1
+5813,Adarius Taylor,LB,,27,0,,,131,127,128,,,,-4,1,,,,1
+5994,Kendall Joseph,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+6035,Cece Jefferson,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+6041,Breckyn Hager,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+6052,Khalil Hodge,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+6190,Keith Butler,LB,SEA,62,0,,,131,127,128,,,,-4,1,,,,1
+6477,Duplicate Player,LB,DEN,23,0,,,131,127,128,,,,-4,1,,,,1
+6953,Qaadir Sheppard,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+7029,David Woodward,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+7037,Michael Pinckney,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+8160,Kenny Pickett,QB,CAR,27,0,,,168,128,128,,,,-40,0,,QB2,,0.4
+8304,Player Invalid,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+8401,Player Invalid,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+9757,Kendre Miller,RB,NO,23,209,323,143,157,127,128,10,-8,-8,-30,1,,RB3,Elite teammate competition,0.4
+12990,Jailin Walker,LB,,23,0,,,131,127,128,,,,-4,1,,,,1
+13093,Tuasivi Nomura,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+13197,Matt Harmon,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+13267,Devin Veresuk,LB,IND,24,0,,,131,127,128,,,,-4,1,,,,1
+13361,Romello Height,LB,SF,25,0,,,131,127,128,,,,-4,1,,,,1
+13363,David Bailey,LB,NYJ,22,0,,,131,127,128,,,,-4,1,,,,1
+13365,Anthony Hill,LB,TEN,21,0,,,131,127,128,,,,-4,1,,,,1
+13375,Sonny Styles,LB,WAS,21,0,,,131,127,128,,,,-4,1,,,,1
+13377,Arvell Reese,LB,NYG,20,0,,,131,127,128,,,,-4,1,,,,1
+13378,Dante McClellan,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+13379,Josiah Trotter,LB,TB,21,0,,,131,127,128,,,,-4,1,,,,1
+13381,Jaishawn Barham,LB,DAL,22,0,,,131,127,128,,,,-4,1,,,,1
+13388,CJ Allen,LB,IND,21,0,,,131,127,128,,,,-4,1,,,,1
+13391,Jake Golday,LB,MIN,23,0,,,131,127,128,,,,-4,1,,,,1
+13453,Jacob Rodriguez,LB,MIA,23,0,,,131,127,128,,,,-4,1,,,,1
+13479,Kyle Louis,LB,MIA,22,0,,,131,127,128,,,,-4,1,,,,1
+13481,Bryce Boettcher,LB,IND,23,0,,,131,127,128,,,,-4,1,,,,1
+13482,Kendal Daniels,LB,ATL,23,0,,,131,127,128,,,,-4,1,,,,1
+13484,Trey Moore,LB,MIA,23,0,,,131,127,128,,,,-4,1,,,,1
+13488,Kaleb Elarms-Orr,LB,BUF,22,0,,,131,127,128,,,,-4,1,,,,1
+13490,Wade Woodaz,LB,HOU,22,0,,,131,127,128,,,,-4,1,,,,1
+13494,Jimmy Rolder,LB,DET,22,0,,,131,127,128,,,,-4,1,,,,1
+13512,Keyshaun Elliott,LB,CHI,22,0,,,131,127,128,,,,-4,1,,,,1
+13520,Jaden Dugger,LB,SF,22,0,,,131,127,128,,,,-4,1,,,,1
+13524,Justin Jefferson,LB,CLE,23,0,,,131,127,128,,,,-4,1,,,,1
+13531,Jack Kelly,LB,NYG,23,0,,,131,127,128,,,,-4,1,,,,1
+13542,Namdi Obiazor,LB,NE,24,0,,,131,127,128,,,,-4,1,,,,1
+13551,Karson Sharar,LB,ARI,23,0,,,131,127,128,,,,-4,1,,,,1
+13555,Harold Perkins,LB,ATL,21,0,,,131,127,128,,,,-4,1,,,,1
+13572,Aiden Fisher,LB,HOU,22,0,,,131,127,128,,,,-4,1,,,,1
+13579,Red Murdock,LB,DEN,22,0,,,131,127,128,,,,-4,1,,,,1
+13586,Jackson Kuwatch,LB,CAR,23,0,,,131,127,128,,,,-4,1,,,,1
+13587,Parker Hughes,LB,JAX,23,0,,,131,127,128,,,,-4,1,,,,1
+13591,Deontae Lawson,LB,PHI,23,0,,,131,127,128,,,,-4,1,,,,1
+13593,Taurean York,LB,DEN,20,0,,,131,127,128,,,,-4,1,,,,1
+13607,Lander Barton,LB,LAC,22,0,,,131,127,128,,,,-4,1,,,,1
+13610,Jordan Botelho,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+13612,Scooby Williams,LB,MIN,23,0,,,131,127,128,,,,-4,1,,,,1
+13614,Cam'Ron Stewart,LB,MIN,21,0,,,131,127,128,,,,-4,1,,,,1
+13625,Keli Lawson,LB,MIN,21,0,,,131,127,128,,,,-4,1,,,,1
+13626,Arden Walker,LB,MIN,21,0,,,131,127,128,,,,-4,1,,,,1
+13628,Niles King,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+13684,Shad Banks,LB,TEN,21,0,,,131,127,128,,,,-4,1,,,,1
+13688,Jordan Crook,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+13718,Eric Gentry,LB,CIN,23,0,,,131,127,128,,,,-4,1,,,,1
+13721,Jack Dingle,LB,CIN,23,0,,,131,127,128,,,,-4,1,,,,1
+13735,Dominic DeLuca,LB,BAL,21,0,,,131,127,128,,,,-4,1,,,,1
+13736,Reid Williford,LB,BAL,21,0,,,131,127,128,,,,-4,1,,,,1
+13739,Erick Hunter,LB,DET,23,0,,,131,127,128,,,,-4,1,,,,1
+13754,Langston Patterson,LB,DAL,21,0,,,131,127,128,,,,-4,1,,,,1
+13763,Javin Wright,LB,TB,21,0,,,131,127,128,,,,-4,1,,,,1
+13775,TJ Quinn,LB,GB,21,0,,,131,127,128,,,,-4,1,,,,1
+13785,West Weeks,LB,IND,21,0,,,131,127,128,,,,-4,1,,,,1
+13787,Tahj Chambers,LB,IND,21,0,,,131,127,128,,,,-4,1,,,,1
+13791,Wesley Bissainthe,LB,KC,22,0,,,131,127,128,,,,-4,1,,,,1
+13797,Donovan Branch,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+13800,Xavian Sorey,LB,LV,24,0,,,131,127,128,,,,-4,1,,,,1
+13809,Nikhai Hill-Green,LB,LAR,25,0,,,131,127,128,,,,-4,1,,,,1
+13836,Kendrick Blackshire,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+13843,Theron Gaines,LB,BUF,21,0,,,131,127,128,,,,-4,1,,,,1
+13856,Darryl Peterson,LB,LAR,21,0,,,131,127,128,,,,-4,1,,,,1
+13865,Dasan McCullough,LB,DEN,23,0,,,131,127,128,,,,-4,1,,,,1
+13875,Sean Brown,LB,TEN,21,0,,,131,127,128,,,,-4,1,,,,1
+13893,Mani Powell,LB,TEN,21,0,,,131,127,128,,,,-4,1,,,,1
+13897,Christian Thomas,LB,LV,21,0,,,131,127,128,,,,-4,1,,,,1
+13915,Khalil Jacobs,LB,NE,22,0,,,131,127,128,,,,-4,1,,,,1
+13921,Isiah King,LB,PHI,21,0,,,131,127,128,,,,-4,1,,,,1
+13970,Riley Wilson,LB,TB,21,0,,,131,127,128,,,,-4,1,,,,1
+13971,Caden Fordham,LB,TB,23,0,,,131,127,128,,,,-4,1,,,,1
+13979,Isaiah Smith,LB,CAR,21,0,,,131,127,128,,,,-4,1,,,,1
+13994,Max Harris,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+14007,Andrew Jones,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+14014,John Miller,LB,,21,0,,,131,127,128,,,,-4,1,,,,1
+14022,Yasir Holmes,LB,TB,21,0,,,131,127,128,,,,-4,1,,,,1
+14023,Jaden Keller,LB,NYJ,21,0,,,131,127,128,,,,-4,1,,,,1
+14024,Bangally Kamara,LB,MIN,21,0,,,131,127,128,,,,-4,1,,,,1
+14026,DJ Herman,LB,MIA,21,0,,,131,127,128,,,,-4,1,,,,1
+14028,Daveren Rayner,LB,ATL,21,0,,,131,127,128,,,,-4,1,,,,1
+14030,Wayne Matthews,LB,CHI,23,0,,,131,127,128,,,,-4,1,,,,1
+14036,Stephen Dix,LB,ARI,24,0,,,131,127,128,,,,-4,1,,,,1
+14046,Reid Carrico,LB,CLE,21,0,,,131,127,128,,,,-4,1,,,,1
+14051,Chase Wilson,LB,NYJ,21,0,,,131,127,128,,,,-4,1,,,,1
+7694,Tommy Tremble,TE,CAR,26,7,390,5,140,127,127,2700,2440,2440,-13,0,,TE2,,0.4
+12658,Jackson Hawes,TE,BUF,25,0,,,145,127,127,,,,-18,0,,TE3,Elite teammate competition,0.4
+10231,Elijah Higgins,TE,ARI,25,0,,,142,125,125,,,,-17,0,,TE2,Elite teammate competition,0.4
+11748,Bub Means,WR,NO,25,0,,,148,125,125,,,,-23,0,,SWR6,Elite teammate competition,0.4
+4054,Mo Alie-Cox,TE,IND,32,0,,,131,124,124,,,,-7,0,Buried on the depth chart,TE4,Elite teammate competition,0.4
+10214,Davis Allen,TE,LAR,25,0,,,141,124,124,,,,-17,0,,TE4,2 elite teammate competitors,0.4
+7562,Tutu Atwell,WR,MIA,26,0,,,151,123,123,,,,-28,0,,RWR2,Elite teammate competition,0.4
+7596,Elijah Moore,WR,PHI,26,0,,,150,123,123,,,,-27,0,,LWR4,Elite teammate competition,0.4
+9492,Trey Palmer,WR,NO,25,0,,,145,123,123,,,,-22,0,,SWR3,Elite teammate competition,0.4
+13403,Jam Miller,RB,NE,21,487,277,333,156,123,123,-53,-62,-62,-33,0,,,,1
+4314,Johnny Mundt,TE,PHI,31,0,,,128,122,122,,,,-6,0,Buried on the depth chart,TE3,2 elite teammate competitors,0.4
+10444,Cedric Tillman,WR,CLE,26,224,320,153,143,121,121,-7,-18,-19,-22,0,,LWR2,,0.4
+11571,Isaiah Davis,RB,NYJ,24,277,309,189,148,120,121,-22,-34,-34,-28,1,,RB3,Elite teammate competition,0.4
+13394,Josh Cameron,WR,JAX,23,317,304,217,146,121,121,-33,-42,-43,-25,0,,,,1
+12455,Brashard Smith,RB,KC,23,258,312,176,143,119,120,-19,-30,-30,-24,1,,RB3,,0.4
+11588,Jawhar Jordan,RB,HOU,26,0,,,157,119,119,,,,-38,0,,RB4,,0.4
+4147,Samaje Perine,RB,CIN,30,31,379,21,122,118,118,481,490,462,-4,0,Buried on the depth chart,RB3,Elite teammate competition,0.5258
+13392,Jeff Caldwell,WR,KC,23,249,314,170,141,117,118,-17,-29,-29,-24,1,,,,1
+6847,Devin Duvernay,WR,ARI,28,0,,,122,117,117,,,,-5,0,,SWR4,Elite teammate competition,0.4
+7528,Najee Harris,RB,,27,411,287,281,143,115,116,-49,-58,-58,-28,1,,,,0.4
+13422,Jaren Kanak,TE,TEN,22,262,311,179,128,116,116,-28,-33,-33,-12,0,,,,1
+8117,Jalen Tolbert,WR,MIA,27,385,291,263,138,114,115,-48,-55,-55,-24,1,,LWR1,Elite teammate competition,0.4
+8200,Kevin Austin,WR,NO,26,0,,,138,113,113,,,,-25,0,,RWR8,Elite teammate competition,0.4
+8220,Sincere McCormick,RB,,25,0,,,149,113,113,,,,-36,0,,,,0.4
+13342,John Michael Gyllenborg,TE,KC,23,218,321,149,126,113,113,-15,-22,-22,-13,0,,,,1
+2152,Teddy Bridgewater,QB,DET,33,0,,,147,112,112,,,,-35,0,Buried on the depth chart,QB2,,0.4
+5008,Durham Smythe,TE,BAL,30,0,,,116,112,112,,,,-4,0,,TE2,Elite teammate competition,0.4
+11377,Tyrell Shavers,WR,BUF,26,0,,,135,112,112,,,,-23,0,,LWR6,Elite teammate competition,0.4
+7587,Dyami Brown,WR,WAS,26,0,,,135,111,111,,,,-24,0,,RWR2,,0.4
+8145,Jeremy Ruckert,TE,NYJ,25,0,,,124,111,111,,,,-13,0,,TE2,,0.4
+6136,Jarrett Stidham,QB,DEN,29,0,,,145,110,110,,,,-35,0,Buried on the depth chart,QB2,,0.4
+7607,Michael Carter,RB,TEN,27,98,354,67,143,110,110,113,69,69,-33,0,,RB5,,0.4
+8135,Treylon Burks,WR,WAS,26,0,,,132,109,109,,,,-23,0,,RWR7,,0.4
+11650,Luke McCaffrey,WR,WAS,25,109,352,74,131,108,109,77,50,51,-23,1,,SWR5,,0.4
+4068,Mike Williams,WR,,30,0,,,142,108,108,,,,-34,0,,,,0.4
+6323,Andrew Beck,RB,NYJ,30,0,,,110,108,108,,,,-2,0,Buried on the depth chart,RB4,Elite teammate competition,0.4
+13413,Cyrus Allen,WR,KC,23,383,293,262,132,108,108,-50,-57,-58,-24,0,,,,1
+8147,John Metchie,WR,CAR,25,147,335,100,123,106,107,23,9,9,-17,1,,LWR6,,0.4
+12471,DJ Giddens,RB,IND,22,619,265,423,125,103,105,-70,-75,-75,-22,2,,RB2,Elite teammate competition,0.4
+8413,Chris Oladokun,QB,KC,28,0,,,135,103,103,,,,-32,0,,QB3,,0.4
+3048,Chris Manhertz,TE,NYG,34,0,,,102,102,102,,,,0,0,Buried on the depth chart,TE5,Elite teammate competition,0.4
+8162,Sam Howell,QB,DAL,25,13,387,9,156,102,102,1633,1033,1033,-54,0,,,,1
+13299,Nate Boerkircher,TE,JAX,24,174,330,119,113,102,102,-5,-11,-12,-11,0,,,,1
+11834,Devaughn Vele,WR,NO,28,168,331,115,128,99,100,11,-11,-11,-29,1,,SWR2,Elite teammate competition,0.4
+3225,Tyler Boyd,WR,,30,0,,,129,98,98,,,,-31,0,,,,0.4
+8119,Jahan Dotson,WR,ATL,26,200,325,137,118,98,98,-14,-26,-26,-20,0,,RWR2,Elite teammate competition,0.4
+12544,LeQuint Allen,RB,JAX,21,568,270,388,115,96,98,-70,-74,-74,-19,2,,RB3,,0.4
+12473,Mitchell Evans,TE,CAR,23,38,374,26,103,95,95,296,280,280,-8,0,,TE3,,0.4
+6920,Isaiah Hodgins,WR,NYG,27,0,,,117,93,93,,,,-24,0,,LWR13,Elite teammate competition,0.4
+6960,Tyler Johnson,WR,DAL,27,0,,,116,93,93,,,,-23,0,,SWR6,2 elite teammate competitors,0.4
+11557,Joe Milton,QB,DAL,26,359,295,245,114,92,93,-53,-61,-61,-22,1,,QB2,,0.4
+11630,Roman Wilson,WR,PIT,24,73,360,50,108,93,93,116,94,90,-15,0,,RWR3,,0.4
+829,Andy Dalton,QB,PHI,38,33,377,23,193,92,92,739,318,318,-101,0,Buried on the depth chart,QB3,,0.4
+2505,Darren Waller,TE,,33,0,,,120,91,91,,,,-29,0,,,,0.4
+4574,Cooper Rush,QB,,32,0,,,120,91,91,,,,-29,0,,,,0.4
+6151,Miles Sanders,RB,,28,0,,,120,91,91,,,,-29,0,,,,0.4
+9481,Luke Musgrave,TE,GB,25,126,341,86,102,89,90,19,7,7,-13,1,,TE2,2 elite teammate competitors,0.4
+13079,Jahdae Walker,WR,CHI,23,9,389,6,102,90,90,1600,1400,1400,-12,0,,LWR6,Elite teammate competition,0.4
+7891,Brock Wright,TE,DET,27,0,,,106,89,89,,,,-17,0,,TE3,2 elite teammate competitors,0.4
+5248,Gus Edwards,RB,,29,0,,,116,88,88,,,,-28,0,,,,0.4
+10212,Josh Whyle,TE,GB,26,0,,,99,88,88,,,,-11,0,,TE3,2 elite teammate competitors,0.4
+1479,Keenan Allen,WR,,33,241,317,165,108,87,87,-35,-45,-46,-21,0,,,,0.4
+4111,D'Onta Foreman,RB,,28,0,,,115,87,87,,,,-28,0,,,,0.4
+10218,Xavier Hutchinson,WR,HOU,26,27,382,18,108,87,87,500,383,383,-21,0,,LWR4,,0.4
+7537,Jaret Patterson,RB,LAC,26,0,,,114,86,86,,,,-28,0,,RB5,Elite teammate competition,0.4
+11433,Nate Adkins,TE,DEN,26,0,,,95,85,85,,,,-10,0,,TE3,,0.4
+11629,Devontez Walker,WR,BAL,24,25,385,17,98,85,85,476,400,400,-13,0,,RWR3,Elite teammate competition,0.4
+6945,Antonio Gibson,RB,,27,0,,,109,83,83,,,,-26,0,,,,0.4
+7535,Hunter Long,TE,JAX,27,0,,,98,83,83,,,,-15,0,,TE2,,0.4
+8917,KaVontae Turpin,WR,DAL,29,114,349,78,107,82,83,37,9,9,-25,1,Buried on the depth chart,SWR3,2 elite teammate competitors,0.4
+12472,Raheim Sanders,RB,CLE,23,18,386,12,102,83,83,750,592,592,-19,0,,RB3,,0.4
+4663,Austin Ekeler,RB,,30,0,,,108,82,82,,,,-26,0,,,,0.4
+8143,Jerome Ford,RB,WAS,26,117,346,80,99,81,81,24,5,4,-18,0,,RB2,,0.4
+10862,Dorian Thompson-Robinson,QB,,25,0,,,106,81,81,,,,-25,0,,,,0.4
+11439,Jaleel McLaughlin,RB,DEN,25,36,375,25,106,81,81,324,238,238,-25,0,,RB3,,0.4
+7066,K.J. Osborn,WR,TEN,28,0,,,103,78,78,,,,-25,0,,LWR7,,0.4
+5917,Mecole Hardman,WR,BUF,28,0,,,101,76,76,,,,-25,0,,SWR7,Elite teammate competition,0.4
+7538,Zach Wilson,QB,NO,26,36,376,25,100,76,76,300,217,217,-24,0,,QB3,,0.4
+5955,Hunter Renfrow,WR,,30,0,,,99,75,75,,,,-24,0,,,,0.4
+6290,Scotty Miller,WR,CHI,28,0,,,83,75,75,,,,-8,0,,RWR4,Elite teammate competition,0.4
+7828,Noah Gray,TE,KC,27,138,337,94,89,75,75,-5,-18,-18,-14,0,,TE2,Elite teammate competition,0.4
+8206,Skylar Thompson,QB,BAL,28,0,,,99,75,75,,,,-24,0,,QB3,,0.4
+4082,Curtis Samuel,WR,,29,0,,,97,74,74,,,,-23,0,,,,0.4
+4995,Ian Thomas,TE,LV,29,0,,,81,74,74,,,,-7,0,Buried on the depth chart,TE3,Elite teammate competition,0.4
+8127,Charlie Kolar,TE,LAC,27,0,,,86,74,74,,,,-12,0,,TE3,Elite teammate competition,0.4
+4951,DJ Chark,WR,,28,0,,,97,73,73,,,,-24,0,,,,0.4
+7610,Trey Lance,QB,LAC,26,119,345,81,94,73,73,16,-8,-8,-21,0,,QB2,,0.4
+12505,Jalen Royals,WR,KC,23,510,275,348,81,71,73,-77,-79,-78,-10,2,,LWR3,Elite teammate competition,0.4
+5938,Lil'Jordan Humphrey,WR,DEN,28,0,,,94,71,71,,,,-23,0,,LWR6,,0.4
+9230,Tanner McKee,QB,PHI,26,77,359,53,91,70,71,72,37,39,-21,1,,QB2,,0.4
+6938,Cam Akers,RB,,26,0,,,91,69,69,,,,-22,0,,,,0.4
+7593,Trey Sermon,RB,,26,0,,,91,69,69,,,,-22,0,,,,0.4
+7989,DJ Turner,WR,,28,0,,,91,69,69,,,,-22,0,,,,0.4
+10215,Jake Haener,QB,,27,0,,,91,69,69,,,,-22,0,,,,0.4
+5185,Allen Lazard,WR,,30,0,,,90,68,68,,,,-22,0,,,,0.4
+2078,Odell Beckham,WR,NYG,33,392,289,268,74,65,67,-72,-75,-74,-9,2,Buried on the depth chart,LWR5,Elite teammate competition,0.4
+3164,Ezekiel Elliott,RB,,29,0,,,89,67,67,,,,-22,0,,,,0.4
+8181,Connor Heyward,TE,LV,27,0,,,77,67,67,,,,-10,0,,RB2,Elite teammate competition,0.4
+10871,Luke Schoonmaker,TE,DAL,27,0,,,77,67,67,,,,-10,0,,TE2,2 elite teammate competitors,0.4
+12541,Dont'e Thornton,WR,LV,23,358,296,245,77,65,67,-69,-73,-72,-12,2,,LWR1,Elite teammate competition,0.4
+11199,Emari Demercado,RB,KC,27,44,371,30,86,66,66,187,128,128,-20,0,,RB2,,0.4
+11599,Cade Stover,TE,HOU,25,27,383,18,73,66,66,306,267,267,-7,0,,TE3,,0.4
+3357,Brandon Allen,QB,NYG,33,0,,,86,65,65,,,,-21,0,Buried on the depth chart,QB3,,0.4
+4080,Zay Jones,WR,,30,0,,,85,65,65,,,,-20,0,,,,0.4
+4144,Jonnu Smith,TE,,30,57,366,39,85,65,65,118,71,71,-20,0,,,,0.4
+8177,Grant Calcaterra,TE,PHI,27,0,,,74,65,65,,,,-9,0,,TE2,2 elite teammate competitors,0.4
+260,Josh Johnson,QB,CIN,40,0,,,85,64,64,,,,-21,0,Buried on the depth chart,QB3,,0.4
+4234,Noah Brown,WR,,30,0,,,83,63,63,,,,-20,0,,,,0.4
+8800,Malik Davis,RB,DAL,27,73,361,50,82,63,63,64,31,29,-19,0,,RB5,Elite teammate competition,0.4
+11370,Chris Brooks,RB,GB,26,266,310,182,78,62,63,-57,-65,-64,-16,1,,RB3,Elite teammate competition,0.4
+12641,Jaylin Lane,WR,WAS,24,243,316,166,74,62,63,-55,-61,-61,-12,1,,SWR4,,0.4
+2325,Nelson Agholor,WR,,31,0,,,81,62,62,,,,-19,0,,,,0.4
+11299,Zavier Scott,RB,MIN,26,0,,,77,59,59,,,,-18,0,,RB3,,0.4
+5880,Parris Campbell,WR,,28,0,,,76,58,58,,,,-18,0,,,,0.4
+12531,Trevor Etienne,RB,CAR,21,348,298,238,69,57,58,-71,-75,-75,-12,1,,RB2,,0.4
+2862,Tony Johnson,K,,25,0,,,58,57,57,,,,-1,0,,,,1
+5354,Canon Rooker,K,,21,0,,,58,57,57,,,,-1,0,,,,1
+6702,Andrew Jacas,K,,21,0,,,58,57,57,,,,-1,0,,,,1
+6703,Andrew Wellock,K,,21,0,,,58,57,57,,,,-1,0,,,,1
+6754,Josh Gable,K,,35,0,,,58,57,57,,,,-1,0,,,,1
+13211,John Hoyland,K,,21,0,,,58,57,57,,,,-1,0,,,,1
+13545,Trey Smack,K,GB,22,0,,,58,57,57,,,,-1,0,,,,1
+13644,Mason Shipley,K,NO,21,0,,,58,57,57,,,,-1,0,,,,1
+13710,Gabriel Plascencia,K,CHI,21,0,,,58,57,57,,,,-1,0,,,,1
+13731,Luke Drzewiecki,K,,21,0,,,58,57,57,,,,-1,0,,,,1
+13764,Chris Freeman,K,,21,0,,,58,57,57,,,,-1,0,,,,1
+13804,Kansei Matsuzawa,K,LV,27,0,,,58,57,57,,,,-1,0,,,,1
+13813,Laith Marjan,K,PIT,21,0,,,58,57,57,,,,-1,0,,,,1
+13833,Dominic Zvada,K,NYG,22,0,,,58,57,57,,,,-1,0,,,,1
+13838,Will Ferrin,K,,21,0,,,58,57,57,,,,-1,0,,,,1
+13842,Ethan Sanchez,K,,24,0,,,58,57,57,,,,-1,0,,,,1
+13968,Drew Stevens,K,WAS,22,0,,,58,57,57,,,,-1,0,,,,1
+13990,Paul Geelen,K,,21,0,,,58,57,57,,,,-1,0,,,,1
+5086,Marquez Valdes-Scantling,WR,DAL,31,0,,,73,56,56,,,,-17,0,Buried on the depth chart,LWR4,2 elite teammate competitors,0.4
+6828,AJ Dillon,RB,CAR,28,0,,,72,55,55,,,,-17,0,,RB3,,0.4
+7496,Nick Westbrook-Ikhine,WR,IND,29,0,,,71,54,54,,,,-17,0,Buried on the depth chart,RWR3,Elite teammate competition,0.4
+8208,Tyler Badie,RB,DEN,26,0,,,72,54,54,,,,-18,0,,RB4,,0.4
+10234,Derius Davis,WR,LAC,25,0,,,71,54,54,,,,-17,0,,SWR5,Elite teammate competition,0.4
+12543,Tahj Brooks,RB,CIN,24,336,301,229,64,53,54,-72,-76,-76,-11,1,,RB2,Elite teammate competition,0.4
+11168,Xavier Smith,WR,LAR,28,0,,,70,53,53,,,,-17,0,,SWR5,2 elite teammate competitors,0.4
+11257,Shedrick Jackson,WR,LV,26,0,,,70,53,53,,,,-17,0,,RWR8,Elite teammate competition,0.4
+12412,Terrell Jennings,RB,NE,25,0,,,70,53,53,,,,-17,0,,RB3,,0.4
+2197,Brandin Cooks,WR,,32,0,,,69,52,52,,,,-17,0,,,,0.4
+2359,Ameer Abdullah,RB,JAX,32,0,,,52,52,52,,,,0,0,Buried on the depth chart,RB5,,0.4
+4171,Josh Reynolds,WR,,31,0,,,69,52,52,,,,-17,0,,,,0.4
+8129,Dameon Pierce,RB,PHI,26,0,,,69,52,52,,,,-17,0,,RB4,Elite teammate competition,0.4
+11378,Jordan Mims,RB,SF,26,0,,,68,52,52,,,,-16,0,,RB6,Elite teammate competition,0.4
+11623,Jordan Whittington,WR,LAR,25,0,,,68,52,52,,,,-16,0,,SWR3,2 elite teammate competitors,0.4
+5096,Ray-Ray McCloud,WR,,29,0,,,67,51,51,,,,-16,0,,,,0.4
+8116,Pierre Strong,RB,GB,27,0,,,67,51,51,,,,-16,0,,RB5,Elite teammate competition,0.4
+5010,Will Dissly,TE,,29,0,,,66,50,50,,,,-16,0,,,,0.4
+6855,Ashtyn Davis,DB,SF,29,0,,,51,50,50,,,,-1,0,,,,0.52
+7716,John Bates,TE,WAS,28,0,,,57,48,48,,,,-9,0,,TE3,,0.4
+8204,Bo Melton,WR,GB,27,0,,,63,48,48,,,,-15,0,,RWR4,2 elite teammate competitors,0.4
+10235,Roschon Johnson,RB,CHI,25,0,,,63,48,48,,,,-15,0,,RB2,Elite teammate competition,0.4
+4149,Jamaal Williams,RB,,29,0,,,61,47,47,,,,-14,0,,,,0.4
+5985,Foster Moreau,TE,HOU,29,0,,,51,47,47,,,,-4,0,,TE2,,0.5034
+6869,Adam Trautman,TE,DEN,29,0,,,62,47,47,,,,-15,0,,TE2,,0.4
+2410,Jamison Crowder,WR,,31,0,,,61,46,46,,,,-15,0,,,,0.4
+5032,Jordan Akins,TE,,33,0,,,60,46,46,,,,-14,0,,,,0.4
+11608,Isaiah Williams,WR,NYJ,25,0,,,61,46,46,,,,-15,0,,SWR5,,0.4
+11619,Ja'Lynn Polk,WR,NO,24,115,347,79,58,45,46,-27,-41,-39,-13,1,,RWR5,Elite teammate competition,0.4
+7608,Khalil Herbert,RB,,27,0,,,59,45,45,,,,-14,0,,,,0.4
+8076,Michael Bandy,WR,DEN,28,0,,,59,45,45,,,,-14,0,,SWR7,,0.4
+11615,Ainias Smith,WR,CAR,25,0,,,59,45,45,,,,-14,0,,SWR9,,0.4
+9505,Deuce Vaughn,RB,,24,0,,,59,44,44,,,,-15,0,,,,0.4
+12491,Corey Kiner,RB,ARI,24,0,,,58,44,44,,,,-14,0,,RB5,,0.4
+4992,Dante Pettis,WR,,30,0,,,57,43,43,,,,-14,0,,,,0.4
+6963,Patrick Taylor,RB,SF,28,0,,,56,43,43,,,,-13,0,,RB5,Elite teammate competition,0.4
+8139,Zamir White,RB,,26,0,,,57,43,43,,,,-14,0,,,,0.4
+11068,Mitch Tinsley,WR,CIN,26,0,,,57,43,43,,,,-14,0,,RWR4,2 elite teammate competitors,0.4
+1426,DeAndre Hopkins,WR,,33,0,,,55,42,42,,,,-13,0,,,,0.4
+4988,Nick Chubb,RB,,30,131,340,89,53,42,42,-40,-52,-52,-11,0,,,,0.4
+11596,Ben Sinnott,TE,WAS,23,210,322,143,51,41,42,-64,-71,-70,-10,1,,TE2,,0.4
+12670,KeAndre Lambert-Smith,WR,LAC,24,152,333,104,51,41,42,-51,-59,-58,-10,1,,LWR4,Elite teammate competition,0.4
+7039,Cody White,WR,SEA,27,0,,,54,41,41,,,,-13,0,,RWR7,Elite teammate competition,0.4
+3200,Sterling Shepard,WR,,33,0,,,53,40,40,,,,-13,0,,,,0.4
+11582,Carson Steele,RB,PHI,23,0,,,53,40,40,,,,-13,0,,RB6,Elite teammate competition,0.4
+3269,Chris Moore,WR,,32,0,,,51,39,39,,,,-12,0,,,,0.4
+7438,Kristian Wilkerson,WR,,29,0,,,51,39,39,,,,-12,0,,,,0.4
+12523,Jimmy Horn,WR,CAR,23,86,356,59,50,39,39,-15,-32,-32,-11,0,,SWR5,,0.4
+6427,Ashton Dulin,WR,IND,29,0,,,50,38,38,,,,-12,0,Buried on the depth chart,LWR4,Elite teammate competition,0.4
+7812,Simi Fehoko,WR,ARI,28,0,,,50,38,38,,,,-12,0,,RWR6,Elite teammate competition,0.4
+9495,Rakim Jarrett,WR,,24,0,,,50,38,38,,,,-12,0,,,,0.4
+11157,Brycen Tremayne,WR,CAR,26,0,,,50,38,38,,,,-12,0,,LWR7,,0.4
+12482,Savion Williams,WR,GB,24,68,363,46,47,37,38,2,-18,-16,-10,1,,LWR5,2 elite teammate competitors,0.4
+2374,Tyler Lockett,WR,,33,0,,,48,37,37,,,,-11,0,,,,0.4
+8423,Brittain Brown,RB,CHI,28,0,,,48,37,37,,,,-11,0,,RB5,Elite teammate competition,0.4
+11570,Rasheen Ali,RB,BAL,25,0,,,49,37,37,,,,-12,0,,RB3,Elite teammate competition,0.4
+4089,Gerald Everett,TE,,30,0,,,47,36,36,,,,-11,0,,,,0.4
+6798,Jalen Reagor,WR,MIA,27,0,,,47,36,36,,,,-11,0,,SWR4,Elite teammate competition,0.4
+7565,Terrace Marshall,WR,MIA,25,0,,,48,36,36,,,,-12,0,,LWR5,Elite teammate competition,0.4
+11210,Malik Heath,WR,ATL,25,0,,,48,36,36,,,,-12,0,,,Elite teammate competition,0.4
+11577,Will Shipley,RB,PHI,23,136,339,93,45,36,36,-52,-60,-60,-9,0,,RB3,Elite teammate competition,0.4
+4602,Robert Tonyan,TE,,31,0,,,46,35,35,,,,-11,0,,,,0.4
+4973,Hayden Hurst,TE,,31,0,,,46,35,35,,,,-11,0,,,,0.4
+10216,Kenny McIntosh,RB,SEA,26,0,,,46,35,35,,,,-11,0,,RB5,,0.4
+11421,Ryan Miller,WR,NYG,26,0,,,47,35,35,,,,-12,0,,SWR9,Elite teammate competition,0.4
+11633,Jamari Thrash,WR,CLE,25,0,,,45,35,35,,,,-10,0,,SWR3,,0.4
+12542,Efton Chism,WR,NE,24,62,364,42,45,35,35,7,-15,-15,-10,0,,RWR7,,0.4
+4098,Kareem Hunt,RB,,30,28,381,19,44,34,34,132,79,79,-10,0,,,,0.4
+8230,Ty Chandler,RB,NO,28,0,,,45,34,34,,,,-11,0,,RB5,Elite teammate competition,0.4
+8168,Skyy Moore,WR,GB,25,0,,,43,33,33,,,,-10,0,,SWR6,2 elite teammate competitors,0.4
+8202,Michael Woods,WR,DEN,26,0,,,44,33,33,,,,-11,0,,SWR8,,0.4
+11895,Mason Tipton,WR,NO,25,0,,,43,33,33,,,,-10,0,,SWR4,Elite teammate competition,0.4
+5121,Braxton Berrios,WR,NYG,30,0,,,43,32,32,,,,-11,0,Buried on the depth chart,SWR11,Elite teammate competition,0.4
+5374,Justin Watson,WR,HOU,30,0,,,42,32,32,,,,-10,0,Buried on the depth chart,RWR5,,0.4
+8756,Brandon Johnson,WR,PIT,27,0,,,42,32,32,,,,-10,0,,SWR5,,0.4
+11806,Casey Washington,WR,ATL,25,0,,,42,32,32,,,,-10,0,,LWR4,Elite teammate competition,0.4
+6012,Travis Homer,RB,PIT,27,0,,,41,31,31,,,,-10,0,,RB4,Elite teammate competition,0.4
+11306,Xavier Gipson,WR,NYG,25,0,,,41,31,31,,,,-10,0,,SWR8,Elite teammate competition,0.4
+8207,Tyler Goodson,RB,ATL,25,0,,,40,30,30,,,,-10,0,,RB3,Elite teammate competition,0.4
+7757,Ben Skowronek,WR,PIT,28,0,,,39,29,29,,,,-10,0,,SWR4,,0.4
+11617,Malachi Corley,WR,CLE,24,26,384,18,38,29,29,111,71,71,-9,0,,SWR7,,0.4
+13150,Darius Cooper,WR,PHI,24,0,,,39,29,29,,,,-10,0,,RWR10,Elite teammate competition,0.4
+5695,Brandon Powell,WR,,29,0,,,36,28,28,,,,-8,0,,,,0.4
+6144,Trayveon Williams,RB,,28,0,,,37,28,28,,,,-9,0,,,,0.4
+6588,Tom Kennedy,WR,DET,29,0,,,37,28,28,,,,-9,0,Buried on the depth chart,SWR7,2 elite teammate competitors,0.4
+6996,JaMycal Hasty,RB,,29,0,,,37,28,28,,,,-9,0,,,,0.4
+8123,Hassan Haskins,RB,,26,0,,,36,28,28,,,,-8,0,,,,0.4
+4854,River Cracraft,WR,,31,0,,,35,27,27,,,,-8,0,,,,0.4
+7842,Luke Farrell,TE,SF,28,0,,,36,27,27,,,,-9,0,,TE2,2 elite teammate competitors,0.4
+12048,George Holani,RB,SEA,26,57,367,39,34,26,27,-13,-32,-29,-8,1,,RB4,,0.4
+5113,Cedrick Wilson,WR,DET,30,0,,,34,26,26,,,,-8,0,Buried on the depth chart,LWR5,2 elite teammate competitors,0.4
+6598,Trenton Irwin,WR,,30,0,,,34,26,26,,,,-8,0,,,,0.4
+7595,Tylan Wallace,WR,CLE,27,0,,,34,26,26,,,,-8,0,,RWR5,,0.4
+9220,Evan Hull,RB,HOU,25,0,,,34,26,26,,,,-8,0,,RB3,,0.4
+11921,Xavier Weaver,WR,ARI,25,0,,,34,26,26,,,,-8,0,,SWR3,Elite teammate competition,0.4
+12718,Konata Mumpfield,WR,LAR,23,57,368,39,29,26,26,-26,-32,-32,-3,0,,LWR4,2 elite teammate competitors,0.4
+8849,Tanner Conner,TE,NYG,28,0,,,33,25,25,,,,-8,0,,TE4,Elite teammate competition,0.4
+11034,Jalen Brooks,WR,ARI,26,0,,,33,25,25,,,,-8,0,,SWR7,Elite teammate competition,0.4
+1992,Allen Robinson,WR,,31,0,,,31,24,24,,,,-7,0,,,,0.4
+6814,Laviska Shenault,WR,,26,0,,,32,24,24,,,,-8,0,,,,0.4
+7045,Joshua Kelley,RB,,27,0,,,32,24,24,,,,-8,0,,,,0.4
+8219,Jelani Woods,TE,NYJ,27,0,,,32,24,24,,,,-8,0,,TE3,,0.4
+10225,Jonathan Mingo,WR,DAL,25,0,,,31,24,24,,,,-7,0,,RWR7,2 elite teammate competitors,0.4
+11640,Jermaine Burton,WR,,24,0,,,32,24,24,,,,-8,0,,,,0.4
+1352,Robert Woods,WR,,33,0,,,31,23,23,,,,-8,0,,,,0.4
+3423,Robbie Chosen,WR,,32,0,,,30,23,23,,,,-7,0,,,,0.4
+9497,Jalin Hyatt,WR,NYG,24,0,,,31,23,23,,,,-8,0,,RWR7,Elite teammate competition,0.4
+11474,Dylan Drummond,WR,ATL,26,0,,,30,23,23,,,,-7,0,,RWR4,Elite teammate competition,0.4
+3258,Nick Vannett,TE,,33,0,,,29,22,22,,,,-7,0,,,,0.4
+4274,David Moore,WR,CAR,31,0,,,29,22,22,,,,-7,0,Buried on the depth chart,SWR4,,0.4
+11593,Brevyn Spann-Ford,TE,DAL,26,0,,,29,22,22,,,,-7,0,,TE3,2 elite teammate competitors,0.4
+11636,Johnny Wilson,WR,PHI,25,0,,,29,22,22,,,,-7,0,,RWR5,Elite teammate competition,0.4
+1339,Zach Ertz,TE,,35,32,378,22,27,21,21,23,0,0,-6,0,,,,0.4
+7536,Quintin Morris,TE,JAX,27,0,,,27,21,21,,,,-6,0,,TE3,,0.4
+8197,Peyton Hendershot,TE,,25,0,,,27,21,21,,,,-6,0,,,,0.4
+8489,Drew Ogletree,TE,IND,27,0,,,27,21,21,,,,-6,0,,TE2,Elite teammate competition,0.4
+8500,John FitzPatrick,TE,,25,0,,,28,21,21,,,,-7,0,,,,0.4
+9998,Hendon Hooker,QB,TEN,28,0,,,28,21,21,,,,-7,0,,QB3,,0.4
+10220,Will Mallory,TE,IND,26,0,,,28,21,21,,,,-7,0,,TE3,Elite teammate competition,0.4
+10223,Eric Gray,RB,NYG,26,0,,,28,21,21,,,,-7,0,,RB5,Elite teammate competition,0.4
+11820,Devin Culp,TE,TB,26,0,,,27,21,21,,,,-6,0,,TE3,,0.4
+2446,MyCole Pruitt,TE,,32,0,,,27,20,20,,,,-7,0,,,,0.4
+6957,James Proche,WR,,29,0,,,27,20,20,,,,-7,0,,,,0.4
+7602,Kylen Granson,TE,TEN,28,0,,,27,20,20,,,,-7,0,,TE4,,0.4
+8253,Deven Thompkins,WR,,26,0,,,26,20,20,,,,-6,0,,,,0.4
+8255,Raheem Blackshear,RB,,27,0,,,26,20,20,,,,-6,0,,,,0.4
+4435,Anthony Firkser,TE,WAS,31,0,,,26,19,19,,,,-7,0,Buried on the depth chart,TE4,,0.4
+6973,J.J. Taylor,RB,,27,0,,,26,19,19,,,,-7,0,,,,0.4
+8249,Lucas Krull,TE,DEN,27,0,,,25,19,19,,,,-6,0,,TE4,,0.4
+10867,Jake Bobo,WR,SEA,27,0,,,25,19,19,,,,-6,0,,LWR5,Elite teammate competition,0.4
+11994,Kameron Johnson,WR,TB,24,0,,,26,19,19,,,,-7,0,,SWR5,,0.4
+12775,Max Brosmer,QB,MIN,25,0,,,25,19,19,,,,-6,0,,QB4,,0.4
+13101,Gage Larvadain,WR,CLE,24,0,,,25,19,19,,,,-6,0,,SWR6,,0.4
+8583,Stone Smartt,TE,PHI,27,0,,,24,18,18,,,,-6,0,,TE4,2 elite teammate competitors,0.4
+10221,Ronnie Bell,WR,NO,26,0,,,24,18,18,,,,-6,0,,LWR7,Elite teammate competition,0.4
+4381,Taysom Hill,TE,,35,0,,,22,17,17,,,,-5,0,,,,0.4
+7357,Dan Chisena,WR,CAR,29,0,,,22,17,17,,,,-5,0,Buried on the depth chart,SWR8,,0.4
+7746,Austin Trammell,WR,JAX,27,0,,,23,17,17,,,,-6,0,,SWR6,,0.4
+7946,Jack Stoll,TE,CLE,28,0,,,22,17,17,,,,-5,0,,TE3,,0.4
+8250,Tay Martin,WR,,27,0,,,22,17,17,,,,-5,0,,,,0.4
+11304,E.J. Jenkins,TE,PHI,27,0,,,23,17,17,,,,-6,0,,TE6,2 elite teammate competitors,0.4
+12897,Nathan Carter,RB,ATL,24,0,,,22,17,17,,,,-5,0,,RB4,Elite teammate competition,0.4
+7050,Josiah Deguara,TE,,29,0,,,21,16,16,,,,-5,0,,,,0.4
+11616,Jacob Cowing,WR,SF,25,0,,,21,16,16,,,,-5,0,,RWR7,2 elite teammate competitors,0.4
+12374,Brenden Bates,TE,CLE,26,0,,,21,16,16,,,,-5,0,,TE2,,0.4
+12539,Arian Smith,WR,NYJ,24,0,,,21,16,16,,,,-5,0,,SWR3,,0.4
+7612,Dee Eskridge,WR,,28,0,,,20,15,15,,,,-5,0,,,,0.4
+8195,Ronnie Rivers,RB,LAR,27,0,,,20,15,15,,,,-5,0,,RB4,Elite teammate competition,0.4
+12171,British Brooks,RB,HOU,26,0,,,19,15,15,,,,-4,0,,RB5,,0.4
+2750,DeAndre Carter,WR,,32,0,,,19,14,14,,,,-5,0,,,,0.4
+5154,Trent Sherfield,WR,BUF,30,0,,,18,14,14,,,,-4,0,Buried on the depth chart,RWR5,Elite teammate competition,0.4
+7436,Mason Kinsey,WR,TEN,27,0,,,19,14,14,,,,-5,0,,RWR8,,0.4
+8170,James Mitchell,TE,CAR,26,0,,,19,14,14,,,,-5,0,,TE4,,0.4
+11320,Nikko Remigio,WR,KC,26,0,,,19,14,14,,,,-5,0,,SWR6,Elite teammate competition,0.4
+12765,Keleki Latu,TE,BUF,23,0,,,18,14,14,,,,-4,0,,TE4,Elite teammate competition,0.4
+5773,KhaDarel Hodge,WR,,31,0,,,17,13,13,,,,-4,0,,,,0.4
+5980,Myles Gaskin,RB,,28,0,,,17,13,13,,,,-4,0,,,,0.4
+6665,Jody Fortson,TE,,29,0,,,17,13,13,,,,-4,0,,,,0.4
+8041,Shane Zylstra,TE,BUF,29,0,,,17,13,13,,,,-4,0,Buried on the depth chart,TE4,Elite teammate competition,0.4
+8414,Britain Covey,WR,PHI,29,0,,,17,13,13,,,,-4,0,Buried on the depth chart,SWR7,Elite teammate competition,0.4
+8527,Dareke Young,WR,LV,26,0,,,18,13,13,,,,-5,0,,SWR5,Elite teammate competition,0.4
+9490,Tyler Scott,WR,LAR,24,0,,,16,13,13,,,,-3,0,,SWR6,2 elite teammate competitors,0.4
+11729,Sione Vaki,RB,DET,24,0,,,18,13,13,,,,-5,0,,RB3,Elite teammate competition,0.4
+11959,Bryce Oliver,WR,TEN,26,0,,,18,13,13,,,,-5,0,,RWR6,,0.4
+5284,Jeff Wilson,RB,,30,0,,,16,12,12,,,,-4,0,,,,0.4
+6931,DeeJay Dallas,RB,JAX,27,0,,,16,12,12,,,,-4,0,,RB4,,0.4
+8223,Velus Jones,WR,SEA,29,0,,,16,12,12,,,,-4,0,Buried on the depth chart,SWR8,Elite teammate competition,0.4
+8254,Julius Chestnut,RB,TEN,25,0,,,16,12,12,,,,-4,0,,RB3,,0.4
+7233,Andre Baccellia,WR,,29,0,,,15,11,11,,,,-4,0,,,,0.4
+8809,Aaron Shampklin,RB,,25,0,,,15,11,11,,,,-4,0,,,,0.4
+12357,David Martin-Robinson,TE,TEN,26,0,,,14,11,11,,,,-3,0,,TE3,,0.4
+12496,Tai Felton,WR,MIN,23,56,369,38,7,11,11,-82,-70,-70,4,0,,LWR4,,0.4
+12634,Jordan Watkins,WR,SF,24,13,388,9,14,11,11,56,22,22,-3,0,,SWR6,2 elite teammate competitors,0.4
+2381,Chris Conley,WR,,32,0,,,14,10,10,,,,-4,0,,,,0.4
+4189,Eric Saubert,TE,SEA,32,0,,,13,10,10,,,,-3,0,Buried on the depth chart,TE3,Elite teammate competition,0.4
+6850,Harrison Bryant,TE,SEA,28,0,,,13,10,10,,,,-3,0,,TE4,Elite teammate competition,0.4
+7075,Charlie Woerner,TE,ATL,28,0,,,14,10,10,,,,-4,0,,TE3,Elite teammate competition,0.4
+7521,Chris Blair,WR,ATL,28,0,,,14,10,10,,,,-4,0,,LWR5,Elite teammate competition,0.4
+11024,Grant DuBose,WR,,24,0,,,14,10,10,,,,-4,0,,,,0.4
+11821,Tahj Washington,WR,MIA,25,0,,,14,10,10,,,,-4,0,,SWR6,Elite teammate competition,0.4
+7204,Reggie Gilliam,RB,NE,28,0,,,12,9,9,,,,-3,0,,RB5,,0.4
+8013,Tim Jones,WR,JAX,28,0,,,12,9,9,,,,-3,0,,SWR5,,0.4
+10227,Payne Durham,TE,TB,25,0,,,12,9,9,,,,-3,0,,TE2,,0.4
+11082,Ben Sims,TE,MIA,26,0,,,12,9,9,,,,-3,0,,TE1,Elite teammate competition,0.4
+11201,Blake Whiteheart,TE,CLE,26,0,,,11,9,9,,,,-2,0,,TE2,,0.4
+11716,Tip Reiman,TE,ARI,24,0,,,12,9,9,,,,-3,0,,TE4,Elite teammate competition,0.4
+12889,Beaux Collins,WR,NYG,23,0,,,12,9,9,,,,-3,0,,LWR10,Elite teammate competition,0.4
+331,Philip Rivers,QB,,44,0,,,10,8,8,,,,-2,0,,,,0.4
+6386,Alex Bachman,WR,,29,0,,,11,8,8,,,,-3,0,,,,0.4
+6694,D'Ernest Johnson,RB,,29,0,,,11,8,8,,,,-3,0,,,,0.4
+7087,Jonathan Ward,RB,,28,0,,,10,8,8,,,,-2,0,,,,0.4
+8885,Tucker Fisk,TE,,27,0,,,11,8,8,,,,-3,0,,,,0.4
+2755,Eric Tomlinson,TE,,32,0,,,10,7,7,,,,-3,0,,,,0.4
+4443,Pharaoh Brown,TE,,31,0,,,9,7,7,,,,-2,0,,,,0.4
+7720,Kene Nwangwu,RB,NYJ,28,0,,,9,7,7,,,,-2,0,,RB5,Elite teammate competition,0.4
+12062,Cam Grandy,TE,CIN,26,0,,,9,7,7,,,,-2,0,,TE3,2 elite teammate competitors,0.4
+12787,Josh Williams,RB,TB,24,0,,,10,7,7,,,,-3,0,,RB4,Elite teammate competition,0.4
+2545,Geoff Swaim,TE,,31,0,,,7,6,6,,,,-1,0,,,,0.4
+5209,Mike Boone,RB,,30,0,,,7,6,6,,,,-1,0,,,,0.4
+6659,Craig Reynolds,RB,,29,0,,,8,6,6,,,,-2,0,,,,0.4
+8749,Tyreik McAllister,RB,,27,0,,,7,6,6,,,,-1,0,,,,0.4
+8799,Zaire Mitchell-Paden,TE,NO,26,0,,,7,6,6,,,,-1,0,,TE5,Elite teammate competition,0.4
+11606,Dallin Holker,TE,,25,0,,,8,6,6,,,,-2,0,,,,0.4
+5285,Ross Dwelley,TE,,30,0,,,6,5,5,,,,-1,0,,,,0.4
+6857,Collin Johnson,WR,,27,0,,,7,5,5,,,,-2,0,,,,0.4
+6885,Ke'Shawn Vaughn,RB,,28,0,,,7,5,5,,,,-2,0,,,,0.4
+11645,Javon Baker,WR,,23,0,,,6,5,5,,,,-1,0,,,,0.4
+11963,Chris Collier,RB,LV,26,0,,,7,5,5,,,,-2,0,,RB4,Elite teammate competition,0.4
+7713,Jaelon Darden,WR,,26,0,,,5,4,4,,,,-1,0,,,,0.4
+8359,Marcus Jones,DB,NE,27,0,,,5,4,4,,,,-1,0,,NB1,,0.4
+11605,Jaheim Bell,TE,PIT,24,0,,,5,4,4,,,,-1,0,,TE3,,0.4
+11762,Anthony Gould,WR,IND,25,0,,,5,4,4,,,,-1,0,,SWR5,Elite teammate competition,0.4
+11942,Colson Yankoff,TE,WAS,26,0,,,6,4,4,,,,-2,0,,TE6,,0.4
+12480,Moliki Matavao,TE,NO,23,0,,,5,4,4,,,,-1,0,,TE3,Elite teammate competition,0.4
+13121,Ben Yurosek,TE,MIN,24,0,,,5,4,4,,,,-1,0,,TE4,,0.4
+10994,Scott Matlock,DL,LAC,25,0,,,3,3,3,,,,0,0,,RB6,,0.4
+11237,Jacob Saylors,RB,DET,25,0,,,4,3,3,,,,-1,0,,RB4,Elite teammate competition,0.4
+11384,Owen Wright,RB,,27,0,,,4,3,3,,,,-1,0,,,,0.4
+11574,Dylan Laube,RB,LV,26,0,,,4,3,3,,,,-1,0,,RB3,Elite teammate competition,0.4
+11595,Jared Wiley,TE,KC,25,0,,,4,3,3,,,,-1,0,,TE3,Elite teammate competition,0.4
+12516,Kalel Mullings,RB,TEN,23,0,,,4,3,3,,,,-1,0,,RB4,,0.4
+1535,Cordarrelle Patterson,RB,,34,0,,,3,2,2,,,,-1,0,,,,0.4
+1689,Adam Thielen,WR,,35,0,,,3,2,2,,,,-1,0,,,,0.4
+2749,Raheem Mostert,RB,,33,0,,,3,2,2,,,,-1,0,,,,0.4
+5015,Sam Hubbard,DL,,29,0,,,3,2,2,,,,-1,0,,,,0.4
+7531,Feleipe Franks,TE,CAR,28,0,,,3,2,2,,,,-1,0,,TE5,,0.4
+7677,Divine Deablo,LB,ATL,27,0,,,3,2,2,,,,-1,0,,RILB1,,0.4
+11467,John Samuel Shenker,TE,,26,0,,,3,2,2,,,,-1,0,,,,0.4
+11885,Ramel Keyton,WR,,24,0,,,3,2,2,,,,-1,0,,,,0.4
+13122,Carter Runyon,TE,LV,24,0,,,3,2,2,,,,-1,0,,TE4,Elite teammate competition,0.4
+4718,Dare Ogunbowale,RB,,31,0,,,1,1,1,,,,0,0,,,,0.4
+111,Marcedes Lewis,TE,,41,0,,,0,0,0,,,,0,0,,,,0.4
+4163,Jalen Reeves-Maybin,LB,,31,0,,,0,0,0,,,,0,0,,,,0.4
+6699,Gunner Olszewski,WR,NYG,29,0,,,0,0,0,,,,0,0,Buried on the depth chart,PR12,Elite teammate competition,0.4
+7064,Darrynton Evans,RB,,27,0,,,0,0,0,,,,0,0,,,,0.4
+7597,Kenny Yeboah,TE,,27,0,,,0,0,0,,,,0,0,,,,0.4
+8395,Dane Belton,DB,NYJ,25,0,,,1,0,0,,,,-1,0,,SS2,,0.4
+8397,Juanyeh Thomas,DB,IND,25,0,,,1,0,0,,,,-1,0,,FS2,,0.4
+11371,Julian Hill,TE,NE,25,0,,,0,0,0,,,,0,0,,TE2,,0.4

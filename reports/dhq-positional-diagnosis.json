@@ -1,0 +1,128 @@
+{
+  "leagueModel": "16-team SF 0.5PPR, real Sleeper data, season 2026",
+  "legend": "FC deviation by position among the 60 highest-FC players; negative = DHQ below market. Goal: bring RB/WR/TE near 0 without breaking QB.",
+  "scenarios": [
+    {
+      "label": "baseline (today)",
+      "byPos": {
+        "QB": 11,
+        "RB": 11,
+        "WR": -10,
+        "TE": -39
+      },
+      "rho": 0.892
+    },
+    {
+      "label": "A: QB weight 0.65",
+      "byPos": {
+        "QB": -14,
+        "RB": 11,
+        "WR": -11,
+        "TE": -39
+      },
+      "rho": 0.888
+    },
+    {
+      "label": "B: VOR-heavy lineup",
+      "byPos": {
+        "QB": 1,
+        "RB": 7,
+        "WR": -16,
+        "TE": -43
+      },
+      "rho": 0.891
+    },
+    {
+      "label": "C: FC blend 55%",
+      "byPos": {
+        "QB": 7,
+        "RB": 5,
+        "WR": -7,
+        "TE": -21
+      },
+      "rho": 0.957
+    },
+    {
+      "label": "A+B: QB weight + VOR",
+      "byPos": {
+        "QB": -21,
+        "RB": 7,
+        "WR": -17,
+        "TE": -43
+      },
+      "rho": 0.888
+    },
+    {
+      "label": "A+B+C: all three",
+      "byPos": {
+        "QB": -12,
+        "RB": 3,
+        "WR": -11,
+        "TE": -26
+      },
+      "rho": 0.954
+    }
+  ],
+  "decomposition": [
+    {
+      "name": "Josh Allen",
+      "pos": "QB",
+      "wPPG": 24.65,
+      "ageFactor": 1,
+      "sitMult": 1.2149,
+      "posDynastyWeight": 1.676,
+      "lineupValuePPG": 15.9,
+      "composite": 32.4,
+      "dhq": 8103,
+      "fcValue": 10094
+    },
+    {
+      "name": "Ja'Marr Chase",
+      "pos": "WR",
+      "wPPG": 17.35,
+      "ageFactor": 1,
+      "sitMult": 1.547,
+      "posDynastyWeight": 1.205,
+      "lineupValuePPG": 12.52,
+      "composite": 23.3,
+      "dhq": 6032,
+      "fcValue": 9822
+    },
+    {
+      "name": "Puka Nacua",
+      "pos": "WR",
+      "wPPG": 19.54,
+      "ageFactor": 1,
+      "sitMult": 1.6,
+      "posDynastyWeight": 1.205,
+      "lineupValuePPG": 14.71,
+      "composite": 28.4,
+      "dhq": 6775,
+      "fcValue": 8587
+    },
+    {
+      "name": "Bijan Robinson",
+      "pos": "RB",
+      "wPPG": 21.02,
+      "ageFactor": 1,
+      "sitMult": 1.6,
+      "posDynastyWeight": 1.44,
+      "lineupValuePPG": 16.17,
+      "composite": 37.3,
+      "dhq": 8317,
+      "fcValue": 10427
+    },
+    {
+      "name": "Brock Bowers",
+      "pos": "TE",
+      "wPPG": 12.8,
+      "ageFactor": 0.82,
+      "sitMult": 1.4453,
+      "posDynastyWeight": 0.889,
+      "lineupValuePPG": 7.79,
+      "composite": 8.2,
+      "dhq": 3529,
+      "fcValue": 7686
+    }
+  ]
+}
