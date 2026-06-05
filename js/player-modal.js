@@ -403,7 +403,17 @@ function openPlayerModal(playerId){
   // Action buttons (hidden stubs — still wired for compat)
   const askBtn=$('pm-ask-btn');
   if(askBtn){
-    askBtn.onclick=()=>goAsk(`SEARCH FOR CURRENT INFO FIRST: Look up ${pName(playerId)} ${pos} ${fullTeam(p.team)} current situation, depth chart, and dynasty outlook for 2026. Then give a dynasty buy/sell/hold recommendation with current team context, role, and trade value. DHQ value: ${dynastyValue(playerId).toLocaleString()}.`);
+    askBtn.onclick=()=>{
+      // Route through the player-scout tier with the structured NFL-fit context
+      // (depth-chart role, named blockers + PPG, status, trend, capital) so the
+      // reply is grounded in the player's real situation, not generic prose.
+      let scoutCtx='';
+      try{ scoutCtx=window.App?.computeNFLFit?.(playerId,{pos,player:p,dhq:dynastyValue(playerId)})?.contextString||''; }catch(e){}
+      goAsk(
+        `SEARCH FOR CURRENT INFO FIRST: Look up ${pName(playerId)} ${pos} ${fullTeam(p.team)} current situation, depth chart, and dynasty outlook for 2026. Then give a dynasty buy/sell/hold recommendation with current team context, role, and trade value. DHQ value: ${dynastyValue(playerId).toLocaleString()}.`,
+        { callType:'player-scout', context:scoutCtx, useWebSearch:true }
+      );
+    };
   }
   const tradeBtn=$('pm-trade-btn');
   if(tradeBtn){

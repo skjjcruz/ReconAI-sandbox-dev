@@ -18,6 +18,7 @@ import './shared/rookie-data.js';
 import './shared/dhq-core.js';
 import './shared/intelligence-context.js';
 import './shared/dhq-engine.js';
+import './shared/nfl-fit.js';
 import './shared/team-assess.js';
 import './shared/trade-engine.js';
 import './shared/mock-engine.js';

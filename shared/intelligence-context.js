@@ -102,6 +102,18 @@
       productionStatus: 'production_safe_monitor',
       surfaces: ['market_value', 'trade', 'waiver', 'draft'],
     },
+    nfl_fit: {
+      key: 'nfl_fit',
+      label: 'NFL Fit',
+      owner: 'Dynasty HQ',
+      category: 'situation',
+      accessMethod: 'computed_from_dhq_signals',
+      refreshCadence: 'live',
+      maxAgeMs: 6 * HOUR_MS,
+      licensePosture: 'derived_user_league_data',
+      productionStatus: 'production_safe',
+      surfaces: ['player_context', 'scouting', 'player_value'],
+    },
     league_scoring: {
       key: 'league_scoring',
       label: 'League scoring',

@@ -17,27 +17,61 @@ window.App = window.App || {};
 
 const MFL_BASE = 'https://api.myfantasyleague.com';
 
-// MFL scoring rule name → Sleeper scoring key
-const MFL_SCORE_MAP = {
-  'PASS_YDS':        'pass_yd',
-  'PASS_TDS':        'pass_td',
-  'PASS_INT':        'pass_int',
-  'RUSH_YDS':        'rush_yd',
-  'RUSH_TDS':        'rush_td',
-  'REC_YDS':         'rec_yd',
-  'REC_TDS':         'rec_td',
-  'RECEPTIONS':      'rec',
-  'FUML':            'fum_lost',
-  '2PT_CONVERSION':  'bonus_2pt_off',
-  'SACK':            'idp_sack',
-  'INT':             'idp_int',
-  'FUMB_REC':        'idp_fum_rec',
-  'SAFETY':          'idp_safe',
-  'TD':              'idp_def_td',
-  'TACKLE_SOLO':     'idp_solo',
-  'TACKLE_ASSIST':   'idp_ast',
-  'PASS_DEFENDED':   'idp_pass_def',
+// MFL scoring event code → Sleeper scoring key.
+// MFL scoring lives in the TYPE=rules export as position-specific rules, each
+// with an `event` code (e.g. "PY", "TK") and a `points` formula (e.g. "*.04",
+// "3/.5"). These codes map onto the flat Sleeper scoring_settings keys the DHQ
+// engine reads. (The old name-based map — TACKLE_SOLO etc. — never matched MFL's
+// real export, so IDP scoring silently produced nothing.)
+const MFL_EVENT_MAP = {
+  // Passing
+  '#P': 'pass_td', 'PY': 'pass_yd', 'IN': 'pass_int', 'P2': 'pass_2pt',
+  // Rushing
+  '#R': 'rush_td', 'RY': 'rush_yd', 'R2': 'rush_2pt',
+  // Receiving
+  '#C': 'rec_td', 'CY': 'rec_yd', 'CC': 'rec', 'C2': 'rec_2pt',
+  // Fumbles (offense)
+  'FL': 'fum_lost',
+  // Returns
+  'KY': 'kr_yd', 'UY': 'pr_yd', '#KT': 'kr_td', '#UT': 'pr_td',
+  // ── IDP (defense) ──
+  'TK':  'idp_tkl_solo',   // solo tackle
+  'AS':  'idp_tkl_ast',    // assisted tackle
+  'TKL': 'idp_tkl_loss',   // tackle for loss
+  'SK':  'idp_sack',
+  'QH':  'idp_qb_hit',
+  'IC':  'idp_int',        // interception caught (defensive)
+  'FF':  'idp_ff',         // forced fumble
+  'FC':  'idp_fum_rec',    // fumble recovered
+  'PD':  'idp_pass_def',
+  'SF':  'idp_safe',
+  '#IR': 'idp_def_td',     // interception return TD
+  '#FR': 'idp_def_td',     // fumble return TD
+  '#DR': 'idp_def_td',     // defensive return TD
 };
+
+// Unwrap MFL's BadgerFish JSON ({"$t": "value"}) — TYPE=rules wraps text nodes,
+// while flat attribute exports (players/franchises) do not. Safe on both.
+function _mflText(v) {
+  return (v && typeof v === 'object' && '$t' in v) ? v.$t : v;
+}
+
+// Parse an MFL points formula into a per-unit multiplier:
+//   "*2.5" → 2.5  |  "3/.5" → 6 (3 pts per 0.5 units)  |  "=4"/"4" → 4
+function _parseMflPoints(formula) {
+  const f = String(_mflText(formula) ?? '').trim();
+  if (!f) return 0;
+  if (f[0] === '*' || f[0] === '=') return parseFloat(f.slice(1)) || 0;
+  if (f.includes('/')) {
+    const [pts, units] = f.split('/').map(s => parseFloat(s));
+    return units ? pts / units : (pts || 0);
+  }
+  return parseFloat(f) || 0;
+}
+
+// Detects position groups that field defenders, so IDP multipliers are averaged
+// only across real IDP groups (offensive groups list IDP events as filler).
+const _MFL_IDP_POS = /(^|\|)(DL|DE|DT|EDGE|NT|LB|OLB|ILB|MLB|CB|S|SS|FS|DB)(\||$)/i;
 
 // MFL player status → Sleeper-style slot classification
 // ROSTER = normal, INJURED_RESERVE = IR, TAXI_SQUAD = taxi
@@ -146,12 +180,15 @@ async function _mflGet(url) {
  * Returns { leagueData, rostersData, playersData }
  */
 async function fetchLeague(leagueId, year, apiKey) {
-  const [leagueData, rostersData, playersData] = await Promise.all([
+  const [leagueData, rostersData, playersData, rulesData] = await Promise.all([
     _mflGet(_mflUrl(year, 'league', leagueId, apiKey)),
     _mflGet(_mflUrl(year, 'rosters', leagueId, apiKey)),
     _mflGet(_mflUrl(year, 'players', leagueId, apiKey, 'DETAILS=1')),
+    // Scoring rules live in their own export — the league export has none.
+    // Non-fatal: a rules failure just leaves scoring_settings sparse.
+    _mflGet(_mflUrl(year, 'rules', leagueId, apiKey)).catch(() => null),
   ]);
-  return { leagueData, rostersData, playersData };
+  return { leagueData, rostersData, playersData, rulesData };
 }
 
 // ── Data mappers ──────────────────────────────────────────────────
@@ -242,19 +279,42 @@ function mapMFLRoster(franchise, rosterEntries, crosswalk) {
 /**
  * Map MFL league export → Sleeper-compatible league settings object.
  */
-function mapMFLSettings(leagueRaw, leagueId, year) {
+function mapMFLSettings(leagueRaw, leagueId, year, rulesRaw) {
   const lg = leagueRaw?.league || {};
 
   // ── Scoring settings ──
+  // MFL scoring comes from the TYPE=rules export (position-specific rules), NOT
+  // the league export. Collapse to Sleeper's flat scoring_settings: offensive
+  // values are consistent across position groups (first wins); IDP values vary
+  // by position, so average them across the defensive groups only. Offense is
+  // masked by FantasyCalc when this is empty, but IDP has no fallback — which is
+  // why broken scoring here showed up as "IDP scores not populating".
   const scoring_settings = {};
-  const rules = lg.rules?.positionRules?.rules?.rule || [];
-  const ruleArr = Array.isArray(rules) ? rules : [rules];
-  ruleArr.forEach(rule => {
-    const key = MFL_SCORE_MAP[rule.name];
-    if (key) {
-      const val = parseFloat(rule.score || 0);
-      scoring_settings[key] = val;
-    }
+  const idpAccum = {}; // key → { sum, n }
+  let prGroups = rulesRaw?.rules?.positionRules || [];
+  if (!Array.isArray(prGroups)) prGroups = [prGroups];
+  prGroups.forEach(group => {
+    if (!group) return;
+    const isIdpGroup = _MFL_IDP_POS.test(String(_mflText(group.positions) || ''));
+    let ruleArr = group.rule || [];
+    if (!Array.isArray(ruleArr)) ruleArr = [ruleArr];
+    ruleArr.forEach(r => {
+      const code = String(_mflText(r && r.event) || '').trim();
+      const key = MFL_EVENT_MAP[code];
+      if (!key) return;
+      const mult = _parseMflPoints(r && r.points);
+      if (!mult) return;
+      if (key.startsWith('idp_')) {
+        if (!isIdpGroup) return; // skip filler IDP rules listed on offensive groups
+        const a = idpAccum[key] || (idpAccum[key] = { sum: 0, n: 0 });
+        a.sum += mult; a.n += 1;
+      } else if (scoring_settings[key] === undefined) {
+        scoring_settings[key] = mult;
+      }
+    });
+  });
+  Object.entries(idpAccum).forEach(([key, a]) => {
+    if (a.n) scoring_settings[key] = +(a.sum / a.n).toFixed(3);
   });
   // Ensure negatives for turnovers
   if (scoring_settings.pass_int > 0) scoring_settings.pass_int = -scoring_settings.pass_int;
@@ -489,10 +549,10 @@ async function fetchDraftResults(leagueId, year, apiKey) {
  */
 function mapToSleeperState(raw, leagueId, year, crosswalk) {
   const cw = crosswalk || _crosswalk || {};
-  const { leagueData, rostersData, playersData } = raw;
+  const { leagueData, rostersData, playersData, rulesData } = raw;
 
   // ── League settings ──
-  const league = mapMFLSettings(leagueData, leagueId, year);
+  const league = mapMFLSettings(leagueData, leagueId, year, rulesData);
 
   // ── Franchises (owners) ──
   const franchises = _getFranchiseArr(leagueData);
@@ -825,7 +885,7 @@ if (window.App?.Platforms?.register) {
 // ── Expose on window.MFL ──────────────────────────────────────────
 window.MFL = {
   BASE_URL: MFL_BASE,
-  MFL_SCORE_MAP,
+  MFL_EVENT_MAP,
   MFL_TEAM_MAP,
 
   // Fetch

@@ -282,14 +282,17 @@ function collapseDraftChat(){
   if(btn)btn.style.display='none';
 }
 
-function homeAsk(text){
+function homeAsk(text,opts){
   if(!hasAnyAI(false)){
     if(typeof showToast==='function')showToast('Sign in or subscribe to enable AI chat');
     return;
   }
-  sendHomeChat(text);
+  sendHomeChat(text,opts);
 }
-function goAsk(text){
+// opts (optional): { callType, context, useWebSearch } — when callType is set
+// (e.g. 'player-scout'), the message routes through dhqAI with the structured
+// context injected, instead of the generic home-chat tier.
+function goAsk(text,opts){
   // Close player modal if open
   const modal=$('player-modal');
   if(modal&&modal.style.display!=='none')closePlayerModal();
@@ -297,7 +300,7 @@ function goAsk(text){
   switchTab('digest',null);
   // Send the message and scroll to chat
   setTimeout(()=>{
-    homeAsk(text);
+    homeAsk(text,opts);
     // Scroll to the chat area so user sees the response
     const chatEl=$('home-chat-msgs');
     if(chatEl)chatEl.scrollIntoView({behavior:'smooth',block:'start'});
@@ -323,7 +326,7 @@ function _updateChatPlaceholder() {
 }
 window._updateChatPlaceholder = _updateChatPlaceholder;
 
-async function sendHomeChat(passedText){
+async function sendHomeChat(passedText,opts){
   // Use GM bar messages panel for chat (stays in the bar)
   const msgsEl=$('gm-bar-msgs');
   if(!msgsEl) return;
@@ -399,7 +402,16 @@ async function sendHomeChat(passedText){
       return m;
     });
     const needsSearch=/search for|look up|find news|injury report|breaking news|trade rumor|SEARCH FOR CURRENT|Scout Report|current situation|dynasty outlook|2026/i.test(text);
-    const reply=await callClaude(msgs,needsSearch,2,500);
+    // Player-scout (and other typed) asks route through dhqAI so they get the
+    // right system prompt + structured NFL-fit context + news enrichment.
+    // Everything else stays on the generic home-chat path.
+    const _dhqAI=window.dhqAI||window.App?.dhqAI;
+    let reply;
+    if(opts?.callType&&typeof _dhqAI==='function'){
+      reply=await _dhqAI(opts.callType,text,opts.context||'',{messages:msgs,useWebSearch:opts.useWebSearch||needsSearch});
+    }else{
+      reply=await callClaude(msgs,needsSearch,2,500);
+    }
     homeChatHistory.push({role:'assistant',content:reply});
     lm.innerHTML=_sanitizeAIResponse(reply);
   }catch(e){lm.innerHTML=`<span style="color:var(--red)">Error: ${escHtml(e.message)}</span>`;}
