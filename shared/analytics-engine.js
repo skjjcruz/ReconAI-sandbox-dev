@@ -693,10 +693,11 @@ function generateGapAnalysis(myProfile, winnerProfile) {
   // Starter depth: how many 4000+ DHQ players
   if (myProfile.avgStarterCount < winnerProfile.avgStarterCount - 0.5) {
     const deficit = +(winnerProfile.avgStarterCount - myProfile.avgStarterCount).toFixed(1);
+    const need = Math.max(1, Math.ceil(deficit));
     actions.push({
       priority: 'high',
-      action: 'Add ' + deficit + ' more starter-quality players (4000+ DHQ)',
-      detail: 'Champions average ' + winnerProfile.avgStarterCount + ' starters. You have ' + myProfile.avgStarterCount + '.',
+      action: 'Add ' + need + ' more starter-quality ' + (need === 1 ? 'player' : 'players'),
+      detail: 'Champions average ' + winnerProfile.avgStarterCount + ' starter-quality players (4000+ DHQ). You have ' + myProfile.avgStarterCount + '.',
       yours: myProfile.avgStarterCount, winners: winnerProfile.avgStarterCount, dhqGap: Math.round(deficit * 4500), unit: 'players',
     });
   }
@@ -704,10 +705,11 @@ function generateGapAnalysis(myProfile, winnerProfile) {
   // Elite talent: 7000+ DHQ or top 5 at position cornerstones
   if (myProfile.avgEliteCount < winnerProfile.avgEliteCount - 0.3) {
     const deficit = +(winnerProfile.avgEliteCount - myProfile.avgEliteCount).toFixed(1);
+    const need = Math.max(1, Math.ceil(deficit));
     actions.push({
       priority: 'critical',
-      action: 'Acquire ' + deficit + ' elite player(s) — 7000+ DHQ or top 5 at position cornerstones win championships',
-      detail: 'Champions average ' + winnerProfile.avgEliteCount + ' elite assets. You have ' + myProfile.avgEliteCount + '.',
+      action: 'Acquire ' + need + ' elite ' + (need === 1 ? 'player' : 'players'),
+      detail: 'Champions average ' + winnerProfile.avgEliteCount + ' elite cornerstones (7000+ DHQ or top-5 at position). You have ' + myProfile.avgEliteCount + '.',
       yours: myProfile.avgEliteCount, winners: winnerProfile.avgEliteCount, dhqGap: Math.round(deficit * 7500), unit: 'players',
     });
   }
