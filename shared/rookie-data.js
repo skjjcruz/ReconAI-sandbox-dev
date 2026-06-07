@@ -31,6 +31,28 @@
     DL: 12, LB: 10, DB: 12, OL: 20,
   };
   const VET_OFFSETS_ONE_QB = { ...VET_OFFSETS, QB: 24 };
+  // IDP rookie value (DL/LB/DB): post-draft, blend a draft-capital cohort with the
+  // scouting cohort. The defensive ladders are deep (hundreds rostered), so mapping a
+  // rookie by in-class scouting rank alone let late-round defenders inherit rosterable-
+  // veteran value (a R7 DL was landing ~1,450, ~93% of a R1). Anchoring the capital
+  // cohort to the league's startable pool (teams × starters) maps R1 to the top of the
+  // pool and steps each later round deeper; the scouting weight keeps a well-scouted
+  // faller ahead of a same-round reach. Pre-draft (no round/pick) IDP fall back to 100%
+  // scouting, so the Big Board still works before the NFL draft happens.
+  const IDP_LADDER_POSITIONS = new Set(['DL', 'LB', 'DB']);
+  const IDP_ROUND_POOL_MULT = { 1: 0.3, 2: 0.6, 3: 1.0, 4: 1.4, 5: 1.9, 6: 2.5, 7: 3.2 };
+  const IDP_CAPITAL_WEIGHT = 0.8; // 80% draft capital / 20% scouting, post-draft
+  // OFFENSE rookie ceiling (QB/RB/WR/TE), post-draft only. The veteran scoutVal maps a
+  // rookie onto the position ladder by in-class posRank, which on thin/shallow offense
+  // classes lets a late-round rookie land on a rosterable veteran's score (a R7 QB was
+  // getting ~3,900 ≈ QB18). Cap scoutVal at a ceiling implied by NFL draft capital: each
+  // round maps to a fraction of the position ladder's depth (R1 ≈ top → never binds on
+  // elites; R7 ≈ deep → collapses toward base). Floored by the capital-aware
+  // baseDynastyValue so a well-scouted faller never drops below its own base. Strictly
+  // increasing in round → the ceiling is monotone non-increasing by capital. This is the
+  // offense analog of the IDP capital cohort, tuned to the SHALLOW offense ladders (a
+  // depth fraction rather than teams×starters×mult). Pre-draft and IDP are untouched.
+  const OFFENSE_ROUND_CEIL_FRAC = { 1: 0.05, 2: 0.12, 3: 0.22, 4: 0.35, 5: 0.52, 6: 0.72, 7: 0.95 };
 
   const cache = {
     loaded: false,
@@ -274,13 +296,14 @@
     return map;
   }
 
+  // Only sources we've confirmed the provenance of feed the consensus. The
+  // dropped columns (BR, DT, SIS, SD) were unverified abbreviations. ATH is
+  // The Athletic / Dane Brugler's "The Beast".
+  const VERIFIED_SOURCES = new Set(['ath', 'cbs', 'espn', 'pff', 'pfn', 'tank']);
+
   function sourceColumns(rows) {
     if (!rows.length) return [];
-    const standard = new Set([
-      'rank', 'player name', 'player', 'name', 'pos', 'position', 'college',
-      'school', 'player_id', 'id', '_rowindex', 'exp', 'avg',
-    ]);
-    return Object.keys(rows[0]).filter(col => !standard.has(col.toLowerCase()));
+    return Object.keys(rows[0]).filter(col => VERIFIED_SOURCES.has(col.toLowerCase()));
   }
 
   function buildSourceRanks(row, cols) {
@@ -304,10 +327,14 @@
     const sources = buildSourceRanks(row, sourceCols);
     const sourceRanks = {};
     sources.forEach(src => { sourceRanks[src.source] = src.rank; });
-    let consensusRank = parseNum(row.Avg);
-    if (!consensusRank && sources.length) {
+    // Recompute the consensus from the verified sources only. Do NOT trust the
+    // precomputed Avg column — it was averaged across the dropped sources too.
+    let consensusRank;
+    if (sources.length) {
       const totalWeight = sources.reduce((sum, src) => sum + (src.weight || 1), 0);
       consensusRank = sources.reduce((sum, src) => sum + src.rank * (src.weight || 1), 0) / totalWeight;
+    } else {
+      consensusRank = parseNum(row.Avg) || rank;
     }
     consensusRank = Math.round((consensusRank || rank) * 10) / 10;
     const school = enrich.school || row.School || row.school || row.College || row.college || mock.school || '';
@@ -478,7 +505,9 @@
       byPos[pos].push(p);
     });
     Object.values(byPos).forEach(group => {
-      group.sort((a, b) => a.rank - b.rank || a.consensusRank - b.consensusRank);
+      // Rank within position by the (verified-source) consensus, falling back to
+      // the board rank — so position ranks track the cleaned consensus.
+      group.sort((a, b) => (a.consensusRank || 999) - (b.consensusRank || 999) || (a.rank || 999) - (b.rank || 999));
       group.forEach((p, index) => { p.rookiePosRank = index + 1; });
     });
   }
@@ -528,14 +557,29 @@
     return cache.loading;
   }
 
+  // Position-ladder cache. computeStartupValue is called once per prospect, and
+  // each call used to re-sort the entire score table (~85ms cold for a rookie
+  // class). Build every position's ladder in a single pass and cache it per
+  // playerScores/playerMeta identity — the same identity the dynasty cache keys on,
+  // so it invalidates together when the engine reloads. ~85ms → <1ms.
+  let _ladderCache = { scores: null, meta: null, byPos: {} };
   function getPositionLadder(pos) {
     const scores = window.App?.LI?.playerScores;
     const meta = window.App?.LI?.playerMeta;
     if (!scores || !meta) return [];
-    return Object.entries(scores)
-      .filter(([pid]) => meta[pid]?.pos === pos && scores[pid] > 0)
-      .sort((a, b) => b[1] - a[1])
-      .map(([, value]) => value);
+    if (_ladderCache.scores !== scores || _ladderCache.meta !== meta) {
+      const byPos = {};
+      for (const pid in scores) {
+        const v = scores[pid];
+        if (!(v > 0)) continue;
+        const p = meta[pid] && meta[pid].pos;
+        if (!p) continue;
+        (byPos[p] = byPos[p] || []).push(v);
+      }
+      for (const p in byPos) byPos[p].sort((a, b) => b - a);
+      _ladderCache = { scores, meta, byPos };
+    }
+    return _ladderCache.byPos[pos] || [];
   }
 
   function isSuperflexLeague() {
@@ -544,15 +588,77 @@
     return rp.some(slot => ['SUPER_FLEX', 'QB_FLEX', 'OP'].includes(String(slot).toUpperCase()));
   }
 
+  function leagueTeamCount() {
+    const S = window.App?.S || window.S;
+    return S?.leagues?.find(l => l.league_id === S?.currentLeagueId)?.total_rosters
+      || S?.rosters?.length || 12;
+  }
+
+  // Veteran-ladder value at a 1-based slot (clamped to the ladder).
+  function ladderValueAt(ladder, slot) {
+    if (!ladder.length) return 0;
+    return ladder[Math.min(Math.max(0, Math.round(slot) - 1), ladder.length - 1)] || 0;
+  }
+
+  // True once NFL draft results are loaded (any prospect carries a round/pick).
+  // Latches, so the per-prospect scan only runs until the draft is in. Lets us tell
+  // "pre-draft, capital unknown for everyone" (→ rank on scouting) apart from
+  // "post-draft, this player has no capital" (→ went undrafted, treat as UDFA).
+  let _draftResultsLoaded = false;
+  function draftResultsLoaded() {
+    if (_draftResultsLoaded) return true;
+    _draftResultsLoaded = !!(cache.order && cache.order.some(p => Number(p.draftRound) > 0 || Number(p.draftPick) > 0));
+    return _draftResultsLoaded;
+  }
+
   function computeStartupValue(prospect) {
+    // Undrafted → uniformly near-zero regardless of position: use the capital-aware
+    // baseDynastyValue instead of the veteran ladder (which ignores capital and, on the
+    // deep IDP ladders, would hand an undrafted player a rosterable value). "Undrafted"
+    // = flagged UDFA, OR no NFL draft capital once draft results are in (a "Capital TBD"
+    // player who went undrafted). Pre-draft (no capital anywhere yet) we do NOT floor —
+    // fall through to the scouting cohort so the board still ranks the class.
+    const noCapital = !(prospect.draftRound || prospect.draftPick);
+    if (noCapital && (prospect.isUDFA || draftResultsLoaded())) {
+      return prospect.baseDynastyValue || prospect.draftScore || 0;
+    }
+
     const pos = prospect.mappedPos || prospect.pos;
     const posRank = prospect.rookiePosRank || 999;
     const offsets = isSuperflexLeague() ? VET_OFFSETS : VET_OFFSETS_ONE_QB;
-    const startupPosRank = posRank + (offsets[pos] || 10);
     const ladder = getPositionLadder(pos);
     if (!ladder.length) return prospect.baseDynastyValue || prospect.dynastyValue || prospect.draftScore || 0;
-    const idx = Math.min(startupPosRank - 1, ladder.length - 1);
-    return ladder[idx] || prospect.baseDynastyValue || prospect.draftScore || 0;
+
+    // Scouting cohort: in-class position rank nudged down the veteran ladder.
+    const scoutVal = ladderValueAt(ladder, posRank + (offsets[pos] || 10));
+
+    // IDP, post-draft: blend the scouting cohort with a draft-capital cohort anchored
+    // to the league's startable pool (see IDP_* constants above). Pre-draft (no
+    // round/pick) and every non-IDP position keep the pure scouting cohort.
+    const draftPick = Number(prospect.draftPick) || 0;
+    const draftRound = Number(prospect.draftRound) || (draftPick ? Math.min(7, Math.ceil(draftPick / 32)) : 0);
+    if (IDP_LADDER_POSITIONS.has(pos) && draftRound) {
+      const starters = (window.App?.LI?.starterCounts || {})[pos] || 4;
+      const poolSlot = leagueTeamCount() * starters * (IDP_ROUND_POOL_MULT[Math.min(7, Math.max(1, draftRound))] || 3.2);
+      const capitalVal = ladderValueAt(ladder, poolSlot);
+      return Math.round(IDP_CAPITAL_WEIGHT * capitalVal + (1 - IDP_CAPITAL_WEIGHT) * scoutVal)
+        || prospect.baseDynastyValue || prospect.draftScore || 0;
+    }
+
+    // OFFENSE (QB/RB/WR/TE), post-draft (capital known): clamp scoutVal to a draft-capital
+    // ceiling so a late-round rookie can't inherit a startable veteran's score off a thin
+    // position class. Pre-draft (draftRound === 0) is skipped → pure scouting, ranks the
+    // class as before. The ceiling is floored by the capital-aware base so a great scout on
+    // a faller keeps scout-driven ordering BELOW the ceiling and never drops under its base.
+    if (draftRound) {
+      const ceilFrac = OFFENSE_ROUND_CEIL_FRAC[Math.min(7, Math.max(1, draftRound))] || 0.95;
+      const ceilSlot = Math.round(ladder.length * ceilFrac);
+      const capitalCeiling = Math.max(ladderValueAt(ladder, ceilSlot), prospect.baseDynastyValue || 0);
+      const cappedVal = Math.min(scoutVal, capitalCeiling);
+      return cappedVal || prospect.baseDynastyValue || prospect.draftScore || 0;
+    }
+
+    return scoutVal || prospect.baseDynastyValue || prospect.draftScore || 0;
   }
 
   function enrichWithDynastyValue(prospect) {
