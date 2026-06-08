@@ -17,6 +17,7 @@ const BACKEND_ENDPOINTS = {
     aiAnalyze: APP_CONFIG.endpoints?.aiAnalyze || `${SUPABASE_URL}/functions/v1/ai-analyze`,
     setPassword: APP_CONFIG.endpoints?.setPassword || `${SUPABASE_URL}/functions/v1/set-password`,
     fwProfile: APP_CONFIG.endpoints?.fwProfile || `${SUPABASE_URL}/functions/v1/fw-profile`,
+    fwDeleteAccount: APP_CONFIG.endpoints?.fwDeleteAccount || `${SUPABASE_URL}/functions/v1/fw-delete-account`,
 };
 
 // ── Session token storage ─────────────────────────────────────
@@ -821,6 +822,23 @@ window.OD.updatePassword = async function(username, newPassword) {
     });
     const result = await resp.json();
     if (!resp.ok) throw new Error(result.error || 'Failed to update password');
+};
+
+// Permanently delete the signed-in user's account and all their data.
+// Required for App Store / Play Store compliance. After success the caller
+// should sign the user out and return them to the landing screen.
+window.OD.deleteAccount = async function() {
+    if (!isConfigured()) throw new Error('Supabase not configured');
+    const token = getSessionToken();
+    if (!token) throw new Error('You must be logged in to delete your account');
+    const resp = await fetch(BACKEND_ENDPOINTS.fwDeleteAccount, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON },
+        body: JSON.stringify({ confirm: true }),
+    });
+    const result = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(result.error || 'Failed to delete account');
+    return result;
 };
 
 // ══════════════════════════════════════════════════════════════════
