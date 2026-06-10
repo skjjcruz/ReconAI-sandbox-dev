@@ -1778,7 +1778,7 @@ function _renderRookieRow(r, i) {
   const tagChip = tag ? `<span class="rookie-row-tag ${_rookieTagClass(tag)}">${_rookieTagLabel(tag)}</span>` : '';
   // Draft badge: drafted players get team + round.pick chip; UDFA gets a UDFA chip
   const draftChip = r.draftRound && r.draftPick
-    ? `<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--accentL);color:var(--accent);font-family:'JetBrains Mono',monospace;flex-shrink:0">${_rookieEsc(r.nflTeam||'???')} R${r.draftRound}.${String(r.draftPick).padStart(2,'0')}</span>`
+    ? `<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--accentL);color:var(--accent);font-family:'JetBrains Mono',monospace;flex-shrink:0">${_rookieEsc(r.nflTeam||'???')} ${window.formatNFLDraftSlot(r.draftRound, r.draftPick)}</span>`
     : r.isUDFA
       ? `<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--bg4);color:var(--text3);flex-shrink:0">${r.nflTeam ? 'UDFA · ' + _rookieEsc(r.nflTeam) : 'UDFA'}</span>`
       : '';
@@ -1802,7 +1802,7 @@ function _renderRookieRow(r, i) {
     ${isExp?`<div style="padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:0 0 var(--r) var(--r);margin-bottom:4px;animation:panelIn .2s ease">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
         <span style="font-size:13px;color:var(--text2)">${r.pos} \u00B7 ${r.nflTeam||r.p?.team||'TBD'} \u00B7 Age ${r.age||'?'}${r.csvSize?' \u00B7 '+r.csvSize:r.p?.height?' \u00B7 '+Math.floor(r.p.height/12)+"'"+r.p.height%12+'"':''}${!r.csvSize&&r.p?.weight?' \u00B7 '+r.p.weight+'lbs':''}</span>
-        ${r.draftRound && r.draftPick ? `<span style="font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;background:var(--accentL);color:var(--accent)">Drafted R${r.draftRound}.${String(r.draftPick).padStart(2,'0')}${r.nflTeam?' \u00B7 '+_rookieEsc(r.nflTeam):''}</span>` : r.isUDFA ? `<span style="font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;background:var(--bg4);color:var(--text3)">UDFA${r.nflTeam?' \u00B7 '+_rookieEsc(r.nflTeam):''}</span>` : ''}
+        ${r.draftRound && r.draftPick ? `<span style="font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;background:var(--accentL);color:var(--accent)">Drafted ${window.formatNFLDraftSlot(r.draftRound, r.draftPick)}${r.nflTeam?' \u00B7 '+_rookieEsc(r.nflTeam):''}</span>` : r.isUDFA ? `<span style="font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;background:var(--bg4);color:var(--text3)">UDFA${r.nflTeam?' \u00B7 '+_rookieEsc(r.nflTeam):''}</span>` : ''}
         ${r.csvRank?'<span style="font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;background:var(--accentL);color:var(--accent)">Consensus #'+r.csvRank+'</span>':''}
         ${r.csvTier?'<span style="font-size:11px;padding:1px 6px;border-radius:4px;font-weight:600;background:var(--bg4);color:var(--text3)">'+_rookieEsc(r.csvTier)+'</span>':''}
       </div>
