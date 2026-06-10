@@ -9,6 +9,25 @@
 
 window.App = window.App || {};
 
+// ── Sandbox detection ────────────────────────────────────────────
+// The ReconAI sandbox-dev deploy (skjjcruz.github.io/ReconAI-sandbox-dev/)
+// runs with all features unlocked so the team can exercise paid functionality
+// without a subscription. Gated on host+path of the sandbox Pages site, or an
+// explicit build flag — intentionally NOT a query param, so it cannot bypass
+// the paywall on the public production sites. The path gate makes it a no-op
+// on the production domain (warroom.skjjcruz.com), which has no such path.
+function isSandbox() {
+  try {
+    if (window.SANDBOX_MODE === true) return true;
+    const loc = window.location || {};
+    const host = loc.hostname || '';
+    const path = loc.pathname || '';
+    return /(^|\.)github\.io$/i.test(host) && /\/reconai-sandbox-dev(\/|$)/i.test(path);
+  } catch (_) {
+    return false;
+  }
+}
+
 // ── Feature enum ─────────────────────────────────────────────────
 const FEATURES = {
   OWNER_DNA:          'owner_dna',          // Owner DNA profiles in trade calc
@@ -65,6 +84,7 @@ function initTrial() {
 // Local storage profile/session values are intentionally not trusted for paid
 // access because users can edit them in the browser.
 function getTier() {
+  if (isSandbox()) return 'paid';
   if (window.DEV_MODE || ['localhost', '127.0.0.1'].includes(window.location?.hostname)) return 'paid';
   if (window.App._userTier) return window.App._userTier;
 
@@ -513,6 +533,7 @@ Object.assign(window.App, {
 window.FEATURES                  = FEATURES;
 window.FREE_CHAT_DAILY_LIMIT     = FREE_CHAT_DAILY_LIMIT;
 window.getTier                   = getTier;
+window.isSandbox                 = isSandbox;
 window.isTrialActive             = isTrialActive;
 window.isTrialExpired            = isTrialExpired;
 window.getRemainingTrialDays     = getRemainingTrialDays;
