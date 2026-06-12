@@ -294,7 +294,7 @@ window.App = window.App || {};
     const leaguePositions = new Set(Object.keys(POS_WEIGHTS));
     const users = leagueUsers || [];
     const user = users.find(u => u.user_id === roster.owner_id);
-    const teamName  = user?.metadata?.team_name || `Team ${roster.roster_id}`;
+    const teamName  = user?.metadata?.team_name || user?.display_name || `Team ${roster.roster_id}`;
     const ownerName = user?.display_name || `Owner ${roster.roster_id}`;
     const avatar    = user?.avatar || null;
 
