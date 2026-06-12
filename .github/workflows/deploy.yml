@@ -72,6 +72,10 @@ jobs:
           cp js/pro-launch.js pages-artifact/js/pro-launch.js
           cp -R shared pages-artifact/shared
 
+          # These ~1MB of classic scripts sit on the War Room app's boot
+          # critical path — ship them minified.
+          node scripts/minify-artifact-js.cjs pages-artifact/shared pages-artifact/js/pro-launch.js
+
           touch pages-artifact/.nojekyll
 
       - name: Setup Pages
