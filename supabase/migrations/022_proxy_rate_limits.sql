@@ -74,7 +74,11 @@ begin
 end;
 $$;
 
--- Edge Functions call this with the auto-injected service-role key.
+-- Edge Functions call this with the auto-injected service-role key. Lock it
+-- to service_role only: Postgres grants EXECUTE to PUBLIC by default, which
+-- would let anon/authenticated call the SECURITY DEFINER function directly via
+-- PostgREST (/rest/v1/rpc) and grief the rate-limit counters.
+revoke execute on function public.check_rate_limit(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.check_rate_limit(text, integer, integer) to service_role;
 
 -- Cleanup: drop stale windows (schedule via pg_cron if the extension is on).
