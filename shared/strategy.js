@@ -11,6 +11,12 @@
     sellPositions: [],
     sellRules: [],
     untouchables: [],
+    // War Room writes the singular `untouchable`; kept here so the field is
+    // recognized and reconciled with `untouchables` in normalizeStrategy.
+    untouchable: [],
+    // War Room free-agency filters — first-classed so they survive normalize
+    // and reach Scout instead of being dropped as an opaque pass-through.
+    faFilters: null,
     targetList: [],
     blockList: [],
     aggression: 'medium',
@@ -42,6 +48,15 @@
       ...rule,
       pos: normalizePosition(rule?.pos)
     }));
+    // Reconcile the singular `untouchable` (War Room) with the plural
+    // `untouchables` (Scout / this module). Keep BOTH in sync so every consumer
+    // — gm-engine, player-modal, ai-chat — sees the same protected-player list
+    // regardless of which app saved it.
+    const untouchSrc = (Array.isArray(normalized.untouchables) && normalized.untouchables.length)
+      ? normalized.untouchables
+      : (normalized.untouchable || []);
+    normalized.untouchables = Array.from(new Set((untouchSrc || []).map(String)));
+    normalized.untouchable = normalized.untouchables;
     return normalized;
   }
 
