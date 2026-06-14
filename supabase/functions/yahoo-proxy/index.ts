@@ -24,6 +24,7 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jwtVerify } from "https://esm.sh/jose@5";
 import { corsHeaders, isAllowedBrowserUrl } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 const YAHOO_BASE      = "https://fantasysports.yahooapis.com/fantasy/v2";
 const YAHOO_TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token";
@@ -278,6 +279,12 @@ serve(async (req: Request) => {
           { status: 401, headers: { ...responseHeaders, "Content-Type": "application/json" } }
         );
       }
+      // Per-owner limit: Yahoo proxying hits a third-party API on our behalf,
+      // so cap how fast one account can drive it (durable, cross-instance).
+      const rl = await checkRateLimit(`yahoo-proxy:${ownerKey}`, 120, 60);
+      const rlResponse = rateLimitResponse(rl, responseHeaders);
+      if (rlResponse) return rlResponse;
+
       const { endpoint, session_id } = body;
       if (!endpoint || !session_id) {
         return new Response(

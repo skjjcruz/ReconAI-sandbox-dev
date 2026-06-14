@@ -10,6 +10,8 @@ const sharedCors = read('supabase/functions/_shared/cors.ts');
 const espn = read('supabase/functions/espn-proxy/index.ts');
 const mfl = read('supabase/functions/mfl-proxy/index.ts');
 const yahoo = read('supabase/functions/yahoo-proxy/index.ts');
+const rateLimitHelper = read('supabase/functions/_shared/rate-limit.ts');
+const rateLimitMigration = read('supabase/migrations/022_proxy_rate_limits.sql');
 
 let passed = 0;
 let failed = 0;
@@ -73,16 +75,16 @@ test('ESPN and MFL proxy functions use the shared CORS helper', () => {
   });
 });
 
-test('ESPN and MFL proxy functions enforce per-IP rate limits', () => {
+test('ESPN and MFL proxy functions enforce durable per-IP rate limits', () => {
   [espn, mfl].forEach((source, idx) => {
     const label = idx === 0 ? 'espn-proxy' : 'mfl-proxy';
     hasEvery(source, [
-      'const RATE_LIMIT_WINDOW_MS = 60_000;',
+      'import { checkRateLimit, clientIp, rateLimitResponse } from "../_shared/rate-limit.ts";',
       'const RATE_LIMIT_MAX = 60;',
-      'function checkRateLimit(req: Request): boolean',
-      'if (!checkRateLimit(req))',
-      '"Retry-After": "60"',
+      'await checkRateLimit(',
+      'rateLimitResponse(limit, responseHeaders)',
     ], label);
+    ok(!source.includes('new Map<string'), `${label} must not rely on an in-memory rate-limit Map`);
   });
 });
 
@@ -119,6 +121,38 @@ test('Yahoo proxy binds stored sessions to the authenticated app or Sleeper owne
     'await refreshAccessToken(session_id, ownerKey)',
     'JSON.stringify({ success: true })',
   ], 'yahoo owner-bound proxy');
+});
+
+group('durable rate limiting');
+
+test('shared rate-limit helper is Postgres-backed with an in-memory fallback', () => {
+  hasEvery(rateLimitHelper, [
+    'SUPABASE_SERVICE_ROLE_KEY',
+    '.rpc("check_rate_limit"',
+    'function fallbackCheck',
+    'export async function checkRateLimit',
+    'export function rateLimitResponse',
+    'export function clientIp',
+  ], 'rate-limit helper');
+});
+
+test('rate-limit migration defines a durable atomic counter', () => {
+  hasEvery(rateLimitMigration, [
+    'create table if not exists public.rate_limit_counters',
+    'create or replace function public.check_rate_limit',
+    "set search_path = ''",
+    'on conflict (bucket_key, window_start)',
+    'enable row level security',
+    'grant execute on function public.check_rate_limit',
+  ], 'rate-limit migration');
+});
+
+test('Yahoo proxy rate-limits the API proxy action per owner', () => {
+  hasEvery(yahoo, [
+    'import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";',
+    'await checkRateLimit(`yahoo-proxy:${ownerKey}`',
+    'rateLimitResponse(rl, responseHeaders)',
+  ], 'yahoo-proxy rate limit');
 });
 
 console.log('\n');
