@@ -325,6 +325,17 @@ Be specific about players and decisions discussed.`,
     instructions: '',
     maxTokens: 300,
   },
+
+  // ── DYNASTY READ (player-card news synthesis) ──────────────────
+  // Server path is canonical (shared weekly cache in ai-analyze); this entry is
+  // the BYO-API-key fallback so dhqAI() doesn't throw on the type and BYOK users
+  // still get a live read (their own tokens, in-memory cache only).
+  'dynasty_read': {
+    system: DHQ_IDENTITY,
+    instructions: `Context is a JSON object with a single player {pid,name,team,pos,age,season,week}. SEARCH THE WEB for the latest reporting (last ~10 days) on that player from credible sources — ESPN, PFF, The Athletic, trusted team beat reporters. Synthesize what matters for his DYNASTY value into 2-3 tight sentences: role/usage trend, injury status + timeline, scheme/personnel changes around him, trade or contract buzz, and the forward outlook those imply. Lead with the single most decision-relevant development. Do NOT restate fantasy points, DHQ value, or position rank. Sound like a sharp analyst briefing a GM. If it's a genuinely quiet stretch, say so in one line and give the role/trajectory read instead — never invent news. Plain prose only: no markdown, no bullets, no citations, no sign-off.`,
+    maxTokens: 400,
+    useWebSearch: (typeof canAccess === 'function' && canAccess('BRIEFING_REASONING')) ? true : false,
+  },
 };
 
 // ── Context Builders (Structured JSON — Improvement A) ──────────
@@ -1179,11 +1190,77 @@ function dhqCompactContext() {
   return parts.join('\n\n');
 }
 
+// ── Dynasty Read helper ──────────────────────────────────────────
+// Template-first, paid-gated, weekly-shared player news read.
+//
+// The SERVER path (OD.callAI) is canonical: it hits the shared weekly cache in
+// the ai-analyze edge function, so one web-search synthesis is reused across
+// every user for the NFL week. We call OD.callAI DIRECTLY rather than going
+// through dhqAI/callClaude, because the callClaude wrapper adds
+// system/messages/callType keys to the context — which makes the server treat
+// the call as "generic" and skip the shared cache entirely. A clean structured
+// context ({pid,name,team,pos,age,season,week}) keeps the call cacheable.
+//
+// Order: in-memory dedupe → server (shared cache) → BYO-key dhqAI (own tokens,
+// no shared cache) → caller's template. Never throws.
+const _dynReadCache = new Map();
+async function fetchDynastyRead(ctx, opts) {
+  opts = opts || {};
+  const fallback = opts.fallback || '';
+  try {
+    if (!ctx || !ctx.pid) return fallback;
+    // Paid-only feature. (Sandbox/localhost resolve to 'paid' for dev.)
+    if (typeof canAccess === 'function' && !canAccess('dynasty_read_ai')) return fallback;
+
+    const wkKey = (ctx.week == null || ctx.week === '') ? 'off' : ctx.week;
+    const key = 'dynread:' + ctx.pid + ':' + (ctx.season || '') + ':' + wkKey;
+    if (_dynReadCache.has(key)) return _dynReadCache.get(key);
+
+    const clean = {
+      pid: String(ctx.pid),
+      name: ctx.name || '',
+      team: ctx.team || '',
+      pos: ctx.pos || '',
+      age: ctx.age || null,
+      season: ctx.season || '',
+      week: ctx.week == null ? 0 : ctx.week,
+    };
+
+    const sanitize = (window.AlexVoice && window.AlexVoice.sanitize)
+      ? window.AlexVoice.sanitize
+      : function (t) { return String(t || '').replace(/\s+/g, ' ').trim(); };
+
+    let text = '';
+    // Server path — shared weekly cache. Requires a Supabase session.
+    if (typeof window.hasServerAI === 'function' && window.hasServerAI() &&
+        window.OD && typeof window.OD.callAI === 'function') {
+      try {
+        const res = await window.OD.callAI({ type: 'dynasty_read', context: JSON.stringify(clean) });
+        text = sanitize((res && (res.analysis || res.text || res.response)) || '');
+      } catch (e) { /* rate limit / network → fall through */ }
+    }
+    // BYO-key path — user's own tokens, no shared cache.
+    if (!text && window.S && window.S.apiKey && typeof dhqAI === 'function') {
+      try {
+        const reply = await dhqAI('dynasty_read', '', JSON.stringify(clean));
+        text = sanitize(typeof reply === 'string' ? reply : ((reply && (reply.text || reply.analysis || reply.response)) || ''));
+      } catch (e) { /* fall through */ }
+    }
+
+    if (!text) return fallback;
+    _dynReadCache.set(key, text);
+    return text;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 // ── Exports ─────────────────────────────────────────────────────
 Object.assign(window.App, {
   DHQ_IDENTITY,
   DHQ_PROMPTS,
   dhqAI,
+  fetchDynastyRead,
   dhqContext,
   dhqCompactContext,
   dhqBuildRosterContext,
@@ -1210,6 +1287,7 @@ Object.assign(window, {
   DHQ_IDENTITY,
   DHQ_PROMPTS,
   dhqAI,
+  fetchDynastyRead,
   dhqContext,
   dhqCompactContext,
   dhqBuildRosterContext,
