@@ -180,15 +180,20 @@ async function _mflGet(url) {
  * Returns { leagueData, rostersData, playersData }
  */
 async function fetchLeague(leagueId, year, apiKey) {
-  const [leagueData, rostersData, playersData, rulesData] = await Promise.all([
+  const [leagueData, rostersData, playersData, rulesData, draftResultsData] = await Promise.all([
     _mflGet(_mflUrl(year, 'league', leagueId, apiKey)),
     _mflGet(_mflUrl(year, 'rosters', leagueId, apiKey)),
     _mflGet(_mflUrl(year, 'players', leagueId, apiKey, 'DETAILS=1')),
     // Scoring rules live in their own export — the league export has none.
     // Non-fatal: a rules failure just leaves scoring_settings sparse.
     _mflGet(_mflUrl(year, 'rules', leagueId, apiKey)).catch(() => null),
+    // Draft results carry the seeded board (round1DraftOrder + every slot) even
+    // before a single pick is made. We infer pre_draft|drafting|complete from it
+    // so the rookie-waiver lock and the live-draft tool both light up for MFL.
+    // Non-fatal: a draft fetch failure just means no draft signal.
+    _mflGet(_mflUrl(year, 'draftResults', leagueId, apiKey)).catch(() => null),
   ]);
-  return { leagueData, rostersData, playersData, rulesData };
+  return { leagueData, rostersData, playersData, rulesData, draftResultsData };
 }
 
 // ── Data mappers ──────────────────────────────────────────────────
@@ -216,6 +221,10 @@ function mapMFLPlayer(p) {
   if (!p || !p.id) return null;
   const { full_name, first_name, last_name } = _parseMFLName(p.name);
   const team = _normTeam(p.team);
+  // MFL flags the current rookie class with status 'R' (every draft_year===this
+  // year player carries it). Surface a clean boolean + draft capital so rookie
+  // detection and rookie boards work without re-deriving from names.
+  const isRookie = String(p.status || '').toUpperCase() === 'R';
   return {
     player_id: 'mfl_' + p.id,
     _mfl_id: p.id,
@@ -227,6 +236,12 @@ function mapMFLPlayer(p) {
     age: parseInt(p.age) || 0,
     years_exp: p.draft_year ? (new Date().getFullYear() - parseInt(p.draft_year)) : 0,
     injury_status: p.injury_status || '',
+    draft_year: p.draft_year ? parseInt(p.draft_year) : null,
+    college: p.college || '',
+    rookie: isRookie,
+    // NFL draft capital (present on rookie-class records) — handy for boards.
+    nfl_draft_round: p.draft_round || '',
+    nfl_draft_pick: p.draft_pick || '',
   };
 }
 
@@ -338,18 +353,34 @@ function mapMFLSettings(leagueRaw, leagueId, year, rulesRaw) {
 
   const franchises = _getFranchiseArr(leagueRaw);
 
+  // ── Multi-copy leagues ──
+  // MFL "rostersPerPlayer" = how many franchises may roster the SAME NFL player
+  // (e.g. 3 in a 3-copy league); playerLimitUnit scopes it (LEAGUE-wide here).
+  // Surfaced as settings.player_copies so availability logic can compute
+  // remaining = copies - rosteredCount. Defaults to 1 (single-copy ⇒ no-op for
+  // every other platform).
+  const playerCopies = Math.max(1, parseInt(lg.rostersPerPlayer || lg.rosters_per_player || 1) || 1);
+
   return {
     league_id: 'mfl_' + leagueId + '_' + year,
     name: lg.name || ('MFL League ' + leagueId),
     total_rosters: franchises.length || parseInt(lg.franchises?.count || 12),
     season: String(year),
-    status: 'in_season',
-    settings: { type: 2 }, // MFL is dynasty-first
+    status: 'in_season', // overwritten by mapToSleeperState from the draft state
+    settings: { type: 2, player_copies: playerCopies }, // MFL is dynasty-first
     scoring_settings,
     roster_positions,
     avatar: null,
     _source: 'mfl',
     _mfl_id: String(leagueId),
+    // ── Draft-lifecycle fields (from TYPE=league) used to classify the draft
+    // and render scheduled/clock UI. Dropped on the floor before. ──
+    _mflPlayerLimitUnit: lg.playerLimitUnit || lg.player_limit_unit || 'LEAGUE',
+    _mflDraftPlayerPool: lg.draftPlayerPool || '',
+    _mflDraftTimer: lg.draftTimer || '',
+    _mflDraftLimitHours: lg.draftLimitHours || '',
+    _mflDraftKind: lg.draft_kind || '',
+    _mflLockout: lg.lockout || '',
   };
 }
 
@@ -542,14 +573,222 @@ async function fetchDraftResults(leagueId, year, apiKey) {
   }
 }
 
+/**
+ * Map an MFL TYPE=draftResults payload → an array of Sleeper-draft-shaped
+ * objects with an INFERRED status. MFL has no explicit status flag, but the
+ * draftResults export seeds every slot (franchise + round + pick) up front and
+ * fills `player`/`timestamp` as picks land — so:
+ *   0 picks filled            → 'pre_draft'  (scheduled / waiting room)
+ *   some filled, some empty    → 'drafting'   (on the clock = first empty slot)
+ *   all filled                → 'complete'
+ * `picks` holds MADE picks only (Sleeper semantics); the full seeded board is on
+ * `_slots` for rendering an upcoming/pre-draft board.
+ */
+function mapDraftStatus(draftResultsRaw, leagueId, year, league, crosswalk) {
+  const cw = crosswalk || _crosswalk || {};
+  const units = draftResultsRaw?.draftResults?.draftUnit;
+  if (!units) return [];
+  const unitArr = Array.isArray(units) ? units : [units];
+  const isRookiePool = String(league?._mflDraftPlayerPool || '').toLowerCase().includes('rookie');
+
+  return unitArr.map((unit, ui) => {
+    const picksRaw = unit?.draftPick || [];
+    const pickArr = Array.isArray(picksRaw) ? picksRaw : (picksRaw ? [picksRaw] : []);
+
+    // ── Pass 1: parse rounds + within-round slots ──
+    // MFL's `pick` attribute is the WITHIN-ROUND slot (1..teams), NOT a global
+    // index. We need the round count + team count before we can assign a unique
+    // GLOBAL pick_no, which the live-sync reconciler keys on.
+    let maxRound = 0;
+    let lastTs = 0;
+    const franchiseSet = new Set();
+    const parsed = pickArr.map((pick, i) => {
+      const rd = parseInt(pick.round) || 1;
+      const pir = parseInt(pick.pick) || 0; // pick within round (1..teams)
+      if (rd > maxRound) maxRound = rd;
+      if (pick.franchise) franchiseSet.add(pick.franchise);
+      const hasPlayer = !!(pick.player && String(pick.player).trim());
+      const ts = parseInt(pick.timestamp || 0) * 1000;
+      if (ts > lastTs) lastTs = ts;
+      return { rd, pir, idx: i, franchise: pick.franchise || '', player: pick.player || '', hasPlayer, comments: pick.comments || '' };
+    });
+    const total = parsed.length;
+
+    // Team count = picks-per-round (slots / rounds). round1DraftOrder UNDERCOUNTS
+    // when picks are traded (one franchise can hold several round-1 slots, another
+    // none — round1DraftOrder is positional, so unique ids < teams).
+    const teams = (maxRound && total)
+      ? Math.round(total / maxRound)
+      : (franchiseSet.size || league?.total_rosters || 0);
+
+    // ── Pass 2: assign a GLOBAL overall pick_no = (round-1)*teams + slot ──
+    // → strictly increasing 1..total across all rounds, which is the contract the
+    // live-sync reconciler/reducer require (within-round pick_no would collide every
+    // round and jam the mirror). The within-round value is kept on draft_slot.
+    const slots = parsed.map(p => {
+      const overall = (teams && p.pir) ? ((p.rd - 1) * teams + p.pir) : (p.idx + 1);
+      return {
+        round: p.rd,
+        pick_no: overall,
+        draft_slot: p.pir || ((p.idx % (teams || 1)) + 1),
+        roster_id: p.franchise || null,
+        picked_by: p.franchise || '',
+        player_id: p.hasPlayer ? (cw[p.player] || ('mfl_' + p.player)) : '',
+        _mfl_player: p.player,
+        _traded: /traded/i.test(p.comments),
+      };
+    }).sort((a, b) => a.pick_no - b.pick_no);
+
+    const made = slots.filter(s => s.player_id);
+    const status = made.length === 0
+      ? 'pre_draft'
+      : (made.length >= total ? 'complete' : 'drafting');
+
+    // draft_order keyed by franchise id (= the owner_id/user_id MFL rosters use),
+    // so command-center's slotToRoster (rosters.find owner_id === key) resolves.
+    const draft_order = {};
+    const slot_to_roster_id = {};
+    String(unit?.round1DraftOrder || '').split(',').map(s => s.trim()).filter(Boolean).forEach((fid, idx) => {
+      draft_order[fid] = idx + 1;
+      slot_to_roster_id[idx + 1] = fid;
+    });
+    const onClock = slots.find(s => !s.player_id) || null;
+
+    return {
+      draft_id: 'mfl_draft_' + leagueId + '_' + year + (ui ? '_' + ui : ''),
+      league_id: 'mfl_' + leagueId + '_' + year,
+      status,
+      type: String(unit?.draftType || '').toUpperCase() === 'SAME' ? 'linear' : 'snake',
+      season: String(year),
+      start_time: null, // MFL exposes a per-pick clock (draftLimitHours), not an absolute start
+      created: lastTs || null,
+      last_picked: lastTs || null,
+      settings: {
+        rounds: maxRound || (total && teams ? Math.round(total / teams) : 0),
+        teams,
+        player_type: isRookiePool ? 1 : 0,
+      },
+      metadata: {
+        name: (league?._mflDraftPlayerPool || 'MFL') + ' Draft',
+        description: league?._mflDraftPlayerPool || '',
+        player_type: isRookiePool ? '1' : '0',
+      },
+      draft_order,
+      slot_to_roster_id,
+      picks: made,
+      _slots: slots,
+      on_the_clock: onClock ? onClock.roster_id : null,
+      _source: 'mfl',
+    };
+  });
+}
+
+/**
+ * Fetch + map the live draft state. Used by the live-draft poller to re-pull
+ * status as picks land. `league`/`crosswalk` are optional (pool-type detection
+ * + id resolution); falls back to the cached crosswalk.
+ */
+async function fetchDraftStatus(leagueId, year, apiKey, league, crosswalk) {
+  try {
+    const data = await _mflGet(_mflUrl(year, 'draftResults', leagueId, apiKey));
+    return mapDraftStatus(data, leagueId, year, league, crosswalk) || [];
+  } catch (e) {
+    console.warn('[MFL] Draft status fetch error:', e);
+    return [];
+  }
+}
+
+// ── Future draft picks (authoritative pick ownership) ─────────────
+// TYPE=futureDraftPicks lists, per franchise, the future picks it CURRENTLY owns
+// with the pick's round/year and `originalPickFor` (the franchise it started with).
+// This is the real, post-trade pick-ownership source — far better than inferring
+// from trade transactions (which don't say which round/season/pick moved).
+async function fetchFutureDraftPicks(leagueId, year, apiKey) {
+  try {
+    return await _mflGet(_mflUrl(year, 'futureDraftPicks', leagueId, apiKey));
+  } catch (e) {
+    console.warn('[MFL] futureDraftPicks fetch error:', e);
+    return null;
+  }
+}
+
+/**
+ * Map a TYPE=futureDraftPicks payload → Sleeper-shaped tradedPicks DELTAS that
+ * the Trade Center's buildPicksByOwner consumes: { season, round, roster_id (the
+ * pick's ORIGINAL owner), owner_id (the current owner), previous_owner_id }.
+ * Only emits a delta for picks that actually changed hands (originalPickFor !==
+ * current owner) — a franchise's own picks are covered by the base seed.
+ * MFL franchise ids double as roster_id AND owner_id in the mapped state, so the
+ * Trade Center resolves them in either id-mode.
+ */
+function mapTradedPicks(futureRaw) {
+  const out = [];
+  const fr = futureRaw?.futureDraftPicks?.franchise;
+  if (!fr) return out;
+  const franchises = Array.isArray(fr) ? fr : [fr];
+  franchises.forEach(f => {
+    if (!f || !f.id) return;
+    const owner = String(f.id);
+    let picks = f.futureDraftPick || [];
+    if (!Array.isArray(picks)) picks = picks ? [picks] : [];
+    picks.forEach(p => {
+      if (!p) return;
+      const origin = String(p.originalPickFor || owner);
+      if (origin === owner) return; // own pick — base ownership already covers it
+      const season = parseInt(p.year, 10);
+      const round = parseInt(p.round, 10) || 1;
+      if (!season) return;
+      out.push({
+        season,
+        round,
+        roster_id: origin,        // pick's original owner
+        owner_id: owner,          // current owner (post-trade)
+        previous_owner_id: origin,
+        _source: 'mfl',
+      });
+    });
+  });
+  return out;
+}
+
+/**
+ * Map a TYPE=futureDraftPicks payload → COMPLETE per-owner future pick ownership:
+ *   { [ownerFranchiseId]: [ { season, round, roster_id (original owner) } ] }
+ * Unlike mapTradedPicks (which only emits the picks that MOVED, as deltas), this
+ * lists EVERY future pick each franchise currently owns. The Trade Center uses it
+ * to render the exact set of future picks that exist — real years, real rounds,
+ * real ownership — instead of inventing a fixed N rounds × every team. If the
+ * league has no future picks defined, this is empty and the UI shows none.
+ */
+function mapFuturePicksByOwner(futureRaw) {
+  const out = {};
+  const fr = futureRaw?.futureDraftPicks?.franchise;
+  if (!fr) return out;
+  const franchises = Array.isArray(fr) ? fr : [fr];
+  franchises.forEach(f => {
+    if (!f || !f.id) return;
+    const owner = String(f.id);
+    let picks = f.futureDraftPick || [];
+    if (!Array.isArray(picks)) picks = picks ? [picks] : [];
+    picks.forEach(p => {
+      if (!p) return;
+      const season = parseInt(p.year, 10);
+      const round = parseInt(p.round, 10) || 1;
+      if (!season) return;
+      (out[owner] = out[owner] || []).push({ season, round, roster_id: String(p.originalPickFor || owner) });
+    });
+  });
+  return out;
+}
+
 // ── Full state population ─────────────────────────────────────────
 
 /**
- * Map raw MFL API responses → { players, rosters, league, leagueUsers }.
+ * Map raw MFL API responses → { players, rosters, league, leagueUsers, drafts }.
  */
 function mapToSleeperState(raw, leagueId, year, crosswalk) {
   const cw = crosswalk || _crosswalk || {};
-  const { leagueData, rostersData, playersData, rulesData } = raw;
+  const { leagueData, rostersData, playersData, rulesData, draftResultsData } = raw;
 
   // ── League settings ──
   const league = mapMFLSettings(leagueData, leagueId, year, rulesData);
@@ -605,7 +844,35 @@ function mapToSleeperState(raw, leagueId, year, crosswalk) {
     return mapMFLRoster(franchise, rosterEntries, cw);
   });
 
-  return { players, rosters, league, leagueUsers };
+  // ── Copy availability ──
+  // In a multi-copy league the SAME pid legitimately sits on several franchises.
+  // Count each pid across ALL rosters (active + taxi + reserve — each consumes a
+  // copy) so consumers can compute remaining = copies - rosterCount instead of a
+  // gone-on-first-roster boolean. copies===1 makes this a transparent no-op.
+  const copies = Math.max(1, Number(league?.settings?.player_copies) || 1);
+  const rosterCount = {};
+  rosters.forEach(r => {
+    // taxi[] / reserve[] entries are ALSO in players[] (mapMFLRoster pushes every
+    // entry into players[] and additionally into taxi/reserve). Dedupe per franchise
+    // so a taxi/IR stash counts as ONE copy, not two.
+    new Set([].concat(r.players || [], r.taxi || [], r.reserve || []).map(String)).forEach(k => {
+      rosterCount[k] = (rosterCount[k] || 0) + 1;
+    });
+  });
+  league._availability = { copies, rosterCount };
+
+  // ── Drafts + draft-driven league status ──
+  // mapDraftStatus infers pre_draft|drafting|complete from the seeded board.
+  // Reflect a pending/active rookie draft into league.status so the FA rookie
+  // lock (rookiesLockedForWaivers) engages even if the draft object is missed.
+  const drafts = mapDraftStatus(draftResultsData, leagueId, year, league, cw);
+  const liveDraft = drafts.find(d => d.status === 'drafting')
+    || drafts.find(d => d.status === 'pre_draft');
+  if (liveDraft && (liveDraft.status === 'pre_draft' || liveDraft.status === 'drafting')) {
+    league.status = liveDraft.status;
+  }
+
+  return { players, rosters, league, leagueUsers, drafts };
 }
 
 // ── Main connect function ─────────────────────────────────────────
@@ -633,7 +900,7 @@ async function connectLeague(leagueId, year, apiKey, myFranchiseId) {
   const crosswalk = buildCrosswalk(S.players || {}, allMflPlayers, year);
 
   // ── 3. Map MFL data → Sleeper-equivalent format ──
-  const { players, rosters, league, leagueUsers } = mapToSleeperState(raw, leagueId, year, crosswalk);
+  const { players, rosters, league, leagueUsers, drafts } = mapToSleeperState(raw, leagueId, year, crosswalk);
 
   // ── 4. Populate window.S ──
   S.platform = 'mfl';
@@ -650,11 +917,9 @@ async function connectLeague(leagueId, year, apiKey, myFranchiseId) {
   S.matchups = {};
   S.season = String(year);
 
-  // Fetch transactions and draft results (non-blocking — don't fail connect)
-  const [txns, draftPicks] = await Promise.all([
-    fetchTransactions(leagueId, year, apiKey).catch(() => []),
-    fetchDraftResults(leagueId, year, apiKey).catch(() => []),
-  ]);
+  // Fetch transactions (non-blocking — don't fail connect). Drafts already came
+  // through mapToSleeperState as status-bearing objects (incl. their made picks).
+  const txns = await fetchTransactions(leagueId, year, apiKey).catch(() => []);
 
   // Store transactions keyed by week (consistent with Sleeper format).
   // MFL doesn't expose which week a transaction belongs to, so we bucket
@@ -665,12 +930,16 @@ async function connectLeague(leagueId, year, apiKey, myFranchiseId) {
   txns.forEach(t => { if (!txnsByWeek[curWeekKey]) txnsByWeek[curWeekKey] = []; txnsByWeek[curWeekKey].push(t); });
   S.transactions = txnsByWeek;
 
-  // Extract traded picks from trade transactions
-  S.tradedPicks = txns.filter(t => t.type === 'trade').map((t, i) => ({
-    season: year, round: 1, roster_id: t.roster_ids?.[0], owner_id: t.roster_ids?.[1], _idx: i,
-  })).slice(0, 50); // Limit for performance
+  // Real pick ownership from TYPE=futureDraftPicks (post-trade), not inferred
+  // from trade transactions.
+  const futureRaw = await fetchFutureDraftPicks(leagueId, year, apiKey).catch(() => null);
+  S.tradedPicks = mapTradedPicks(futureRaw);
+  // Complete future-pick ownership (exact years/rounds) for the Trade Center.
+  S._mflFuturePicks = mapFuturePicksByOwner(futureRaw);
 
-  S.drafts = draftPicks.length ? [{ draft_id: 'mfl_draft_' + year, picks: draftPicks }] : [];
+  // Status-bearing drafts (pre_draft/drafting/complete) so the live-draft tool
+  // and the rookie-waiver lock both engage. Empty array if no draft exists.
+  S.drafts = drafts || [];
 
   S.leagues = [league];
   S.currentLeagueId = league.league_id;
@@ -822,18 +1091,15 @@ const MflProvider = {
 
     const mapped = mapToSleeperState(raw, leagueId, year, crosswalk);
 
-    // Fetch transactions + draft results in parallel. Non-blocking — a
-    // private league without an API key can still render rosters even if
-    // transactions/drafts fail.
-    const [txns, draftPicks] = await Promise.all([
+    // Fetch transactions + future draft picks (non-blocking — a private league
+    // without an API key can still render rosters even if these fail). Drafts
+    // already came back from mapToSleeperState as status-bearing objects.
+    const [txns, futureRaw] = await Promise.all([
       fetchTransactions(leagueId, year, apiKey).catch(e => {
         console.warn('[MFL] transactions fetch failed:', e?.message || e);
         return [];
       }),
-      fetchDraftResults(leagueId, year, apiKey).catch(e => {
-        console.warn('[MFL] draft results fetch failed:', e?.message || e);
-        return [];
-      }),
+      fetchFutureDraftPicks(leagueId, year, apiKey).catch(() => null),
     ]);
 
     // Bucket all transactions under the current week key — matches the
@@ -841,24 +1107,10 @@ const MflProvider = {
     const wkKey = 'w' + currentWeek;
     const transactionsByWeek = txns.length ? { [wkKey]: txns } : {};
 
-    // Extract traded picks from trade transactions. MFL doesn't expose
-    // which round/season is being swapped in the trade payload — we bucket
-    // them all under (current year, round 1) which is good enough for the
-    // UI to show that assets changed hands. Capped at 50 to stay performant.
-    const tradedPicks = txns
-      .filter(t => t.type === 'trade')
-      .map((t, i) => ({
-        season: parseInt(year, 10),
-        round: 1,
-        roster_id: t.roster_ids?.[0],
-        owner_id: t.roster_ids?.[1],
-        _idx: i,
-      }))
-      .slice(0, 50);
-
-    const drafts = draftPicks.length
-      ? [{ draft_id: 'mfl_draft_' + year, picks: draftPicks }]
-      : [];
+    // Real, post-trade pick ownership from TYPE=futureDraftPicks — each entry is
+    // a pick a franchise currently owns that originally belonged to another team.
+    // The Trade Center's buildPicksByOwner reconstructs ownership from these.
+    const tradedPicks = mapTradedPicks(futureRaw);
 
     return {
       league: mapped.league,
@@ -867,10 +1119,10 @@ const MflProvider = {
       players: mapped.players || {},
       transactions: transactionsByWeek,
       tradedPicks,
-      drafts,
+      drafts: mapped.drafts || [],
       matchups: [],
       nflState: {},
-      _extras: {},
+      _extras: { mflFuturePicks: mapFuturePicksByOwner(futureRaw) },
     };
   },
 };
@@ -892,11 +1144,16 @@ window.MFL = {
   fetchLeague,
   fetchTransactions,
   fetchDraftResults,
+  fetchDraftStatus,
+  fetchFutureDraftPicks,
 
   // Mappers
   mapMFLPlayer,
   mapMFLRoster,
   mapMFLSettings,
+  mapDraftStatus,
+  mapTradedPicks,
+  mapFuturePicksByOwner,
   mapToSleeperState,
 
   // Crosswalk
