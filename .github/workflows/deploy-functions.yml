@@ -13,7 +13,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
 
       # When the deploy token isn't configured (e.g. this sandbox repo), skip
       # the deploy cleanly instead of failing the whole run. Every step below
