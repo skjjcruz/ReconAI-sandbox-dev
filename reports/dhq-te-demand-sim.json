@@ -1,0 +1,95 @@
+{
+  "league": "The Psycho League: Year VI",
+  "byPos": {
+    "1 TE (real)": {
+      "QB": 11,
+      "RB": 10,
+      "WR": -12,
+      "TE": -39
+    },
+    "2 TE": {
+      "QB": 14,
+      "RB": 7,
+      "WR": -15,
+      "TE": -32
+    },
+    "3 TE": {
+      "QB": 13,
+      "RB": 3,
+      "WR": -20,
+      "TE": -28
+    }
+  },
+  "teDHQ": [
+    {
+      "name": "Brock Bowers",
+      "te1": 3521,
+      "te2": 3851,
+      "te3": 4178,
+      "fc": 7655
+    },
+    {
+      "name": "Trey McBride",
+      "te1": 3771,
+      "te2": 4154,
+      "te3": 4524,
+      "fc": 6904
+    },
+    {
+      "name": "Colston Loveland",
+      "te1": 2401,
+      "te2": 2663,
+      "te3": 2895,
+      "fc": 5216
+    },
+    {
+      "name": "Tyler Warren",
+      "te1": 2291,
+      "te2": 2522,
+      "te3": 2772,
+      "fc": 4668
+    },
+    {
+      "name": "Tucker Kraft",
+      "te1": 2314,
+      "te2": 2783,
+      "te3": 3086,
+      "fc": 3395
+    },
+    {
+      "name": "Harold Fannin",
+      "te1": 2552,
+      "te2": 2801,
+      "te3": 3071,
+      "fc": 3374
+    },
+    {
+      "name": "Sam LaPorta",
+      "te1": 2202,
+      "te2": 2431,
+      "te3": 2680,
+      "fc": 3058
+    },
+    {
+      "name": "Kyle Pitts",
+      "te1": 2392,
+      "te2": 2670,
+      "te3": 3135,
+      "fc": 2968
+    },
+    {
+      "name": "Kenyon Sadiq",
+      "te1": 1922,
+      "te2": 2139,
+      "te3": 2358,
+      "fc": 2856
+    },
+    {
+      "name": "Eli Stowers",
+      "te1": 1644,
+      "te2": 1888,
+      "te3": 2138,
+      "fc": 2439
+    }
+  ]
+}

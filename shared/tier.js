@@ -39,6 +39,7 @@ const FEATURES = {
   FIELD_LOG_SYNC:     'field_log_sync',     // Field log → War Room sync (paid only)
   UNLIMITED_CHAT:     'unlimited_chat',     // Unlimited AI chat (free = 3/day)
   WAR_ROOM_CORE:      'war_room_core',      // Full War Room access (paid only)
+  DYNASTY_READ_AI:    'dynasty_read_ai',    // Web-search news synthesis on player cards (paid only)
 
   // Legacy string keys used by pre-existing code — preserved for compat
   AI_UNLIMITED:       'ai-unlimited',       // ai-dispatch.js
@@ -64,6 +65,7 @@ const _PAID_ONLY_FEATURES = new Set([
   FEATURES.BEHAVIORAL_MODEL,
   FEATURES.FIELD_LOG_SYNC,
   FEATURES.WAR_ROOM_CORE,
+  FEATURES.DYNASTY_READ_AI,
 ]);
 
 const TRIAL_DAYS           = 30;

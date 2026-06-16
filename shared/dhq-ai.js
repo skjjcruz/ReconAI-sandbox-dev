@@ -325,6 +325,17 @@ Be specific about players and decisions discussed.`,
     instructions: '',
     maxTokens: 300,
   },
+
+  // ── DYNASTY READ (player-card news synthesis) ──────────────────
+  // Server path is canonical (shared weekly cache in ai-analyze); this entry is
+  // the BYO-API-key fallback so dhqAI() doesn't throw on the type and BYOK users
+  // still get a live read (their own tokens, in-memory cache only).
+  'dynasty_read': {
+    system: 'You are a sharp NFL analyst writing the dynasty read on one player for the GM who rosters him. Translate what is ACTUALLY happening with him in the real world into what it means for his dynasty value. Build the read on real, recent reporting — never generic platitudes.',
+    instructions: `Context is a JSON object for one player {pid,name,team,pos,age,season,week} (plus league format flags when present). SEARCH THE WEB for the latest reporting on him — prioritize the last ~10 days plus this offseason's moves — from ESPN, PFF, The Athletic, and trusted team beat reporters. Then write 3-5 sentences of plain prose that weave together, in order: (1) SITUATION — the most important real, current development (depth-chart role and usage trend, injury + timeline, contract/roster status, a coaching/scheme change, or a teammate's move that opens or closes a path); (2) IMPACT — what it does to his value now; (3) LONG-TERM OUTLOOK — the dynasty trajectory over the next 1-3 seasons and why. Lead with the single most decision-relevant real development. Do NOT restate fantasy points, DHQ value, or position rank. Do NOT pad with generic age-curve commentary — if news is thin, give the most recent concrete situational fact and what it implies; never invent news. Confident, not hedged. Plain prose only: no markdown, bullets, headers, citations, or sign-off.`,
+    maxTokens: 500,
+    useWebSearch: true,
+  },
 };
 
 // ── Context Builders (Structured JSON — Improvement A) ──────────
@@ -903,7 +914,10 @@ async function dhqAI(type, message, context, options) {
   const canUseWebSearch = typeof canAccess === 'function' && canAccess('BRIEFING_REASONING');
   const lastUserContent = (options?.messages || []).filter(m => m.role === 'user').slice(-1)[0]?.content || message || '';
   const realTimeIntent = /\b(injur|news|update|latest|rumor|contract|sign(ed|ing)|cut|release|suspend|arrest|trade rumor|depth chart|status|headline|report)\b/i.test(lastUserContent);
-  const finalWebSearch = canUseWebSearch && (useWebSearch || realTimeIntent);
+  // dynasty_read is intrinsically a web-search feature (player news synthesis), so
+  // it always searches on the BYO-key path — the user is spending their own tokens
+  // and a newsless read defeats the feature. Other types stay tier-gated.
+  const finalWebSearch = (type === 'dynasty_read') ? true : (canUseWebSearch && (useWebSearch || realTimeIntent));
 
   // Per-pick draft stream reactions are low-stakes and high-frequency. The client
   // (BYOK) transport retries 429/529 up to twice with a 10s backoff — which under the
@@ -1179,11 +1193,115 @@ function dhqCompactContext() {
   return parts.join('\n\n');
 }
 
+// ── Dynasty Read helper ──────────────────────────────────────────
+// Template-first, paid-gated, weekly-shared player news read.
+//
+// The SERVER path (OD.callAI) is canonical: it hits the shared weekly cache in
+// the ai-analyze edge function, so one web-search synthesis is reused across
+// every user for the NFL week. We call OD.callAI DIRECTLY rather than going
+// through dhqAI/callClaude, because the callClaude wrapper adds
+// system/messages/callType keys to the context — which makes the server treat
+// the call as "generic" and skip the shared cache entirely. A clean structured
+// context ({pid,name,team,pos,age,season,week}) keeps the call cacheable.
+//
+// Order: in-memory dedupe → server (shared cache) → BYO-key dhqAI (own tokens,
+// no shared cache) → caller's template. Never throws.
+const _dynReadCache = new Map();
+
+// Normalized, DISCRETE league-format flags for the current league. Deliberately
+// limited to {scoringType, superflex, tep, idp} — never the league id or raw
+// settings — so the server's shared weekly cache buckets by FORMAT, not per
+// league/user (a handful of buckets, bounded cost). Returns null when no league
+// is loaded → the read stays league-agnostic and shared across all such users.
+// Mirrors the server's detectLeagueFormat so client buckets match server buckets.
+function _dynReadFormat() {
+  try {
+    const S = window.S;
+    const league = (S && S.leagues && S.currentLeagueId)
+      ? S.leagues.find(function (l) { return l.league_id === S.currentLeagueId; })
+      : null;
+    if (!league) return null;
+    const rp = league.roster_positions || [];
+    const sc = league.scoring_settings || {};
+    if (!rp.length && !Object.keys(sc).length) return null;
+    const rec = Number(sc.rec) || 0;
+    const scoringType = rec >= 1 ? 'ppr' : rec >= 0.5 ? 'half_ppr' : 'std';
+    const qbSlots = rp.filter(function (p) { return p === 'QB'; }).length;
+    const superflex = rp.indexOf('SUPER_FLEX') !== -1 || qbSlots >= 2;
+    const tep = (Number(sc.bonus_rec_te) || Number(sc.rec_te) || 0) > 0;
+    const idp = rp.some(function (p) { return ['IDP_FLEX', 'DL', 'LB', 'DB', 'DE', 'CB', 'S'].indexOf(p) !== -1; });
+    return { scoringType: scoringType, superflex: superflex, tep: tep, idp: idp };
+  } catch (e) { return null; }
+}
+
+async function fetchDynastyRead(ctx, opts) {
+  opts = opts || {};
+  const fallback = opts.fallback || '';
+  try {
+    if (!ctx || !ctx.pid) return fallback;
+    // Paid-only feature. (Sandbox/localhost resolve to 'paid' for dev.)
+    if (typeof canAccess === 'function' && !canAccess('dynasty_read_ai')) return fallback;
+
+    const fmt = _dynReadFormat();
+    const fmtKey = fmt ? (fmt.scoringType + (fmt.superflex ? '-sf' : '') + (fmt.tep ? '-tep' : '') + (fmt.idp ? '-idp' : '')) : 'na';
+    const wkKey = (ctx.week == null || ctx.week === '') ? 'off' : ctx.week;
+    const key = 'dynread:' + ctx.pid + ':' + (ctx.season || '') + ':' + wkKey + ':' + fmtKey;
+    if (_dynReadCache.has(key)) return _dynReadCache.get(key);
+
+    const clean = {
+      pid: String(ctx.pid),
+      name: ctx.name || '',
+      team: ctx.team || '',
+      pos: ctx.pos || '',
+      age: ctx.age || null,
+      season: ctx.season || '',
+      week: ctx.week == null ? 0 : ctx.week,
+    };
+    // Discrete format flags → the server reads the player THROUGH the league's
+    // format and the shared cache buckets by format. Omitted entirely when no
+    // league is loaded, so those users share one league-agnostic read.
+    if (fmt) {
+      clean.scoringType = fmt.scoringType;
+      clean.superflex = fmt.superflex;
+      clean.tep = fmt.tep;
+      clean.idp = fmt.idp;
+    }
+
+    const sanitize = (window.AlexVoice && window.AlexVoice.sanitize)
+      ? window.AlexVoice.sanitize
+      : function (t) { return String(t || '').replace(/\s+/g, ' ').trim(); };
+
+    let text = '';
+    // Server path — shared weekly cache. Requires a Supabase session.
+    if (typeof window.hasServerAI === 'function' && window.hasServerAI() &&
+        window.OD && typeof window.OD.callAI === 'function') {
+      try {
+        const res = await window.OD.callAI({ type: 'dynasty_read', context: JSON.stringify(clean) });
+        text = sanitize((res && (res.analysis || res.text || res.response)) || '');
+      } catch (e) { /* rate limit / network → fall through */ }
+    }
+    // BYO-key path — user's own tokens, no shared cache.
+    if (!text && window.S && window.S.apiKey && typeof dhqAI === 'function') {
+      try {
+        const reply = await dhqAI('dynasty_read', '', JSON.stringify(clean));
+        text = sanitize(typeof reply === 'string' ? reply : ((reply && (reply.text || reply.analysis || reply.response)) || ''));
+      } catch (e) { /* fall through */ }
+    }
+
+    if (!text) return fallback;
+    _dynReadCache.set(key, text);
+    return text;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 // ── Exports ─────────────────────────────────────────────────────
 Object.assign(window.App, {
   DHQ_IDENTITY,
   DHQ_PROMPTS,
   dhqAI,
+  fetchDynastyRead,
   dhqContext,
   dhqCompactContext,
   dhqBuildRosterContext,
@@ -1210,6 +1328,7 @@ Object.assign(window, {
   DHQ_IDENTITY,
   DHQ_PROMPTS,
   dhqAI,
+  fetchDynastyRead,
   dhqContext,
   dhqCompactContext,
   dhqBuildRosterContext,

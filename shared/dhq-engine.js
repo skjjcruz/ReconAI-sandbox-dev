@@ -72,6 +72,11 @@ const SITMULT_TUNING={
     twoYear:1.05, // >=2: two-year starter
     oneYear:0.88, // ==1: one-year wonder
     zero:0.80, // 0 real starter seasons: all hype
+    // Early-career grace: a player can't fairly be tagged "all hype" / "one-year
+    // wonder" before they've had the NFL seasons to prove it. For years_exp<=2 the
+    // oneYear/zero PENALTY is lifted toward 1.0 by this fraction (keyed on years_exp);
+    // exp>=3 → no grace (full penalty). Only ever lifts a penalty, never adds a bonus.
+    earlyCareerGrace:{0:1.0,1:1.0,2:0.5},
   },
   // D) Youth premium + D2) breakout upside (dynasty crown jewels).
   youth:{
@@ -80,6 +85,12 @@ const SITMULT_TUNING={
     age25:{maxAge:25,minPpgPct:0.7,mult:1.10},
     upsideStrong:{maxAge:24,minPpgPct:0.85,minStarterSeasons:1,mult:1.15}, // young + starter-level
     upsideModerate:{maxAge:24,minPpgPct:0.65,minStarterSeasons:1,mult:1.08}, // young + approaching starter
+    // D5) Early-career development floor: a young player in the build/developmental
+    // age band shouldn't eat the full below-peak age discount ON TOP OF a thin
+    // production base (the double-penalty that buries high-pick, slow-start sophs).
+    // For years_exp<=2 we lift the EFFECTIVE age contribution (ageFactor) to this
+    // floor via a sitMult credit — never above neutral, never for exp>=3.
+    earlyCareerBuildFloor:{0:0.95,1:0.95,2:0.90},
   },
   // E) Durability — games-played penalties.
   durability:{
@@ -1054,6 +1065,11 @@ async function loadLeagueIntel(){
         // REDUCED for aging vets: 30+ get weaker protection, 33+ get none
         const eliteThresh={QB:22,RB:16,WR:16,TE:13,K:9,DL:8,LB:8,DB:8};
         const age=pAge(pid)||26;
+        // years_exp (universally mapped across Sleeper/ESPN/MFL/Yahoo) gates the
+        // early-career grace applied to trajectory + age below. null when unknown
+        // → no grace (safe: byte-identical to prior behavior for established vets).
+        const yearsExp=Number.isFinite(+p?.years_exp)?+p.years_exp:null;
+        const isEarlyCareer=yearsExp!==null&&yearsExp<=2;
         // Compute starter seasons early so pedigree check can use it
         const realStarterLineEarly=(avgThresh[pos]?.avgStarter||100)*0.70;
         const starterSeasonsEarly=Object.values(ps.seasons).filter(s=>s.total>=realStarterLineEarly).length;
@@ -1154,6 +1170,14 @@ async function loadLeagueIntel(){
         }else{
           _t=ST.trajectory.zero; // Zero real starter seasons: all hype
         }
+        // Early-career grace: only ever lift a trajectory PENALTY (_t<1) toward 1.0
+        // for players too new to have a fair track record (years_exp<=2). A high-pick
+        // sophomore with a quiet rookie year is not "all hype" — they just haven't had
+        // the seasons yet. exp>=3 is untouched. See [[project_rookie_dhq_pipeline]].
+        if(_t<1&&isEarlyCareer){
+          const g=ST.trajectory.earlyCareerGrace?.[yearsExp]??0;
+          if(g>0)_t=_t+(1-_t)*g;
+        }
         sitMult*=_t;sf.trajectory*=_t;
 
         // D) Youth premium: dynasty's crown jewels (folded into the `youth` factor)
@@ -1173,6 +1197,22 @@ async function loadLeagueIntel(){
 	        }else if(age<=_y1.upsideModerate.maxAge&&wPPG>=posStarterPPG*_y1.upsideModerate.minPpgPct&&starterSeasons>=_y1.upsideModerate.minStarterSeasons){
 	          sitMult*=_y1.upsideModerate.mult;sf.youth*=_y1.upsideModerate.mult; // Moderate upside: young + approaching starter level
 	        }
+
+        // D5) Early-career development floor — stops the double-penalty that buries
+        // high-pick, slow-start sophomores: a young player still in the build/
+        // developmental age band already takes a below-peak age discount (the 25%
+        // age component), and stacking that on a thin production base double-docks
+        // them for the same youth. For years_exp<=2 we lift the EFFECTIVE age
+        // contribution (ageFactor) up to a floor via a sitMult credit (== floor/
+        // ageFactor, so ageFactor*credit==floor). Capped so it can only neutralize a
+        // discount, never manufacture a bonus above neutral. exp>=3 untouched.
+        if(isEarlyCareer&&(ageCurvePhase==='build'||ageCurvePhase==='developmental')){
+          const floorTarget=_y1.earlyCareerBuildFloor?.[yearsExp];
+          if(floorTarget&&ageFactor>0&&ageFactor<floorTarget){
+            const credit=floorTarget/ageFactor;
+            sitMult*=credit;sf.youth*=credit;
+          }
+        }
 
 	        // D3) Explicit NFL depth chart role. This moves QB1/QB2/QB3 profiles
 	        // more aggressively than production alone, and gives smaller role

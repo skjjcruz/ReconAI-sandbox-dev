@@ -279,17 +279,25 @@ const MFLProvider = {
           const sid = cw[pid] || ('mfl_' + pid);
           if (sides[t.franchise]) sides[t.franchise].players.push(sid);
         });
-        // Parse pick trades
-        const pickItems = [...(t.franchise1_gave_up || '').split(','), ...(t.franchise2_gave_up || '').split(',')]
-          .map(s => s.trim()).filter(s => s.startsWith('FP_'));
-        pickItems.forEach(fp => {
-          const parts = fp.split('_'); // FP_franchiseId_year_round
-          if (parts.length >= 4) {
-            const fromFran = parts[1];
-            const toFran = fromFran === t.franchise ? t.franchise2 : t.franchise;
-            if (sides[toFran]) sides[toFran].picks.push({ season: parts[2], round: parseInt(parts[3]) });
-          }
-        });
+        // Parse pick trades by WHICH SIDE gave the pick up (the gave_up field is
+        // unambiguous). Do NOT infer direction from a pick's original-owner id —
+        // a pick can change hands multiple times, so original-owner != giver.
+        // Handle BOTH future picks (FP_<owner>_<year>_<round>, round 1-indexed) and
+        // current-year draft picks (DP_<round>_<pickInRound>, round 0-indexed).
+        const addPicks = (giveStr, receiverRid) => {
+          if (!sides[receiverRid]) return;
+          (giveStr || '').split(',').map(s => s.trim()).forEach(item => {
+            if (item.startsWith('FP_')) {
+              const p = item.split('_'); // FP_<owner>_<year>_<round>
+              if (p.length >= 4) sides[receiverRid].picks.push({ season: p[2], round: parseInt(p[3]) || 1 });
+            } else if (item.startsWith('DP_')) {
+              const p = item.split('_'); // DP_<round0>_<pickInRound>  (round is 0-indexed)
+              if (p.length >= 2) sides[receiverRid].picks.push({ season: String(chainEntry.season), round: (parseInt(p[1]) || 0) + 1 });
+            }
+          });
+        };
+        addPicks(t.franchise1_gave_up, t.franchise2); // franchise1 gave → franchise2 received
+        addPicks(t.franchise2_gave_up, t.franchise);  // franchise2 gave → franchise1 received
         trades.push({ season: chainEntry.season, week: 0, roster_ids: rids, sides, ts: parseInt(t.timestamp || 0) * 1000 });
       });
 

@@ -349,6 +349,7 @@ function openFWPlayerModal(playerIdOrObj, playersData, statsData, scoringSetting
   const age = p.age || 0;
   const name = p.full_name || ((p.first_name||'') + ' ' + (p.last_name||'')).trim() || pid;
   const team = p.team || 'FA';
+  window._fwModalOpenPid = pid; // guards the async Dynasty Read swap against stale writes
   const exp = p.years_exp ?? 0;
   const pk = _fwPeakYears(pos, age);
   const isIDP = ['DL','LB','DB'].includes(pos);
@@ -508,6 +509,26 @@ function openFWPlayerModal(playerIdOrObj, playersData, statsData, scoringSetting
     if (blurb && insightEl) {
       const bg = blurbCol === _wr.red ? 'rgba(231,76,60,.08)' : blurbCol === _wr.green ? 'rgba(46,204,113,.08)' : 'rgba(212,175,55,.08)';
       insightEl.innerHTML = `<div style="font-size:13px;color:${blurbCol};line-height:1.45;padding:6px 10px;background:${bg};border-radius:6px;border-left:3px solid ${blurbCol}">${blurb}</div>`;
+      // Dynasty Read AI upgrade (paid tier): swap the template for a live,
+      // web-search news synthesis when available (shared weekly cache → usually an
+      // instant hit). fetchDynastyRead returns '' when not entitled/unavailable, so
+      // the template stands. Guarded so a slow response can't overwrite a different
+      // (or closed) player's modal.
+      if (typeof window.fetchDynastyRead === 'function') {
+        const _readPid = pid;
+        const _readCtx = {
+          pid, name, team, pos, age: age || null,
+          season: (window.S && window.S.nflState && window.S.nflState.season) || '',
+          week: (window.S && window.S.nflState && (window.S.nflState.display_week || window.S.nflState.week)) || 0,
+        };
+        window.fetchDynastyRead(_readCtx, { fallback: '' }).then(function (txt) {
+          if (!txt || window._fwModalOpenPid !== _readPid) return;
+          const el = document.getElementById('fwpm-insight');
+          if (!el || !el.isConnected) return;
+          const esc = String(txt).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          el.innerHTML = `<div style="font-size:13px;color:${blurbCol};line-height:1.45;padding:6px 10px;background:${bg};border-radius:6px;border-left:3px solid ${blurbCol}">${esc}</div>`;
+        });
+      }
     } else if(insightEl) insightEl.innerHTML = '';
   } else if(insightEl) insightEl.innerHTML = '';
 

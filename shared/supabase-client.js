@@ -518,6 +518,43 @@ window.OD.saveDisplayName = function(name) {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// MFL CONNECTION — cross-device sync of the connected MFL league + team
+// ══════════════════════════════════════════════════════════════════
+// Mirrors display-name sync: stored on the legacy `users` row (keyed by
+// sleeper_username) as a jsonb blob so a connected MFL league + team pick
+// follows the account across devices, the way Sleeper leagues do via the
+// username. Shape: { leagueId, year, franchiseId }. NEVER stores the private-
+// league API key — secrets stay client-side (sessionStorage) only.
+
+window.OD.loadMflConnection = async function() {
+    const username = getCurrentUsername();
+    if (isConfigured() && username) {
+        const db = getClient();
+        if (db) {
+            const { data } = await db.from('users').select('mfl_connection').eq('sleeper_username', username).maybeSingle();
+            const conn = data && data.mfl_connection;
+            if (conn && conn.leagueId) return conn;
+        }
+    }
+    return null;
+};
+
+window.OD.saveMflConnection = function(conn) {
+    const username = getCurrentUsername();
+    if (!isConfigured() || !username) return;
+    const db = getClient();
+    if (!db) return;
+    const safe = (conn && conn.leagueId)
+        ? { leagueId: String(conn.leagueId), year: conn.year ? String(conn.year) : null, franchiseId: conn.franchiseId ? String(conn.franchiseId) : null }
+        : {};
+    ensureUser(username).then(() => {
+        db.from('users').update({ mfl_connection: safe }).eq('sleeper_username', username).then(({ error }) => {
+            if (error) console.warn('[FW] mfl_connection save error', error);
+        });
+    }).catch(console.warn);
+};
+
+// ══════════════════════════════════════════════════════════════════
 // OWNER DNA PROFILES
 // ══════════════════════════════════════════════════════════════════
 
