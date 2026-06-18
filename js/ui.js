@@ -3300,6 +3300,9 @@ function loadStrategy(){
 
 // ── Mobile nav ─────────────────────────────────────────────────
 function mobileTab(tab, btn) {
+  // Always exit the Alex chat overlay when a bottom tab is tapped, so the chat
+  // can never trap the user on a phone (the overlay sits above everything).
+  if (typeof window._gmBarCollapse === 'function') window._gmBarCollapse();
   document.querySelectorAll('.mobile-nav-item').forEach(b=>b.classList.remove('active'));
   if(btn){btn.classList.add('active');}
   else{
