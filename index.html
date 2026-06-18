@@ -835,6 +835,9 @@
 
     <!-- Chat input — pinned at the bottom of the panel, visible in both collapsed and expanded states -->
     <div class="global-chat-row">
+      <button type="button" class="gm-bar-dismiss" onclick="_gmBarCollapse()" aria-label="Close Alex chat" title="Close">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
       <input type="text" id="global-chat-in" class="global-chat-input" placeholder="Message Alex..." autocomplete="off"
         onfocus="_gmBarExpand()"
         oninput="handleUnifiedInput(this.value)"
