@@ -902,6 +902,18 @@ if('serviceWorker' in navigator){
         });
       });
     }).catch(e=>console.warn('[Scout] SW registration failed:',e));
+    // Auto-refresh once when a newly deployed version takes control, so users
+    // converge to the latest without a manual reload. Guarded so it only fires
+    // for a genuine update (a controller already existed) — never on first load,
+    // and the flag prevents any reload loop.
+    if(navigator.serviceWorker.controller){
+      let __dhqReloading=false;
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{
+        if(__dhqReloading)return;
+        __dhqReloading=true;
+        window.location.reload();
+      });
+    }
     // Listen for the SW telling us it updated — show refresh banner
     navigator.serviceWorker.addEventListener('message',e=>{
       if(e.data?.type==='SW_UPDATED'){
