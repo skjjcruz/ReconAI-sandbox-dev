@@ -108,6 +108,104 @@ const SITMULT_TUNING={
   warn:{lo:0.3,hi:1.8}, // raw (pre-clamp) sitMult outside this range logs a compounding warning
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// EARLY-CAREER STASH FLOOR — the draft-capital / upside signal the veteran
+// engine is otherwise blind to. The veteran value is ~75% realized production,
+// so a 2nd/3rd-year player who flashed but sits behind a depth chart craters to
+// a deep-bench score (e.g. a former Day-1/2/3 pick at ~180) even though the
+// dynasty MARKET still prices his pedigree. NFL draft capital is not an input to
+// the veteran engine anywhere (the only pedigree concept, isElitePedigree, needs
+// 4+ starter seasons — structurally excludes the young). This floor injects that
+// signal AFTER value assembly + FC blend, hybrid by design:
+//   • CAPITAL where it's actually resolvable (round → stash-tier floor), and
+//   • a MARKET backstop (capped fraction of the player's own FantasyCalc value)
+//     for everyone else — because Sleeper's feed carries no NFL draft round/pick
+//     and findProspect only holds the current incoming class.
+// FLOOR ONLY (never lowers a score → producers/elites byte-identical), capped at
+// stashCeiling (never manufactures a starter), guarded so a market-written-off
+// bust can't be floored far above consensus, and decayed by years_exp (an
+// unproven player earns less benefit-of-the-doubt the longer he's done nothing).
+// Tune here. See [[project_sophomore_dhq_fix]] / [[project_rookie_dhq_pipeline]].
+const EARLY_CAREER_FLOOR_TUNING={
+  minYearsExp:1,   // skip true rookies (exp 0) — they have their own tuned FC/prospect pipeline
+  maxYearsExp:2,   // 2nd/3rd-year players only; null/unknown years_exp → skip (no-op for established vets)
+  floorPositions:['QB','RB','WR','TE'], // OFFENSE skill only. K/DEF/IDP are excluded: the engine
+                   // deliberately suppresses them and (on MFL, which carries native NFL draft round)
+                   // an unguarded capital floor would manufacture dynasty value for a backup kicker.
+  stashCeiling:1500, // a floor may NEVER lift a player above this — stash tier, never a starter
+  // Absolute floor by NFL draft round (pre-decay), on the 0-10000 scale. All well under any
+  // starter value (an elite tops ~7500-10000), so this only rescues the cratered, never inflates.
+  roundFloor:{1:1000,2:700,3:520,4:430,5:330,6:250,7:200},
+  // Benefit-of-the-doubt fades as an unproven player accrues seasons with nothing to show.
+  expDecay:{1:0.92,2:0.78},
+  marketFloorFrac:0.55,  // market backstop: floor at this fraction of the format-scaled FC value
+  marketGuardMult:0.90,  // when FC RANKS the player, a CAPITAL floor may not exceed this × his market
+                         // value — stops a high pick the market has discounted from over-flooring.
+  capitalNoMarketCeiling:450, // when FC has DROPPED/never-listed the player (fcScaled==0 — the strongest
+                         // "market wrote him off" signal), cap the pedigree-only floor here (deep-stash
+                         // tier, intentionally below the 500 FAAB-suggest gate) instead of leaving it
+                         // unguarded. A delisted former R1/R2 can't be floored to a near-hold value.
+};
+
+// Seed NFL draft-capital map for recent classes (normalized name → {round[,pick,year]}). The
+// veteran engine has NO native NFL-draft input (Sleeper omits it; findProspect = current class
+// only), so this hand-seeded STARTER set supplies capital for already-in-league players. Coverage
+// is NOT required for correctness: MFL leagues supply capital natively, current-class rookies
+// resolve via findProspect, and every other early-career player falls back to the market backstop.
+// Only `round` drives the floor — keep it accurate; pick/year are informational. Expand each year
+// from an authoritative draft dataset. (Studs who already produce are omitted — the floor never
+// binds for them; this leans toward the Day-2/3 fliers where it actually matters.)
+const DHQ_NFL_DRAFT_CAPITAL={
+  // ── 2025 class (entering Yr2) ──
+  'donte thornton':{round:4,pick:108,year:2025}, // the motivating example — Raiders WR
+  'jack bech':{round:2,year:2025},'tre harris':{round:2,year:2025},'luther burden':{round:2,year:2025},
+  'jayden higgins':{round:2,year:2025},'jalen royals':{round:4,year:2025},'pat bryant':{round:3,year:2025},
+  'elic ayomanor':{round:4,year:2025},'jaylin noel':{round:3,year:2025},'tory horton':{round:5,year:2025},
+  // ── 2024 class (entering Yr3 — still inside the maxYearsExp window) ──
+  // NOTE: 'jalynn polk' has NO space — _dhqNormName deletes the apostrophe in "Ja'Lynn Polk".
+  'adonai mitchell':{round:2,year:2024},'jalynn polk':{round:2,year:2024},'keon coleman':{round:2,year:2024},
+  'ladd mcconkey':{round:2,year:2024},'roman wilson':{round:3,year:2024},'jermaine burton':{round:3,year:2024},
+  'malachi corley':{round:3,year:2024},'jalen mcmillan':{round:3,year:2024},'troy franklin':{round:4,year:2024},
+  'javon baker':{round:4,year:2024},'devontez walker':{round:4,year:2024},'jamari thrash':{round:5,year:2024},
+  'xavier legette':{round:1,year:2024},'ricky pearsall':{round:1,year:2024},'jonathon brooks':{round:2,year:2024},
+  'trey benson':{round:3,year:2024},'blake corum':{round:3,year:2024},'marshawn lloyd':{round:3,year:2024},
+  'braelon allen':{round:4,year:2024},'bucky irving':{round:4,year:2024},'ray davis':{round:4,year:2024},
+  'audric estime':{round:5,year:2024},
+};
+
+// Name normalizer for the seed map. NFD-fold diacritics (Estimé→estime), DELETE apostrophes
+// (Ja'Lynn→jalynn — so map keys must use that form, NOT a space), hyphen/underscore→space,
+// drop Jr/Sr/II..V suffixes. Every seed-map key must equal _dhqNormName(realName).
+function _dhqNormName(n){
+  return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
+    .replace(/[.'’`]/g,'').replace(/[-_]/g,' ')
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/g,'')
+    .replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+}
+
+// Resolve an early-career player's NFL draft capital from the best available source.
+// Priority: platform-native (MFL) → seed map → current-class prospect CSV. null = unknown.
+function _dhqResolveDraftCapital(p){
+  if(!p)return null;
+  // 1) Platform-native (MFL maps nfl_draft_round/pick onto the normalized player)
+  const nr=parseInt(p.nfl_draft_round,10),np=parseInt(p.nfl_draft_pick,10);
+  if(Number.isFinite(nr)&&nr>=1&&nr<=7)return{round:nr,pick:Number.isFinite(np)?np:null,source:'platform'};
+  // 2) Seed map (recent classes, name-keyed)
+  const rawName=p.full_name||((p.first_name||'')+' '+(p.last_name||'')).trim();
+  const nm=_dhqNormName(rawName);
+  const hit=nm&&DHQ_NFL_DRAFT_CAPITAL[nm];
+  if(hit&&hit.round>=1&&hit.round<=7)return{round:hit.round,pick:hit.pick??null,source:'seed'};
+  // 3) Current-class rookie (findProspect carries draftRound/draftPick)
+  try{
+    if(typeof window!=='undefined'&&typeof window.findProspect==='function'){
+      const pr=window.findProspect(rawName);
+      const r=parseInt(pr?.draftRound,10);
+      if(Number.isFinite(r)&&r>=1&&r<=7)return{round:r,pick:parseInt(pr?.draftPick,10)||null,source:'prospect'};
+    }
+  }catch(_e){}
+  return null;
+}
+
 function _dhqPeakWindowsFromCurves(curves){
   return Object.fromEntries(Object.entries(curves||{}).map(([pos,curve])=>[pos,curve.peak||[23,29]]));
 }
@@ -1969,6 +2067,60 @@ async function loadLeagueIntel(){
     catch(e){window.dhqLog?.('rankRail',e);}
 
     // ═══════════════════════════════════════════════════════════════
+    // STEP 12d: Early-career stash floor — inject the draft-capital / upside
+    // signal the production-anchored veteran engine is blind to, so a 2nd/3rd-year
+    // player who flashed but sits behind a depth chart can't crater to a deep-bench
+    // score. Hybrid: real NFL draft capital where resolvable, FantasyCalc market as
+    // the universal backstop. FLOOR ONLY + stash-capped + bust-guarded + exp-decayed.
+    // Knobs in EARLY_CAREER_FLOOR_TUNING. See [[project_sophomore_dhq_fix]].
+    // ═══════════════════════════════════════════════════════════════
+    try{
+      const ECF=EARLY_CAREER_FLOOR_TUNING;
+      let stashFloorCount=0;
+      Object.keys(playerScores).forEach(sid=>{
+        const meta=playerMeta[sid]; if(!meta)return;
+        const p=S.players?.[sid]; if(!p)return;
+        if(!ECF.floorPositions.includes(meta.pos))return; // OFFENSE skill only — never K/DEF/IDP (see tuning)
+        // null / undefined / '' years_exp → null (skip); a literal 0 or numeric string stays numeric.
+        const rawExp=p.years_exp;
+        const yx=(rawExp===null||rawExp===undefined||rawExp==='')?null:(Number.isFinite(+rawExp)?+rawExp:null);
+        if(yx===null||yx<ECF.minYearsExp||yx>ECF.maxYearsExp)return; // unknown exp / not 2nd-3rd-year → skip (no-op)
+        const decay=ECF.expDecay?.[yx]??0; if(decay<=0)return;
+        const cur=playerScores[sid]||0;
+        const fcScaled=+meta.fcScaled||0; // format-scaled dynasty-market value (0 if FC didn't list him)
+
+        // (a) capital-based floor — keyed to NFL draft round, reality-checked against the market:
+        //   • FC ranks him → cap at marketGuardMult × his market value (discounted pick can't over-float)
+        //   • FC dropped/never-listed him (fcScaled==0, the strongest write-off signal) → cap at
+        //     capitalNoMarketCeiling so a delisted bust can't ride raw pedigree to a near-hold value.
+        let capitalFloor=0; const cap=_dhqResolveDraftCapital(p);
+        if(cap){
+          capitalFloor=(ECF.roundFloor?.[cap.round]||0)*decay;
+          capitalFloor=fcScaled>0
+            ? Math.min(capitalFloor,fcScaled*ECF.marketGuardMult)
+            : Math.min(capitalFloor,ECF.capitalNoMarketCeiling);
+        }
+        // (b) market backstop — a capped fraction of the dynasty-market value
+        const marketFloor=fcScaled>0?fcScaled*ECF.marketFloorFrac*decay:0;
+
+        let floor,basis;
+        if(capitalFloor>=marketFloor){floor=capitalFloor;basis=cap?`capital:R${cap.round}(${cap.source})`:'';}
+        else{floor=marketFloor;basis=cap?`market(+capital:R${cap.round})`:'market';} // keep capital context in the audit tag
+        if(floor<=0)return;
+        floor=Math.min(ECF.stashCeiling,floor);
+        if(floor>cur){
+          playerScores[sid]=Math.round(floor);
+          meta.dhqPreStashFloor=cur;
+          meta.stashFloor=Math.round(floor);
+          meta.stashFloorBasis=basis;
+          meta.source=(meta.source?meta.source+'+':'')+'EARLY_CAREER_FLOOR';
+          stashFloorCount++;
+        }
+      });
+      if(stashFloorCount)console.log(`Early-career stash floor: lifted ${stashFloorCount} young players (capital + market backstop)`);
+    }catch(e){window.dhqLog?.('earlyCareerFloor',e);}
+
+    // ═══════════════════════════════════════════════════════════════
     // STORE EVERYTHING
     // ═══════════════════════════════════════════════════════════════
     LI={
@@ -2114,6 +2266,8 @@ window.App.peakWindows = _dhqPeakWindowsFromCurves(window.App.ageCurveWindows);
 window.App.decayRates = window.App.decayRates || DHQ_DEFAULT_DECAY_RATES;
 window.App.DhqValueTuning = {
   sitMultTuning: SITMULT_TUNING, // single source of truth for sitMult knobs (audit/tune here)
+  earlyCareerFloorTuning: EARLY_CAREER_FLOOR_TUNING, // 2nd/3rd-yr stash-floor knobs (audit/tune here)
+  nflDraftCapital: DHQ_NFL_DRAFT_CAPITAL, // seed draft-capital map (expand each draft year)
   ageCurveWindows: window.App.ageCurveWindows,
   peakWindows: window.App.peakWindows,
   ageCurvePhase: _dhqAgeCurvePhase,
