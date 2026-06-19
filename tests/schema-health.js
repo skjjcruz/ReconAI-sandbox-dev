@@ -115,8 +115,10 @@ test('Supabase upsert writes exactly the shared field_log columns', () => {
   const upsertBlock = extractUpsertBlock(clientSrc);
   ok(upsertBlock, 'field_log upsert block missing');
   for (const column of schema.writeColumns) {
+    // Owner identity is written via the ...ownerCols(owner) spread, which
+    // resolves to `username` (legacy Sleeper) or `user_id` (email account).
     const pattern = column === 'username'
-      ? /\busername\b/
+      ? /\busername\b|\.\.\.ownerCols\(/
       : new RegExp(`\\b${column}\\s*:`, 'i');
     ok(pattern.test(upsertBlock), `${column} missing from upsert payload`);
   }
@@ -155,7 +157,9 @@ test('player_tags policy accepts app-issued anon role session JWTs', () => {
 
 test('player_tags migration preserves league-scoped upsert identity', () => {
   ok(/unique\s*\(\s*username\s*,\s*league_id\s*\)/i.test(playerTagsPolicy) || /player_tags_username_league_key/i.test(playerTagsPolicy), 'username,league_id uniqueness missing');
-  ok(/onConflict:\s*'username,league_id'/.test(clientSrc), 'client must upsert player_tags by username,league_id');
+  // Client upserts player_tags via ownerConflict(owner, legacy, account), which
+  // resolves to 'username,league_id' (legacy) or 'user_id,league_id' (email account).
+  ok(/onConflict:\s*(?:'username,league_id'|ownerConflict\(owner,\s*'username,league_id',\s*'user_id,league_id'\))/.test(clientSrc), 'client must upsert player_tags by username,league_id');
 });
 
 console.log('\n');

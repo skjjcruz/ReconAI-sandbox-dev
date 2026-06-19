@@ -6,7 +6,23 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const WARROOM_ROOT = path.resolve(ROOT, '..', 'warroom');
+
+// Locate the sibling War Room checkout that owns the ai-analyze edge function.
+// Mirrors the candidate-list approach in War Room's sync-reconai-shared.cjs so
+// the eval works across clone layouts: explicit env override, the canonical
+// `warroom` name, or the default two-repo GitHub repo name.
+function findWarroomRoot() {
+  const candidates = [
+    process.env.WARROOM_ROOT,
+    path.resolve(ROOT, '..', 'warroom'),
+    path.resolve(ROOT, '..', 'github.com-skjjcruz-owner-dashboard-dev'),
+  ].filter(Boolean);
+  return candidates.find(candidate =>
+    fs.existsSync(path.join(candidate, 'supabase', 'functions', 'ai-analyze', 'index.ts'))
+  ) || candidates[1];
+}
+
+const WARROOM_ROOT = findWarroomRoot();
 const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'alex-evals.json'), 'utf8'));
 const dispatchSrc = fs.readFileSync(path.join(ROOT, 'shared', 'ai-dispatch.js'), 'utf8');
 const edgeSrc = fs.readFileSync(path.join(WARROOM_ROOT, 'supabase', 'functions', 'ai-analyze', 'index.ts'), 'utf8');
