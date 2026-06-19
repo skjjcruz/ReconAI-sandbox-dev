@@ -6,9 +6,9 @@
       "platform": "warroom",
       "callType": "home-chat",
       "expectedProvider": "gemini",
-      "expectedModel": "GEMINI_FAST",
-      "expectedTier": "fast",
-      "maxCostTier": "fast",
+      "expectedModel": "GEMINI_BALANCED",
+      "expectedTier": "standard",
+      "maxCostTier": "standard",
       "prompt": "Give me the most important dynasty angle on my team today.",
       "requiredContext": ["leagueId", "roster", "topPlayers", "teamNeeds"],
       "forbidden": ["invented roster facts", "generic advice without player names"]
