@@ -226,6 +226,32 @@ window.App = window.App || {};
   // ─────────────────────────────────────────────────────────────
 
   /**
+   * True once every draft for the given season has completed — i.e. "the draft
+   * is over", so that season's picks are spent and must drop off the trade
+   * calculator. Draft objects come from the league (MFL hydrates them) or the
+   * global S state (Sleeper). Requires at least one draft so "no drafts yet" is
+   * never read as complete, and every() so a rookie+supplemental pair doesn't
+   * drop the year while one is still pending.
+   */
+  function seasonDraftComplete(leagueInfo, curYear) {
+    const fromLeague = Array.isArray(leagueInfo?.drafts) ? leagueInfo.drafts : null;
+    const globalS = (typeof S !== 'undefined' && S) || (typeof window !== 'undefined' && window.S) || null;
+    const drafts = fromLeague || (Array.isArray(globalS?.drafts) ? globalS.drafts : []);
+    const seasonDrafts = drafts.filter(d => parseInt(d?.season) === curYear);
+    return seasonDrafts.length > 0 && seasonDrafts.every(d => String(d?.status || '').toLowerCase() === 'complete');
+  }
+
+  /**
+   * The tradeable pick window — the next PICK_HORIZON draft seasons, rolled
+   * forward past any season whose draft has already finished (e.g. after the
+   * 2026 draft completes: 2027/2028/2029 instead of 2026/2027/2028).
+   */
+  function tradeablePickYears(leagueInfo, curYear) {
+    const start = curYear + (seasonDraftComplete(leagueInfo, curYear) ? 1 : 0);
+    return Array.from({ length: PICK_HORIZON }, (_, i) => start + i);
+  }
+
+  /**
    * Build picks owned by each roster.
    * @param {Array}  rosters     - league rosters array
    * @param {Object} leagueInfo  - league object (settings.draft_rounds, season)
@@ -235,7 +261,7 @@ window.App = window.App || {};
   function buildPicksByOwner(rosters, leagueInfo, tradedPicks) {
     const draftRounds = leagueInfo?.settings?.draft_rounds || DRAFT_ROUNDS;
     const curYear = parseInt(leagueInfo?.season) || new Date().getFullYear();
-    const years = Array.from({ length: PICK_HORIZON }, (_, i) => curYear + i);
+    const years = tradeablePickYears(leagueInfo, curYear);
     const allTP = tradedPicks || [];
     const result = {};
 
@@ -367,7 +393,7 @@ window.App = window.App || {};
     // Draft picks assessment
     const leagueSeason = parseInt(leagueInfo?.season || new Date().getFullYear());
     const draftRounds  = leagueInfo?.settings?.draft_rounds || DRAFT_ROUNDS;
-    const pickYears    = Array.from({ length: PICK_HORIZON }, (_, i) => String(leagueSeason + i));
+    const pickYears    = tradeablePickYears(leagueInfo, leagueSeason).map(String);
 
     const pickCountByRound     = {};
     const pickCountByYear      = {};
