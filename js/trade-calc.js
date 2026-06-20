@@ -170,13 +170,35 @@ function buildNflStarterSet(nflStarterPool) {
 }
 
 /**
+ * True once every draft for the given season has completed — the signal that
+ * "the draft is over", so that season's picks are spent and must drop off the
+ * trade calculator. Requires at least one draft so "no drafts yet" is never read
+ * as complete, and every() so a rookie+supplemental pair doesn't drop the year
+ * while one is still pending.
+ */
+function currentSeasonDraftComplete(curYear) {
+  const drafts = (S.drafts || []).filter(d => parseInt(d.season) === curYear);
+  return drafts.length > 0 && drafts.every(d => String(d.status || '').toLowerCase() === 'complete');
+}
+
+/**
+ * The tradeable pick window — the next PICK_HORIZON draft seasons, rolled
+ * forward past any season whose draft has already finished (e.g. after the 2026
+ * draft completes: 2027/2028/2029 instead of 2026/2027/2028).
+ */
+function tradeablePickYears(curYear) {
+  const start = curYear + (currentSeasonDraftComplete(curYear) ? 1 : 0);
+  return Array.from({ length: PICK_HORIZON }, (_, i) => start + i);
+}
+
+/**
  * Build picks owned by each roster — returns { rosterId: [{year, round, originalOwnerRid}] }
  */
 function buildPicksByOwner() {
   const league = S.leagues.find(l => l.league_id === S.currentLeagueId);
   const draftRounds = league?.settings?.draft_rounds || DRAFT_ROUNDS;
   const curYear = parseInt(S.season) || new Date().getFullYear();
-  const years = Array.from({ length: PICK_HORIZON }, (_, i) => curYear + i);
+  const years = tradeablePickYears(curYear);
   const allTP = S.tradedPicks || [];
   const result = {};
 
@@ -349,7 +371,7 @@ function assessTeam(roster, nflStarterSet, ownerPicks, dynamicConfig) {
   // Draft picks assessment
   const leagueSeason = parseInt(league?.season || new Date().getFullYear());
   const draftRounds  = league?.settings?.draft_rounds || DRAFT_ROUNDS;
-  const pickYears    = Array.from({ length: PICK_HORIZON }, (_, i) => String(leagueSeason + i));
+  const pickYears    = tradeablePickYears(leagueSeason).map(String);
 
   const pickCountByRound     = {};
   const pickCountByYear      = {};
