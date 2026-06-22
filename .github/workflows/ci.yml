@@ -5,10 +5,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      # The 30 shared modules are vendored from skjjcruz/DHQ-Shared at build time
+      # (gitignored here), so check out the canonical source and sync before lint/tests.
+      - name: Checkout DHQ-Shared (canonical engine)
+        uses: actions/checkout@v6
+        with:
+          repository: skjjcruz/DHQ-Shared
+          path: dhq-shared-src
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Sync shared engine from DHQ-Shared
+        run: DHQ_SHARED_SOURCE="$GITHUB_WORKSPACE/dhq-shared-src" npm run sync:shared
       - run: npx eslint . --ext .js
       - run: node tests/unit.js

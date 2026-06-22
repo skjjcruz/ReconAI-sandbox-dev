@@ -26,6 +26,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # The 30 shared modules are vendored from skjjcruz/DHQ-Shared at build time
+      # (gitignored in this repo), so the canonical source must be present before
+      # `npm run build` runs sync:shared.
+      - name: Checkout DHQ-Shared (canonical engine)
+        uses: actions/checkout@v6
+        with:
+          repository: skjjcruz/DHQ-Shared
+          path: dhq-shared-src
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -42,6 +51,8 @@ jobs:
       # 191KB stylesheet.
       - name: Build production bundle (Vite)
         run: npm run build
+        env:
+          DHQ_SHARED_SOURCE: ${{ github.workspace }}/dhq-shared-src
 
       - name: Assemble Pages artifact
         run: |
