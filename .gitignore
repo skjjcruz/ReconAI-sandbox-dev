@@ -5,3 +5,41 @@ dist/
 .env.local
 .env.*.local
 .DS_Store
+
+# Vendored shared engine — canonical source is skjjcruz/DHQ-Shared.
+# Copied in by `npm run sync:shared`; gitignored so DHQ-Shared stays SoT.
+# Scout-only modules (data-cache, dev-preview-config, league-memory,
+# roster-snapshot, season-calendar) live in shared/ too and are NOT ignored.
+shared/app-config.js
+shared/bug-capture.js
+shared/constants.js
+shared/utils.js
+shared/storage.js
+shared/event-bus.js
+shared/platform-provider.js
+shared/sleeper-api.js
+shared/espn-api.js
+shared/mfl-api.js
+shared/yahoo-api.js
+shared/supabase-client.js
+shared/tier.js
+shared/pick-value-model.js
+shared/dhq-providers.js
+shared/dhq-core.js
+shared/intelligence-context.js
+shared/dhq-engine.js
+shared/nfl-fit.js
+shared/team-assess.js
+shared/analytics-engine.js
+shared/dhq-ai.js
+shared/assistant-tutorial.js
+shared/ai-dispatch.js
+shared/strategy.js
+shared/trade-engine.js
+shared/mock-engine.js
+shared/gm-engine.js
+shared/player-modal.js
+shared/rookie-data.js
+
+# Vendored rookie CSVs (synced from DHQ-Shared into Vite public/)
+public/draft-war-room/
