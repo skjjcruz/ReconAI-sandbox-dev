@@ -361,6 +361,10 @@ export default [
       "supabase/**",
       "**/*.min.js",
       "reports/**",
+      // Canonical engine checkout used only as a sync source in CI/deploy
+      // (actions/checkout into dhq-shared-src/). Not app source — don't lint it.
+      "dhq-shared-src/**",
+      "dhq-shared/**",
       // dhq-ai.js contains a raw knowledge-base text block after valid JS;
       // ESLint cannot parse it. Exclude until the file is refactored.
       "shared/dhq-ai.js",
