@@ -43,3 +43,13 @@ shared/rookie-data.js
 
 # Vendored rookie CSVs (synced from DHQ-Shared into Vite public/)
 public/draft-war-room/
+
+# Browser engines promoted from War Room into DHQ-Shared (vendored by npm run sync:shared)
+shared/startsit-engine.js
+shared/weekly-proj.js
+shared/nfl-context.js
+shared/matchup.js
+shared/player-value.js
+shared/draft-gameplan.js
+shared/alex-voice.js
+shared/gm-mode.js

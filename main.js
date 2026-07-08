@@ -37,6 +37,18 @@ import './shared/espn-api.js';
 import './shared/mfl-api.js';
 import './shared/yahoo-api.js';
 
+// WS0: browser engines promoted from War Room into dhq-shared (start/sit, weekly proj,
+// NFL context, matchup, ROS value, draft gameplan, Alex voice, GM mode). Order matters:
+// startsit before weekly-proj/matchup/player-value; player-value after dhq-engine (guarded globals).
+import './shared/startsit-engine.js';
+import './shared/weekly-proj.js';
+import './shared/nfl-context.js';
+import './shared/matchup.js';
+import './shared/player-value.js';
+import './shared/draft-gameplan.js';
+import './shared/alex-voice.js';
+import './shared/gm-mode.js';
+
 import './js/app.js';
 import './js/sleeper-api.js';
 import './js/ai-chat.js';
@@ -47,5 +59,18 @@ import './js/draft-ui.js';
 import './js/trade-calc.js';
 import './js/trade-builder.js';
 import './js/scout-ui.js';
+import './js/calendar-scout.js';
+import './js/history-scout.js';
+import './js/analytics-scout.js';
+import './js/tagged-sets.js';
+import './js/compare-scout.js';
+import './js/today-cards.js';
 import './js/pro-launch.js';
 import './js/tutorial.js';
+
+// Rookie/prospect CSVs are vendored into public/draft-war-room/ and served
+// same-origin (Vite base = /ReconAI/), so Scout no longer fetches rookie data
+// cross-repo from WarRoom@main via jsDelivr. Point the shared rookie-data loader
+// at our own deploy explicitly (page-independent); rookie-data.js's default is
+// also same-origin-relative. Runs after imports but before any on-demand fetch.
+window.ROOKIE_DATA_BASE = `${window.location.origin}${import.meta.env.BASE_URL}draft-war-room`;

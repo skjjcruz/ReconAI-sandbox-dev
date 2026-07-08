@@ -376,6 +376,20 @@ async function sendHomeChat(passedText,opts){
   msgsEl.appendChild(um);
   // Inject trade card if message looks like a trade request
   if(typeof window.tryInjectTradeCard==='function')window.tryInjectTradeCard(text,msgsEl);
+  // Summon an adaptive KPI card if the message asks for one ("show my draft capital").
+  if(window.TodayCards&&window.TodayCards.matchCardKey){
+    try{
+      const _ck=window.TodayCards.matchCardKey(text);
+      if(_ck){
+        const _r=typeof window.myR==='function'?window.myR():null;
+        const _lg=S.leagues?.find(l=>l.league_id===S.currentLeagueId);
+        const _ph=window.SeasonCalendar?.describe?window.SeasonCalendar.describe(_lg):null;
+        const _as=(_r&&window.assessTeamFromGlobal)?window.assessTeamFromGlobal(_r.roster_id):null;
+        const _html=window.TodayCards.renderCard(_ck,window.TodayCards.buildCtx(S,_r,_lg,_ph,_as));
+        if(_html){const cm=document.createElement('div');cm.className='hc-msg-a';cm.innerHTML='<div class="scout-adaptive-rail">'+_html+'</div>';msgsEl.appendChild(cm);}
+      }
+    }catch(e){/* ignore */}
+  }
   const lm=document.createElement('div');lm.className='hc-msg-a';
   lm.innerHTML='<span class="ld"><span>.</span><span>.</span><span>.</span></span>';
   msgsEl.appendChild(lm);

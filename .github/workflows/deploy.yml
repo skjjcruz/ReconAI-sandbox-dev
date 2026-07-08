@@ -75,10 +75,11 @@ jobs:
           mkdir -p pages-artifact/assets/icons
           cp -R icons/. pages-artifact/assets/icons/
 
-          # 4. Paths consumed cross-origin by the War Room deploy on the same
-          #    github.io host — these must stay live:
-          #      /ReconAI/js/pro-launch.js  (WarRoom index.html)
-          #      /ReconAI/shared/*.js       (WarRoom js/shared/shared-loader.js)
+          # 4. Paths consumed cross-origin by the production owner-dashboard deploy
+          #    on the same github.io host — these must stay live until the dashboard
+          #    self-hosts them (Phase 3 of the C2 sync):
+          #      /ReconAI-sandbox-dev/js/pro-launch.js  (dashboard index.html)
+          #      /ReconAI-sandbox-dev/shared/*.js       (dashboard js/shared/shared-loader.js fallback)
           mkdir -p pages-artifact/js
           cp js/pro-launch.js pages-artifact/js/pro-launch.js
           cp -R shared pages-artifact/shared

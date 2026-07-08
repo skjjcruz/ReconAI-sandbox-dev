@@ -35,6 +35,23 @@ const TAB_CHIPS = {
     { title: 'Cross-league queue', sub: 'highest-leverage decisions' },
     { title: 'Which roster has the best window', sub: 'redraft and dynasty' },
   ],
+  ai: [
+    { title: 'What should I do this week', sub: 'lineup, waivers, trades' },
+    { title: 'Audit my roster', sub: 'rank my next 3 moves' },
+    { title: 'Find a trade', sub: 'based on owner DNA' },
+  ],
+  calendar: [
+    { title: 'When is my trade deadline', sub: 'and other key dates' },
+    { title: 'What should I do before the draft', sub: 'offseason timeline' },
+  ],
+  history: [
+    { title: 'Who has the most titles', sub: 'all-time leaders' },
+    { title: "What's my all-time record", sub: 'wins, titles, playoffs' },
+  ],
+  analytics: [
+    { title: 'Where do I rank', sub: 'power + dynasty' },
+    { title: "What's my biggest roster gap", sub: 'vs the winners' },
+  ],
   league: [
     { title: 'Weakest teams',      sub: 'exploit their gaps' },
     { title: 'Owner tendencies',   sub: 'behavioral patterns' },
@@ -94,14 +111,16 @@ function _renderGMBarAlexBlock() {
   if (!el) return;
   const strat = window.GMStrategy?.getStrategy?.() || {};
   const eng = window.GMEngine;
-  const fi = eng?.generateFieldIntel?.() || [];
+  // Field-intel bullets are Alex's reads → Scout Pro only. Own strategy config stays.
+  const _gmbPro = typeof window.isScoutPro !== 'function' || window.isScoutPro();
+  const fi = (_gmbPro && eng?.generateFieldIntel) ? eng.generateFieldIntel() : [];
   const mode = (strat.mode || 'balanced').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const aggr = strat.aggression || 'medium';
   const targets = (strat.targetPositions || []).map(_scoutPosLabel).join(', ') || '—';
   const fiBullets = fi.slice(0, 2).map(s => `<div style="font-size:11px;color:var(--text3);padding:2px 0">· ${_esc(s)}</div>`).join('');
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:${fiBullets ? '6px' : '0'}">
-      <div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.06em;text-transform:uppercase">AI GM · Alex ${strat.alexPersonality || 'balanced'}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.06em;text-transform:uppercase">AI GM · Alex Ingram</div>
       <div style="font-size:11px;color:var(--text3)">${_esc(mode)} · ${_esc(aggr)} · ${_esc(targets)}</div>
     </div>
     ${fiBullets}
@@ -503,6 +522,106 @@ function toggleScoutBriefing() {
 }
 window.toggleScoutBriefing = toggleScoutBriefing;
 
+// Alex's field-brief lead: greeting + league situation (record · power rank · tier · forward read),
+// voiced via AlexVoice for non-robotic variation. Template-first (instant); AI-swap is a follow-up.
+function _scoutBriefLead() {
+  const S = window.S;
+  const myRoster = typeof myR === 'function' ? myR() : null;
+  if (!myRoster) return '';
+  const AV = window.AlexVoice;
+  const pick = (s, arr) => (AV && AV.pick) ? AV.pick(s, arr) : arr[0];
+  const esc = window._esc || (s => String(s));
+  const nameSafe = esc(String(S.user?.display_name || S.user?.username || 'GM').split(/\s+/)[0]);
+
+  const assess = typeof window.assessTeamFromGlobal === 'function' ? window.assessTeamFromGlobal(myRoster.roster_id) : null;
+  const w = myRoster.settings?.wins || 0, l = myRoster.settings?.losses || 0, total = w + l;
+  const hs = assess?.healthScore || 0;
+  const tier = (assess?.tier || '').toLowerCase();
+  const n0 = (assess?.needs || [])[0];
+  const topNeed = n0 ? esc(typeof n0 === 'string' ? n0 : n0.pos) : '';
+
+  // Power rank by roster strength (health score) across the league.
+  let rank = null, size = null;
+  try {
+    if (typeof window.assessAllTeamsFromGlobal === 'function') {
+      const all = window.assessAllTeamsFromGlobal() || [];
+      if (all.length) {
+        const sorted = [...all].sort((a, b) => (b.healthScore || 0) - (a.healthScore || 0));
+        size = sorted.length;
+        const idx = sorted.findIndex(t => String(t.rosterId) === String(myRoster.roster_id));
+        if (idx >= 0) rank = idx + 1;
+      }
+    }
+  } catch (e) { /* rank optional */ }
+
+  const cal = window.SeasonCalendar?.describe ? window.SeasonCalendar.describe(_scoutCurrentLeague()) : null;
+  const seed = `${myRoster.roster_id}|${w}.${l}|${rank}|${hs}`;
+  const hour = new Date().getHours();
+  const tod = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
+
+  const greet = pick(seed + 'g', [`${tod}, ${nameSafe}.`, `${tod} brief, ${nameSafe}.`, `Here's the read, ${nameSafe}.`]);
+  const recordBit = total > 0 ? `You're <b style="color:var(--text)">${w}–${l}</b>` : `Roster's locked in`;
+  const rankBit = (rank && size) ? ` and <b style="color:var(--text)">#${rank}</b> of ${size} by roster strength` : '';
+  const tierWord = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : '';
+  const tierBit = tierWord ? ` — ${pick(seed + 't', [`${tierWord.toLowerCase()} class`, `squarely ${tierWord.toLowerCase()} tier`, `a ${tierWord.toLowerCase()} build`])}` : '';
+  const situation = `${recordBit}${rankBit}${tierBit}.`;
+
+  let read;
+  if (cal && (cal.phase === 'pre_draft' || cal.phase === 'draft_week')) {
+    read = pick(seed + 'r', [`Draft's the lever right now — here's where to aim.`, `Rookie draft's close; line up your board below.`]);
+  } else if (topNeed) {
+    read = pick(seed + 'r', [`Biggest lever is <b style="color:var(--text)">${topNeed}</b> — the moves below get you there.`, `Tighten up <b style="color:var(--text)">${topNeed}</b> and this roster climbs. Start here.`, `<b style="color:var(--text)">${topNeed}</b> is the gap to close — two ways below.`]);
+  } else {
+    read = pick(seed + 'r', [`Roster's in good shape — here's what's worth a look.`, `A few things worth your attention below.`]);
+  }
+
+  return `<b style="color:var(--text)">${greet}</b> ${situation} ${read}`;
+}
+window._scoutBriefLead = _scoutBriefLead;
+
+// "Since you last opened" — snapshots league state per league, diffs current vs the
+// stored snapshot, then re-baselines. Computed once per session (cached by league).
+let _wcCache, _wcCacheLeague;
+function _scoutWhatChanged() {
+  const S = window.S;
+  if (_wcCache !== undefined && _wcCacheLeague === (S && S.currentLeagueId)) return _wcCache;
+  const myRoster = typeof myR === 'function' ? myR() : null;
+  if (!myRoster || !S || !S.currentLeagueId || !(S.rosters || []).length) return null; // not ready — don't cache yet
+  try {
+    const w = myRoster.settings?.wins || 0, l = myRoster.settings?.losses || 0;
+    let rank = null;
+    try {
+      if (typeof window.assessAllTeamsFromGlobal === 'function') {
+        const all = window.assessAllTeamsFromGlobal() || [];
+        if (all.length) { const sorted = [...all].sort((a, b) => (b.healthScore || 0) - (a.healthScore || 0)); const idx = sorted.findIndex(t => String(t.rosterId) === String(myRoster.roster_id)); if (idx >= 0) rank = idx + 1; }
+      }
+    } catch (e) { /* rank optional */ }
+    const txns = Array.isArray(S.transactions) ? S.transactions.length : (S.transactions ? Object.keys(S.transactions).length : 0);
+    const inj = {};
+    (myRoster.players || []).forEach(pid => { const st = S.players?.[pid]?.injury_status; if (st) inj[pid] = st; });
+    const cur = { rank, record: `${w}-${l}`, txns, inj };
+
+    const key = 'scout_brief_snap_v1_' + S.currentLeagueId;
+    let prev = null;
+    try { const raw = localStorage.getItem(key); if (raw) prev = JSON.parse(raw); } catch (e) {}
+    const sinceTs = prev && prev.ts;
+    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), state: cur })); } catch (e) {}
+
+    _wcCacheLeague = S.currentLeagueId;
+    if (!prev || !prev.state) { _wcCache = null; return null; } // first look at this league
+    const p = prev.state, changes = [];
+    if (p.rank && cur.rank && p.rank !== cur.rank) { const up = cur.rank < p.rank; changes.push({ icon: up ? '▲' : '▼', tone: up ? 'up' : 'down', label: 'Power rank', val: `#${p.rank} → #${cur.rank}` }); }
+    if (p.record !== cur.record && cur.record !== '0-0') changes.push({ icon: '•', tone: '', label: 'Record', val: `${p.record} → ${cur.record}` });
+    if (cur.txns > (p.txns || 0)) changes.push({ icon: '⇄', tone: '', label: 'League moves', val: `${cur.txns - (p.txns || 0)} new` });
+    Object.keys(cur.inj).filter(pid => cur.inj[pid] && cur.inj[pid] !== (p.inj && p.inj[pid])).slice(0, 2).forEach(pid => changes.push({ icon: '⚠', tone: 'warn', label: (typeof pName === 'function' ? pName(pid) : pid), val: String(cur.inj[pid]).toLowerCase() }));
+    Object.keys(p.inj || {}).filter(pid => !cur.inj[pid]).slice(0, 1).forEach(pid => changes.push({ icon: '✓', tone: 'up', label: (typeof pName === 'function' ? pName(pid) : pid), val: 'cleared' }));
+
+    _wcCache = changes.length ? { changes, sinceTs } : null;
+    return _wcCache;
+  } catch (e) { _wcCacheLeague = S.currentLeagueId; _wcCache = null; return null; }
+}
+window._scoutWhatChanged = _scoutWhatChanged;
+
 function renderScoutBriefing() {
   const titleEl = document.getElementById('scout-briefing-title');
   const countEl = document.getElementById('scout-briefing-count');
@@ -533,7 +652,12 @@ function renderScoutBriefing() {
     && !canAccess(window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning');
   const _feat = window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning';
 
-  itemsEl.innerHTML = items.map(item => {
+  // Alex's field-brief lead — greeting + league situation, voiced via AlexVoice (template-first).
+  // Interpretive read → Scout Pro only (gated with the rest of the briefing reasoning).
+  const _leadTxt = ((typeof _scoutBriefLead === 'function') && !_reasoningGated) ? _scoutBriefLead() : '';
+  const _briefLead = _leadTxt ? `<div class="scout-brief-lead" style="display:flex;gap:10px;align-items:flex-start;padding:0 0 12px;margin-bottom:10px;border-bottom:1px solid var(--border)"><span style="width:24px;height:24px;border-radius:50%;background:var(--accent);color:#0a0a0a;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">A</span><div style="font-size:14px;line-height:1.55;color:var(--text2)">${_leadTxt}</div></div>` : '';
+
+  itemsEl.innerHTML = _briefLead + items.map(item => {
     if (_reasoningGated) {
       // Show headline and dot, but gate the "why" behind an upgrade tap
       return `
@@ -886,10 +1010,6 @@ function _scoutStrategy() {
   return window.GMStrategy?.getStrategy ? window.GMStrategy.getStrategy() : {};
 }
 
-function _scoutAlexLabel(strategy) {
-  return _scoutLabel(strategy.alexPersonality || strategy.alexStyle || 'balanced');
-}
-
 function _scoutStrategySummary(strategy) {
   const mode = _modeLabel(strategy.mode || 'balanced_rebuild');
   const target = _scoutListLabel(strategy.targetPositions, 'Any value');
@@ -902,7 +1022,7 @@ function _scoutSyncMeta(strategy) {
   const ts = Number(strategy.lastSyncedAt || 0);
   const age = ts ? Date.now() - ts : Infinity;
   const stale = age > 6 * 60 * 60 * 1000;
-  const label = stale ? 'Stale' : 'Synced from War Room';
+  const label = stale ? 'Stale' : (strategy.lastSyncedFrom === 'scout' ? 'Saved in Scout' : 'Synced from War Room');
   return { stale, label };
 }
 
@@ -1144,9 +1264,22 @@ function _scoutTeamStateText(strategy, assessment) {
   return 'Strategy unset';
 }
 
-function _scoutRenderPriorities(priorities) {
-  const rows = (priorities || []).slice(0, 3);
-  if (!rows.length) return '';
+// Shared "unlock the rest" teaser row for gated brief sections. Free sees the
+// top insight in full, then this row to unlock the remaining depth.
+function _scoutGatedMoreRow(title, sub, feature) {
+  return `<button class="scout-priority-card scout-gated-more" onclick="if(window.showProLaunchPage){showProLaunchPage()}else{showUpgradePrompt('${feature}')}">
+        <span class="scout-priority-index" aria-hidden="true">🔒</span>
+        <span><strong>${_esc(title)}</strong><small>${_esc(sub)}</small></span>
+        <em>Pro</em>
+      </button>`;
+}
+
+function _scoutRenderPriorities(priorities, gated) {
+  const all = priorities || [];
+  // Bare-bones free gets NO priority recommendations — only the locked teaser.
+  const rows = all.slice(0, gated ? 0 : 3);
+  if (!rows.length && !(gated && all.length)) return '';
+  const more = all.length - rows.length;
   return `<section class="scout-brief-section">
     <div class="scout-section-head">
       <div><span class="scout-kicker">Priorities</span><h2>What needs attention</h2></div>
@@ -1160,13 +1293,17 @@ function _scoutRenderPriorities(priorities) {
         </span>
         <em>${_esc(p.actionLabel || 'Act')}</em>
       </button>`).join('')}
+      ${gated && more > 0 ? _scoutGatedMoreRow(`See all ${all.length} priorities`, 'Full priority stack, ranked by leverage', window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning') : ''}
     </div>
   </section>`;
 }
 
-function _scoutRenderOpportunities(opportunities) {
-  const rows = (opportunities || []).slice(0, 3);
-  if (!rows.length) return '';
+function _scoutRenderOpportunities(opportunities, gated) {
+  const all = opportunities || [];
+  // Free sees NO opponent trade-match reads (scout reads of other teams) — teaser only.
+  const rows = all.slice(0, gated ? 0 : 3);
+  if (!rows.length && !(gated && all.length)) return '';
+  const more = all.length - rows.length;
   return `<section class="scout-brief-section">
     <div class="scout-section-head">
       <div><span class="scout-kicker">Trade Matches</span><h2>Who fits your needs?</h2></div>
@@ -1179,13 +1316,17 @@ function _scoutRenderOpportunities(opportunities) {
         <small>${Number(o.exploitScore || 0)} fit score</small>
         <em>${_esc(o.suggestedAction || 'Attack')}</em>
       </button>`).join('')}
+      ${gated && more > 0 ? _scoutGatedMoreRow(`See all ${all.length} trade matches`, 'Every partner + fit score', window.FEATURES?.TRADE_SCENARIOS || 'trade_scenarios') : ''}
     </div>
   </section>`;
 }
 
-function _scoutRenderFieldIntel(items) {
-  const rows = (items || []).slice(0, 4);
-  if (!rows.length) return '';
+function _scoutRenderFieldIntel(items, gated) {
+  const all = items || [];
+  // Free gets NO "Alex's Read" field intel — only the locked teaser.
+  const rows = all.slice(0, gated ? 0 : 4);
+  if (!rows.length && !(gated && all.length)) return '';
+  const more = all.length - rows.length;
   return `<section class="scout-brief-section">
     <div class="scout-section-head">
       <div><span class="scout-kicker">Alex's Read</span><h2>What Alex is seeing</h2></div>
@@ -1193,6 +1334,7 @@ function _scoutRenderFieldIntel(items) {
     </div>
     <div class="scout-intel-list">
       ${rows.map(row => `<div class="scout-intel-row"><i></i><span>${_esc(row)}</span></div>`).join('')}
+      ${gated && more > 0 ? `<button class="scout-intel-row scout-gated-more" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font:inherit" onclick="if(window.showProLaunchPage){showProLaunchPage()}else{showUpgradePrompt('${window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning'}')}"><i aria-hidden="true">🔒</i><span>See all ${all.length} reads — unlock Alex's full field intel</span></button>` : ''}
     </div>
   </section>`;
 }
@@ -1281,13 +1423,53 @@ function renderWarRoomBrief() {
   const strategyChips = _scoutStrategyChips(strategy);
   const nextRows = _scoutNextMoveRows(nextMove, phase, health);
   const nextMoveContract = _scoutBuildNextMoveContract(nextMove, league, roster, assessment, strategy, phase, health);
+  const _heroLead = (typeof _scoutBriefLead === 'function') ? _scoutBriefLead() : '';
+  const _whatChanged = (typeof _scoutWhatChanged === 'function') ? _scoutWhatChanged() : null;
+  const _wcSince = _whatChanged && _whatChanged.sinceTs && typeof _relativeTime === 'function' ? _relativeTime(_whatChanged.sinceTs) : '';
+  const _wcTone = t => t === 'up' ? 'var(--green)' : t === 'down' ? 'var(--red)' : t === 'warn' ? 'var(--amber)' : 'var(--text3)';
+  // Depth gate: free keeps the top insight per brief section; paid unlocks the full stack.
+  const _briefGated = typeof canAccess === 'function' && !canAccess(window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning');
+  // iPad-landscape instrument rail — compact KPI chips beside the brief (CSS-hidden on phone).
+  const _railAll = (typeof window.assessAllTeamsFromGlobal === 'function') ? (window.assessAllTeamsFromGlobal() || []) : [];
+  const _railRank = (_railAll.length && roster) ? ([..._railAll].sort((a, b) => (b.healthScore || 0) - (a.healthScore || 0)).findIndex(a => a.rosterId === roster.roster_id) + 1) : null;
+  const _railElite = (window.App?.countElitePlayers || (() => 0))(roster?.players || []);
+  const _railTxn = Array.isArray(S.transactions) ? S.transactions.length : Object.keys(S.transactions || {}).length;
+  const _railHtml = (roster && _railRank) ? `<section class="scout-instrument-rail">
+      <div class="rail-chip"><span class="rail-kicker">Power Rank</span><strong class="rail-big">#${_railRank}<small>/${_railAll.length}</small></strong><em class="rail-detail">by roster strength</em></div>
+      <div class="rail-chip"><span class="rail-kicker">Roster Pulse</span><strong class="rail-big">${health == null ? '—' : health}</strong><em class="rail-detail">${_esc(assessment?.tier || '—')} · ${_railElite} elite</em></div>
+      <div class="rail-chip"><span class="rail-kicker">Window</span><strong class="rail-big" style="font-size:1.05rem">${_esc((_briefGated ? null : assessment?.window) || assessment?.tier || '—')}</strong><em class="rail-detail">${_briefGated ? 'tier read' : 'strategic window'}</em></div>
+      <div class="rail-chip"><span class="rail-kicker">Activity</span><strong class="rail-big">${_railTxn}</strong><em class="rail-detail">recent moves</em></div>
+    </section>` : '';
+  // Brief nudge: let the brief's own read (priorities / next move) boost matching
+  // adaptive cards — additive over the rules baseline, cleared+reset each render.
+  if (window.TodayCards && window.TodayCards.setNudge) {
+    try {
+      const _nudgeTxt = (priorities || []).map(p => typeof p === 'string' ? p : [p.problem, p.actionLabel, p.consequence].filter(Boolean).join(' '))
+        .concat(nextMove?.action ? [nextMove.action] : [])
+        .concat(diagnosis?.line1 ? [diagnosis.line1] : []);
+      window.TodayCards.setNudge(_nudgeTxt.map(t => window.TodayCards.matchCardKey(t)).filter(Boolean));
+    } catch (e) { /* ignore */ }
+  }
+  // Adaptive instrument panel — situation-selected KPI cards (today-cards.js).
+  const _adaptiveHtml = (roster && window.TodayCards)
+    ? (window.TodayCards.renderPanel(window.TodayCards.buildCtx(S, roster, league, phase, assessment)) || '')
+    : '';
+  const _wcAll = _whatChanged ? _whatChanged.changes : [];
+  const _wcChanges = _briefGated ? _wcAll.slice(0, 1) : _wcAll;
+  const _whatChangedHtml = _wcChanges.length ? `<section class="scout-brief-section">
+      <div><span class="scout-kicker">Since you last opened${_wcSince ? ' · ' + _esc(_wcSince) : ''}</span><h2>What changed</h2></div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:10px">
+        ${_wcChanges.map(c => `<div style="display:flex;align-items:center;gap:9px;font-size:13px"><span style="color:${_wcTone(c.tone)};width:14px;text-align:center;flex-shrink:0">${c.icon}</span><span style="flex:1;color:var(--text2)">${_esc(c.label)}</span><span class="mono" style="color:var(--text3);white-space:nowrap">${_esc(c.val)}</span></div>`).join('')}
+        ${_briefGated && _wcAll.length > 1 ? `<button class="scout-gated-more" style="display:flex;align-items:center;gap:9px;font-size:13px;width:100%;text-align:left;background:none;border:none;cursor:pointer;font:inherit;color:var(--accent);padding:2px 0" onclick="if(window.showProLaunchPage){showProLaunchPage()}else{showUpgradePrompt('${window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning'}')}"><span style="width:14px;text-align:center;flex-shrink:0" aria-hidden="true">🔒</span><span style="flex:1">See all ${_wcAll.length} changes since you left</span><span class="mono" style="white-space:nowrap">Pro</span></button>` : ''}
+      </div>
+    </section>` : '';
 
   if (!S.user) {
     host.innerHTML = `<div class="scout-brief-shell">
       <section class="scout-brief-hero">
         <div class="scout-alex-row">
           <div class="scout-alex-avatar">AI</div>
-          <div><strong>Alex Ingram</strong><span>${_esc(_scoutAlexLabel(strategy))}</span></div>
+          <div><strong>Alex Ingram</strong><span>GM Chief of Staff</span></div>
           <button class="scout-secondary-btn" onclick="openStrategyEditor()">Strategy</button>
         </div>
         <h1>Connect your league. Alex will build the command brief.</h1>
@@ -1337,37 +1519,46 @@ function renderWarRoomBrief() {
 
       <div class="scout-diagnosis-card">
         <span class="scout-kicker">Intelligence Briefing</span>
+        ${_briefGated
+          ? `<p style="color:var(--text3)">Unlock Alex's intelligence briefing for a full read on your roster, window, and moves.</p>`
+          : `${_heroLead ? `<p style="color:var(--text2)">${_heroLead}</p>` : ''}
         <p>${_esc(diagnosis.line1 || 'Alex is reading your roster.')}</p>
-        ${diagnosis.line2 ? `<p>${_esc(diagnosis.line2)}</p>` : ''}
+        ${diagnosis.line2 ? `<p>${_esc(diagnosis.line2)}</p>` : ''}`}
       </div>
     </section>
+
+    ${_railHtml}
+
+    ${_adaptiveHtml}
+
+    ${_whatChangedHtml}
 
     ${_scoutDriftCard()}
 
     <section class="scout-next-card">
       <div class="scout-next-top">
         <span class="scout-kicker">Next Move</span>
-        ${_scoutAlignmentBadge(nextMove?.alignment)}
+        ${_briefGated ? '' : _scoutAlignmentBadge(nextMove?.alignment)}
       </div>
-      <h2>${_esc(nextMove?.action || 'Ask Alex what to do next')}</h2>
-      ${targetMeta ? `<p class="scout-next-target">${_esc(targetMeta)}</p>` : ''}
-      <div class="scout-next-brief">
+      <h2>${_esc(_briefGated ? 'Ask Alex what to do next' : (nextMove?.action || 'Ask Alex what to do next'))}</h2>
+      ${(!_briefGated && targetMeta) ? `<p class="scout-next-target">${_esc(targetMeta)}</p>` : ''}
+      ${_briefGated ? '' : `<div class="scout-next-brief">
         ${nextRows.map(row => `<div><span>${_esc(row.label)}</span><strong>${_esc(row.value)}</strong></div>`).join('')}
-      </div>
-      <div class="scout-next-meta">
+      </div>`}
+      ${_briefGated ? '' : `<div class="scout-next-meta">
         <span>${_esc(_scoutConfidenceLabel(nextMove?.confidence))}</span>
         <span>${_esc(_scoutUrgencyLabel(nextMove?.urgency))}</span>
-      </div>
-      ${_scoutRenderRecommendationContract(nextMoveContract)}
+      </div>`}
+      ${_briefGated ? '' : _scoutRenderRecommendationContract(nextMoveContract)}
       <div class="scout-brief-actions">
-        <button class="scout-primary-btn" onclick="${_scoutNextMoveAction(nextMove)}">${_esc(_scoutNextMoveButtonLabel(nextMove))}</button>
-        <button class="scout-secondary-btn" onclick="${_scoutFillAction(`Explain this recommendation: ${nextMove?.action || 'what should I do next?'}`)}">See Why</button>
+        <button class="scout-primary-btn" onclick="${_briefGated ? _scoutFillAction('What should I focus on next?') : _scoutNextMoveAction(nextMove)}">${_esc(_briefGated ? 'Ask Alex' : _scoutNextMoveButtonLabel(nextMove))}</button>
+        ${_briefGated ? '' : `<button class="scout-secondary-btn" onclick="${_scoutFillAction(`Explain this recommendation: ${nextMove?.action || 'what should I do next?'}`)}">See Why</button>`}
       </div>
     </section>
 
-    ${_scoutRenderPriorities(priorities)}
-    ${_scoutRenderOpportunities(opportunities)}
-    ${_scoutRenderFieldIntel(fieldIntel)}
+    ${_scoutRenderPriorities(priorities, _briefGated)}
+    ${_scoutRenderOpportunities(opportunities, _briefGated)}
+    ${_scoutRenderFieldIntel(fieldIntel, _briefGated)}
   </div>`;
 }
 window.renderWarRoomBrief = renderWarRoomBrief;
@@ -1376,14 +1567,382 @@ function _strategyOptions(options, selected) {
   return options.map(([value, label]) => `<option value="${_esc(value)}" ${String(selected) === String(value) ? 'selected' : ''}>${_esc(label)}</option>`).join('');
 }
 
+// ── GM Strategy editor — full parity with War Room ────────────────────────────
+// A preset-first configuration surface, not a tool: Rebuild / Compete / Win Now
+// presets auto-bundle every downstream variable (via the shared window.WR.GmMode
+// engine), plus an always-on Trade Acceptance Floor, Free-Agency filters,
+// priorities (target/sell positions, sell rules, untouchables roster picker) and
+// — in Custom mode — the individual aggression/draft/market/timeline
+// controls. Writes CANONICAL values (rebuild/compete/win_now, 1_year/2_3_years/
+// dynasty_long, …) so every Scout + War Room consumer reads them, and mirrors
+// War Room's wr:gm-mode-changed broadcast so engines live-refresh.
+
+const STRAT_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'LB', 'DB', 'PICKS'];
+const STRAT_FA_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DL', 'LB', 'DB'];
+const STRAT_MODES = [
+  { value: 'rebuild', label: 'Rebuild', desc: 'Youth, picks, and patience.', color: '#3498db' },
+  { value: 'compete', label: 'Compete', desc: 'Build long-term while staying competitive.', color: 'var(--accent)' },
+  { value: 'win_now', label: 'Win Now', desc: 'Spend it all to win this year.', color: '#e74c3c' },
+  { value: 'custom', label: 'Custom', desc: 'Hand-tune every variable below.', color: '#7c6bf8' },
+];
+const STRAT_AGGRESSION = [
+  { value: 'conservative', label: 'Conservative', desc: 'Wait for value, never overpay.' },
+  { value: 'medium', label: 'Medium', desc: 'Calculated moves, balanced risk.' },
+  { value: 'aggressive', label: 'Aggressive', desc: 'Make the big swing, force the deal.' },
+];
+const STRAT_DRAFT_STYLES = [
+  { value: 'accumulate', label: 'Accumulate', desc: 'Stack picks, build depth.' },
+  { value: 'consolidate', label: 'Consolidate', desc: 'Package depth into elite talent.' },
+  { value: 'positional_need', label: 'Positional Need', desc: 'Fill the weakest spots first.' },
+  { value: 'bpa', label: 'BPA', desc: 'Best player available, always.' },
+];
+const STRAT_MARKET = [
+  { value: 'buy_low', label: 'Buy Low', desc: 'Target undervalued assets and injured players.' },
+  { value: 'sell_high', label: 'Sell High', desc: 'Move players at peak value before decline.' },
+  { value: 'hold', label: 'Hold', desc: 'Patient, only trade from a position of strength.' },
+  { value: 'exploit', label: 'Exploit', desc: 'Attack league-wide market inefficiencies.' },
+];
+const STRAT_TIMELINES = [
+  { value: '1_year', label: '1 Year', desc: 'All chips on this season.' },
+  { value: '2_3_years', label: '2–3 Years', desc: 'Medium-term contention window.' },
+  { value: 'dynasty_long', label: 'Dynasty Long', desc: 'Build a program, not just a season.' },
+];
+const STRAT_TL_MAP = { '1yr': '1_year', '1_year': '1_year', '2yr': '2_3_years', '2-3yr': '2_3_years', '2_3_years': '2_3_years', 'dynasty_long': 'dynasty_long' };
+
+let _stratDraft = null;
+let _stratUntouchSearch = '';
+let _stratSellRuleDraft = '';
+
+function _stratAcceptanceFloorFor(aggression, mode) {
+  const fn = window.WR?.GmMode?.acceptanceFloorFor;
+  return typeof fn === 'function' ? fn(aggression, mode) : 75;
+}
+function _stratClampFloor(v, fallback) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(55, Math.min(90, Math.round(n))) : fallback;
+}
+function _stratNormPos(pos) {
+  if (!pos) return '';
+  if (String(pos).trim().toUpperCase() === 'PICKS') return 'PICKS';
+  return window.App?.normPos?.(pos) || String(pos).trim().toUpperCase();
+}
+function _stratNormPosList(list) {
+  return Array.from(new Set((list || []).map(_stratNormPos).filter(Boolean)));
+}
+function _stratNormFa(f) {
+  return {
+    minDhq: Number(f?.minDhq) || 0,
+    maxAge: Number(f?.maxAge) || 0,
+    requirePrimeYears: !!f?.requirePrimeYears,
+    excludePositions: _stratNormPosList(f?.excludePositions),
+  };
+}
+function _stratCanonTimeline(tl) {
+  if (!tl) return '2_3_years';
+  return STRAT_TL_MAP[String(tl).trim().toLowerCase()] || tl;
+}
+function _stratTimelineLabel(v) {
+  return (STRAT_TIMELINES.find(t => t.value === v) || {}).label || v || '';
+}
+// Seed a fresh editable draft from the saved (already normalized) strategy,
+// mirroring War Room's normalizeDraft: canonical mode, aggression-derived floor
+// when unset, canonical timeline, deduped positions, singular `untouchable`.
+function _stratNormalizeDraft(saved) {
+  saved = saved || {};
+  const normalize = window.WR?.GmMode?.normalize || ((m) => m || 'compete');
+  const mode = normalize(saved.mode) || 'compete';
+  const aggression = saved.aggression || 'medium';
+  const untouch = (Array.isArray(saved.untouchable) && saved.untouchable.length)
+    ? saved.untouchable
+    : (Array.isArray(saved.untouchables) ? saved.untouchables : []);
+  return {
+    mode,
+    aggression,
+    acceptanceFloor: _stratClampFloor(saved.acceptanceFloor, _stratAcceptanceFloorFor(aggression, mode)),
+    draftStyle: saved.draftStyle || 'bpa',
+    marketPosture: saved.marketPosture || 'hold',
+    timeline: _stratCanonTimeline(saved.timeline),
+    targetPositions: _stratNormPosList(saved.targetPositions),
+    sellPositions: _stratNormPosList(saved.sellPositions),
+    sellRules: Array.isArray(saved.sellRules) ? saved.sellRules.slice() : [],
+    untouchable: untouch.map(String),
+    faFilters: _stratNormFa(saved.faFilters),
+  };
+}
+// Advisory "recommended mode" from the user's own team assessment (never auto-
+// applies). Maps Scout's health-tier enum to a franchise direction.
+function _stratRecommendedMode() {
+  try {
+    const S = window.S || {};
+    const rid = S.myRosterId;
+    const a = (rid != null && typeof window.assessTeamFromGlobal === 'function') ? window.assessTeamFromGlobal(rid) : null;
+    if (!a) return null;
+    const tier = String(a.tier || '').toUpperCase();
+    const health = Number(a.healthScore) || 0;
+    let mode;
+    if (tier.includes('REBUILD') || (health && health < 70)) mode = 'rebuild';
+    else if (tier.includes('ELITE') || tier.includes('CONTEND') || health >= 82) mode = 'win_now';
+    else mode = 'compete';
+    return { mode, tierLabel: a.tier ? String(a.tier) : null, health };
+  } catch (_) { return null; }
+}
+// Resolve my roster's players → {id, name, pos} for the untouchables picker.
+function _stratRosterPlayers() {
+  const S = window.S || {};
+  const my = (typeof window.myR === 'function')
+    ? window.myR()
+    : ((S.rosters || []).find(r => String(r.roster_id) === String(S.myRosterId)) || null);
+  const pids = my?.players || [];
+  if (!pids.length) return [];
+  return pids.filter(pid => pid && pid !== '0').map(pid => {
+    const pd = (S.players || {})[pid] || {};
+    const name = (typeof window.pName === 'function' ? window.pName(pid) : null) || pd.full_name || pd.name || String(pid);
+    const rawPos = pd.position || (typeof window.pPos === 'function' ? window.pPos(pid) : '') || '?';
+    return { id: String(pid), name, pos: _scoutPosLabel(_stratNormPos(rawPos)) };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function _stratSection(title, sub, inner) {
+  return `<section class="strat-section">
+    <div class="strat-section-head">${_esc(title)}</div>
+    ${sub ? `<div class="strat-section-sub">${_esc(sub)}</div>` : ''}
+    ${inner}
+  </section>`;
+}
+function _stratOptCards(opts, activeVal, onclickFor) {
+  return `<div class="strat-opt-grid">` + opts.map(o =>
+    `<button type="button" class="strat-opt-card${activeVal === o.value ? ' active' : ''}" onclick="${onclickFor(o.value)}"><strong>${_esc(o.label)}</strong><small>${_esc(o.desc)}</small></button>`
+  ).join('') + `</div>`;
+}
+function _stratModeCardsHtml(rec) {
+  return `<div class="strat-opt-grid strat-mode-grid">` + STRAT_MODES.map(m => {
+    const active = _stratDraft.mode === m.value;
+    const isRec = rec && rec.mode === m.value;
+    const onclick = m.value === 'custom' ? `_stratSet('mode','custom')` : `_stratApplyPreset('${m.value}')`;
+    return `<button type="button" class="strat-opt-card strat-mode-card${active ? ' active' : ''}" style="--mc:${m.color}" onclick="${onclick}">
+      <span class="strat-mode-dot" aria-hidden="true"></span>
+      <div class="strat-mode-top"><strong>${_esc(m.label)}</strong>${isRec ? `<em class="strat-rec-pill" title="Based on your roster">★ Rec</em>` : ''}</div>
+      <small>${_esc(m.desc)}</small>
+    </button>`;
+  }).join('') + `</div>`;
+}
+function _stratPosMulti(selectedArr, key, options) {
+  return `<div class="strat-pill-row">` + options.map(pos => {
+    const active = (selectedArr || []).includes(pos);
+    return `<button type="button" class="strat-pill${active ? ' active' : ''}" onclick="_stratToggleArr('${key}','${pos}')">${_esc(_scoutPosLabel(pos))}</button>`;
+  }).join('') + `</div>`;
+}
+function _stratFaExcludeHtml() {
+  const sel = (_stratDraft.faFilters?.excludePositions) || [];
+  return `<div class="strat-pill-row">` + STRAT_FA_POSITIONS.map(pos =>
+    `<button type="button" class="strat-pill${sel.includes(pos) ? ' active' : ''}" onclick="_stratToggleFaPos('${pos}')">${_esc(_scoutPosLabel(pos))}</button>`
+  ).join('') + `</div>`;
+}
+function _stratUntouchResultsHtml() {
+  const players = _stratRosterPlayers();
+  const q = (_stratUntouchSearch || '').trim().toLowerCase();
+  const chosen = (_stratDraft?.untouchable || []).map(String);
+  let filtered = players.filter(p => !chosen.includes(p.id));
+  if (q) filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.pos.toLowerCase().includes(q));
+  filtered = filtered.slice(0, 12);
+  if (!filtered.length) return q ? `<div class="strat-empty">No match on your roster.</div>` : '';
+  return filtered.map(p =>
+    `<button type="button" class="strat-untouch-row" onclick="_stratAddUntouchable('${_scoutAttr(p.id)}')"><i>${_esc(p.pos)}</i>${_esc(p.name)}</button>`
+  ).join('');
+}
+function _stratRenderBody() {
+  const body = document.getElementById('strategy-editor-body');
+  if (!body || !_stratDraft) return;
+  const card = document.getElementById('strategy-editor-card');
+  const scroll = card ? card.scrollTop : 0;
+  const d = _stratDraft;
+  const isCustom = d.mode === 'custom';
+  const rec = _stratRecommendedMode();
+  const rosterPlayers = _stratRosterPlayers();
+  const currentMode = STRAT_MODES.find(m => m.value === d.mode);
+  const fa = d.faFilters || {};
+  const parts = [];
+
+  // ── Mode (preset-first) ──
+  parts.push(_stratSection('Mode',
+    (currentMode?.desc || '') + (isCustom ? '' : ' Preset bundles every downstream setting — pick Custom to tune individually.'),
+    _stratModeCardsHtml(rec)
+    + (rec ? `<div class="strat-rec-line"><strong>★ Recommended:</strong> ${_esc(STRAT_MODES.find(m => m.value === rec.mode)?.label || '')}${rec.tierLabel ? ` — your team grades ${_esc(String(rec.tierLabel))}` : ''}. You can still pick any direction.</div>` : '')
+    + (!isCustom ? `<div class="strat-preset-applied"><strong>Preset applied:</strong> aggression <em>${_esc(d.aggression)}</em> · draft <em>${_esc(d.draftStyle)}</em> · market <em>${_esc(d.marketPosture)}</em> · timeline <em>${_esc(_stratTimelineLabel(d.timeline))}</em></div>` : '')
+  ));
+
+  // ── Trade Acceptance Floor (always visible) ──
+  parts.push(_stratSection('Trade Acceptance Floor',
+    'The minimum acceptance an offer must clear to read as Playable. Lower = chase long-shots; higher = only safe, fair offers. Seeded by your aggression.',
+    `<div class="strat-floor-row">
+      <div class="strat-floor-val" id="strat-floor-val">${d.acceptanceFloor}%</div>
+      <div class="strat-floor-slider">
+        <input type="range" min="55" max="90" step="1" value="${d.acceptanceFloor}" oninput="_stratSetFloor(this.value)" onchange="_stratRenderBody()" aria-label="Trade acceptance floor">
+        <div class="strat-floor-scale"><span>55% · long-shots</span><span>safe only · 90%</span></div>
+      </div>
+    </div>
+    <div class="strat-sub">Quick set</div>
+    <div class="strat-pill-row">
+      ${[[82, 'Conservative · 82%'], [75, 'Balanced · 75%'], [58, 'Aggressive · 58%']].map(([v, l]) => `<button type="button" class="strat-pill${d.acceptanceFloor === v ? ' active' : ''}" onclick="_stratQuickFloor(${v})">${_esc(l)}</button>`).join('')}
+    </div>`
+  ));
+
+  // ── Aggression (Custom only) ──
+  if (isCustom) {
+    const aggDesc = STRAT_AGGRESSION.find(a => a.value === d.aggression)?.desc || '';
+    parts.push(_stratSection('Aggression', aggDesc + ' Also re-seeds the acceptance floor above.',
+      `<div class="strat-pill-row full">` + STRAT_AGGRESSION.map(a => `<button type="button" class="strat-pill${d.aggression === a.value ? ' active' : ''}" onclick="_stratSetAggression('${a.value}')">${_esc(a.label)}</button>`).join('') + `</div>`
+    ));
+  }
+
+  // ── Free-Agency Filters ──
+  parts.push(_stratSection('Free-Agency Filters',
+    'Tune who shows up in your waiver / FA recommendations. The market explorer still shows everyone.',
+    `<div class="strat-sub">Minimum DHQ — hide anyone below</div>
+     <div class="strat-pill-row">${[[0, 'Off'], [500, '500'], [1000, '1,000'], [2000, '2,000'], [4000, '4,000']].map(([v, l]) => `<button type="button" class="strat-pill${(fa.minDhq || 0) === v ? ' active' : ''}" onclick="_stratSetFa('minDhq',${v})">${_esc(l)}</button>`).join('')}</div>
+     <div class="strat-sub">Max age — hide older than</div>
+     <div class="strat-pill-row">${[[0, 'Any'], [24, '≤24'], [27, '≤27'], [30, '≤30']].map(([v, l]) => `<button type="button" class="strat-pill${(fa.maxAge || 0) === v ? ' active' : ''}" onclick="_stratSetFa('maxAge',${v})">${_esc(l)}</button>`).join('')}</div>
+     <div class="strat-sub">Prime window</div>
+     <div class="strat-pill-row full">
+       <button type="button" class="strat-pill${!fa.requirePrimeYears ? ' active' : ''}" onclick="_stratSetFa('requirePrimeYears',false)">Any window</button>
+       <button type="button" class="strat-pill${fa.requirePrimeYears ? ' active' : ''}" onclick="_stratSetFa('requirePrimeYears',true)">Prime years only</button>
+     </div>
+     <div class="strat-sub">Exclude positions — never recommend</div>
+     ${_stratFaExcludeHtml()}`
+  ));
+
+  // ── Priorities ──
+  const sellRuleChips = (d.sellRules || []).length
+    ? (d.sellRules || []).map((rule, i) => {
+        const t = typeof rule === 'string' ? rule : (rule.note || [rule.pos, rule.ageAbove ? ('age ' + rule.ageAbove + '+') : ''].filter(Boolean).join(' '));
+        return `<span class="strat-chip">${_esc(t)}<button type="button" class="strat-chip-x" onclick="_stratRemoveSellRule(${i})" aria-label="Remove">×</button></span>`;
+      }).join('')
+    : `<span class="strat-empty">No rules set</span>`;
+  const untouchChips = (d.untouchable || []).length
+    ? (d.untouchable || []).map((id, i) => {
+        const p = rosterPlayers.find(r => r.id === String(id));
+        const name = p ? p.name : String(id);
+        return `<span class="strat-chip strat-chip-lock">🛡 ${_esc(name)}<button type="button" class="strat-chip-x" onclick="_stratRemoveUntouchable(${i})" aria-label="Remove">×</button></span>`;
+      }).join('')
+    : `<span class="strat-empty">No untouchables set</span>`;
+  parts.push(_stratSection('Priorities', '',
+    `<div class="strat-sub">Target positions</div>
+     ${_stratPosMulti(d.targetPositions, 'targetPositions', STRAT_POSITIONS)}
+     <div class="strat-sub">Sell positions</div>
+     ${_stratPosMulti(d.sellPositions, 'sellPositions', STRAT_POSITIONS)}
+     <div class="strat-sub">Sell rules</div>
+     <div class="strat-chip-row">${sellRuleChips}</div>
+     <div class="strat-add-row">
+       <input type="text" id="strat-sellrule-input" class="strat-input" placeholder='e.g. "Sell RB age 27+"' value="${_scoutAttr(_stratSellRuleDraft)}" oninput="_stratSellRuleInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();_stratAddSellRule();}">
+       <button type="button" class="strat-add-btn" onclick="_stratAddSellRule()">Add</button>
+     </div>
+     <div class="strat-sub">Untouchables</div>
+     <div class="strat-chip-row">${untouchChips}</div>
+     ${rosterPlayers.length
+        ? `<input type="text" id="strat-untouch-input" class="strat-input" placeholder="Search your roster…" value="${_scoutAttr(_stratUntouchSearch)}" oninput="_stratUntouchInput(this.value)">
+     <div class="strat-untouch-results" id="strat-untouch-results">${_stratUntouchResultsHtml()}</div>`
+        : `<div class="strat-empty">Connect your league to protect specific players.</div>`}`
+  ));
+
+  // ── Custom-only advanced ──
+  if (isCustom) {
+    parts.push(_stratSection('Draft Style', '', _stratOptCards(STRAT_DRAFT_STYLES, d.draftStyle, v => `_stratSet('draftStyle','${v}')`)));
+    parts.push(_stratSection('Market Posture', '', _stratOptCards(STRAT_MARKET, d.marketPosture, v => `_stratSet('marketPosture','${v}')`)));
+    parts.push(_stratSection('Timeline', '',
+      `<div class="strat-pill-row full">${STRAT_TIMELINES.map(t => `<button type="button" class="strat-pill${d.timeline === t.value ? ' active' : ''}" onclick="_stratSet('timeline','${t.value}')">${_esc(t.label)}</button>`).join('')}</div>
+       <div class="strat-section-sub" style="margin-top:6px">${_esc(STRAT_TIMELINES.find(t => t.value === d.timeline)?.desc || '')}</div>`
+    ));
+  }
+
+  body.innerHTML = parts.join('');
+  if (card) card.scrollTop = scroll;
+}
+
+// ── State mutators (all window-exported for inline handlers) ──────────────────
+function _stratSet(key, val) { if (!_stratDraft) return; _stratDraft[key] = val; _stratRenderBody(); }
+function _stratApplyPreset(modeId) {
+  if (!_stratDraft) return;
+  const preset = window.WR?.GmMode?.getPreset?.(modeId);
+  const cfg = (preset && preset.config) || {};
+  _stratDraft = {
+    ..._stratDraft,
+    ...cfg,
+    mode: modeId,
+    acceptanceFloor: _stratAcceptanceFloorFor(cfg.aggression || _stratDraft.aggression, modeId),
+  };
+  _stratDraft.timeline = _stratCanonTimeline(_stratDraft.timeline);
+  _stratDraft.targetPositions = _stratNormPosList(_stratDraft.targetPositions);
+  _stratDraft.sellPositions = _stratNormPosList(_stratDraft.sellPositions);
+  // Preset configs may still carry legacy alexPersonality — the persona system
+  // is retired, so strip it from the draft (never surfaced, never saved).
+  delete _stratDraft.alexPersonality;
+  _stratRenderBody();
+}
+function _stratSetAggression(v) {
+  if (!_stratDraft) return;
+  _stratDraft.aggression = v;
+  _stratDraft.acceptanceFloor = _stratAcceptanceFloorFor(v, _stratDraft.mode);
+  _stratRenderBody();
+}
+function _stratSetFloor(v) {
+  if (!_stratDraft) return;
+  _stratDraft.acceptanceFloor = _stratClampFloor(v, 75);
+  const lbl = document.getElementById('strat-floor-val');
+  if (lbl) lbl.textContent = _stratDraft.acceptanceFloor + '%';
+}
+function _stratQuickFloor(v) { if (!_stratDraft) return; _stratDraft.acceptanceFloor = _stratClampFloor(v, 75); _stratRenderBody(); }
+function _stratToggleArr(key, val) {
+  if (!_stratDraft) return;
+  const arr = _stratDraft[key] || [];
+  _stratDraft[key] = arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
+  _stratRenderBody();
+}
+function _stratSetFa(key, val) { if (!_stratDraft) return; _stratDraft.faFilters = { ..._stratDraft.faFilters, [key]: val }; _stratRenderBody(); }
+function _stratToggleFaPos(pos) {
+  if (!_stratDraft) return;
+  const cur = (_stratDraft.faFilters?.excludePositions) || [];
+  const next = cur.includes(pos) ? cur.filter(x => x !== pos) : [...cur, pos];
+  _stratDraft.faFilters = { ..._stratDraft.faFilters, excludePositions: next };
+  _stratRenderBody();
+}
+function _stratSellRuleInput(v) { _stratSellRuleDraft = v; }
+function _stratAddSellRule() {
+  if (!_stratDraft) return;
+  const inp = document.getElementById('strat-sellrule-input');
+  const v = String(inp?.value || _stratSellRuleDraft || '').trim();
+  if (!v) return;
+  _stratDraft.sellRules = [...(_stratDraft.sellRules || []), v];
+  _stratSellRuleDraft = '';
+  _stratRenderBody();
+}
+function _stratRemoveSellRule(i) { if (!_stratDraft) return; _stratDraft.sellRules = (_stratDraft.sellRules || []).filter((_, j) => j !== i); _stratRenderBody(); }
+function _stratUntouchInput(val) {
+  _stratUntouchSearch = val;
+  const box = document.getElementById('strat-untouch-results');
+  if (box) box.innerHTML = _stratUntouchResultsHtml();
+}
+function _stratAddUntouchable(id) {
+  if (!_stratDraft) return;
+  id = String(id);
+  if (!(_stratDraft.untouchable || []).map(String).includes(id)) {
+    _stratDraft.untouchable = [...(_stratDraft.untouchable || []), id];
+  }
+  _stratUntouchSearch = '';
+  _stratRenderBody();
+}
+function _stratRemoveUntouchable(i) { if (!_stratDraft) return; _stratDraft.untouchable = (_stratDraft.untouchable || []).filter((_, j) => j !== i); _stratRenderBody(); }
+
 function openStrategyEditor() {
   const existing = document.getElementById('strategy-editor-modal');
   if (existing) existing.remove();
-  const strategy = _scoutStrategy();
+  _stratDraft = _stratNormalizeDraft(_scoutStrategy() || {});
+  _stratUntouchSearch = '';
+  _stratSellRuleDraft = '';
   const el = document.createElement('div');
   el.id = 'strategy-editor-modal';
   el.className = 'strategy-editor-overlay';
-  el.innerHTML = `<div class="strategy-editor-card">
+  el.innerHTML = `<div class="strategy-editor-card" id="strategy-editor-card">
     <div class="strategy-editor-head">
       <div>
         <span class="scout-kicker">GM Strategy</span>
@@ -1391,63 +1950,15 @@ function openStrategyEditor() {
       </div>
       <button class="strategy-editor-close" onclick="_closeStrategyEditor()" aria-label="Close">×</button>
     </div>
-
-    <div class="strategy-editor-grid">
-      <label><span>Mode</span><select id="strategy-mode">
-        ${_strategyOptions([
-          ['rebuild', 'Rebuild'],
-          ['balanced_rebuild', 'Balanced Rebuild'],
-          ['retool', 'Retool'],
-          ['win_now', 'Win Now'],
-        ], strategy.mode || 'balanced_rebuild')}
-      </select></label>
-      <label><span>Timeline</span><select id="strategy-timeline">
-        ${_strategyOptions([
-          ['1yr', '1 year'],
-          ['2-3yr', '2-3 years'],
-          ['dynasty_long', 'Dynasty long'],
-        ], strategy.timeline || '2-3yr')}
-      </select></label>
-      <label><span>Alex</span><select id="strategy-alex">
-        ${_strategyOptions([
-          ['aggressive', 'Aggressive'],
-          ['value_hunter', 'Value Hunter'],
-          ['balanced', 'Balanced'],
-        ], strategy.alexPersonality || 'balanced')}
-      </select></label>
-      <label><span>Aggression</span><select id="strategy-aggression">
-        ${_strategyOptions([
-          ['conservative', 'Conservative'],
-          ['medium', 'Medium'],
-          ['aggressive', 'Aggressive'],
-        ], strategy.aggression || 'medium')}
-      </select></label>
-      <label><span>Target positions</span><input id="strategy-targets" type="text" value="${_esc((strategy.targetPositions || []).map(_scoutPosLabel).join(', '))}" placeholder="WR, D/ST, PICKS"/></label>
-      <label><span>Sell positions</span><input id="strategy-sells" type="text" value="${_esc((strategy.sellPositions || []).map(_scoutPosLabel).join(', '))}" placeholder="RB"/></label>
-      <label><span>Draft style</span><select id="strategy-draft-style">
-        ${_strategyOptions([
-          ['accumulate', 'Accumulate'],
-          ['consolidate', 'Consolidate'],
-          ['positional_need', 'Positional Need'],
-          ['bpa', 'Best Player Available'],
-        ], strategy.draftStyle || 'bpa')}
-      </select></label>
-      <label><span>Market posture</span><select id="strategy-market">
-        ${_strategyOptions([
-          ['buy_low', 'Buy Low'],
-          ['sell_high', 'Sell High'],
-          ['hold', 'Hold'],
-          ['exploit', 'Exploit'],
-        ], strategy.marketPosture || 'hold')}
-      </select></label>
-    </div>
-
+    <div id="strategy-editor-body"></div>
     <div class="strategy-editor-actions">
       <button class="scout-secondary-btn" onclick="_closeStrategyEditor()">Cancel</button>
       <button class="scout-primary-btn" onclick="_saveScoutStrategyEditor()">Save Strategy</button>
     </div>
   </div>`;
+  el.addEventListener('click', (e) => { if (e.target === el) _closeStrategyEditor(); });
   document.body.appendChild(el);
+  _stratRenderBody();
   requestAnimationFrame(() => el.classList.add('open'));
 }
 window.openStrategyEditor = openStrategyEditor;
@@ -1460,35 +1971,53 @@ function _closeStrategyEditor() {
 }
 window._closeStrategyEditor = _closeStrategyEditor;
 
-function _strategyCsv(id) {
-  const el = document.getElementById(id);
-  return String(el?.value || '')
-    .split(',')
-    .map(s => window.App?.normPos?.(s) || s.trim().toUpperCase())
-    .filter(Boolean);
-}
-
 function _saveScoutStrategyEditor() {
+  if (!_stratDraft) { _closeStrategyEditor(); return; }
+  const d = _stratDraft;
+  // Partial update — only the fields this editor exposes. saveStrategy merges over
+  // the current strategy, so untouched fields (targetList/blockList/notes…) survive.
   const updates = {
-    mode: document.getElementById('strategy-mode')?.value || 'balanced_rebuild',
-    timeline: document.getElementById('strategy-timeline')?.value || '2-3yr',
-    alexPersonality: document.getElementById('strategy-alex')?.value || 'balanced',
-    aggression: document.getElementById('strategy-aggression')?.value || 'medium',
-    targetPositions: _strategyCsv('strategy-targets'),
-    sellPositions: _strategyCsv('strategy-sells'),
-    draftStyle: document.getElementById('strategy-draft-style')?.value || 'bpa',
-    marketPosture: document.getElementById('strategy-market')?.value || 'hold',
-    lastSyncedFrom: 'warroom',
+    mode: d.mode,
+    aggression: d.aggression,
+    acceptanceFloor: _stratClampFloor(d.acceptanceFloor, 75),
+    draftStyle: d.draftStyle,
+    marketPosture: d.marketPosture,
+    timeline: d.timeline,
+    // alexPersonality intentionally NOT written — the persona system is retired
+    // (one canonical Alex voice, owner ruling 2026-07-08). saveStrategy merges
+    // over the current strategy, so any legacy stored/synced value passes
+    // through untouched; the schema field stays parsed-but-unused.
+    targetPositions: _stratNormPosList(d.targetPositions),
+    sellPositions: _stratNormPosList(d.sellPositions),
+    sellRules: (d.sellRules || []).slice(),
+    untouchable: (d.untouchable || []).map(String),
+    faFilters: _stratNormFa(d.faFilters),
+    lastSyncedFrom: 'scout',
   };
-  if (window.GMStrategy?.saveStrategy) window.GMStrategy.saveStrategy(updates);
+  try {
+    if (window.GMStrategy?.saveStrategy) window.GMStrategy.saveStrategy(updates);
+    // Mirror War Room's live-refresh contract so shared gm-mode consumers
+    // (useGmEffects, trade-finder floor, FA filters) re-read immediately.
+    window.dispatchEvent(new CustomEvent('wr:gm-mode-changed', { detail: { mode: updates.mode, strategy: updates } }));
+  } catch (e) {
+    console.error('Scout strategy save failed', e);
+  }
+  _stratDraft = null;
   _closeStrategyEditor();
-  renderWarRoomBrief();
-  renderCtxChips(window._activeTab || 'digest');
-  if (typeof _renderGMBarAlexBlock === 'function') _renderGMBarAlexBlock();
-  if (typeof updateSettingsStatus === 'function') updateSettingsStatus();
+  try { if (typeof renderWarRoomBrief === 'function') renderWarRoomBrief(); } catch (_) {}
+  try { renderCtxChips(window._activeTab || 'digest'); } catch (_) {}
+  try { if (typeof _renderGMBarAlexBlock === 'function') _renderGMBarAlexBlock(); } catch (_) {}
+  try { if (typeof updateSettingsStatus === 'function') updateSettingsStatus(); } catch (_) {}
   if (typeof window.showToast === 'function') window.showToast('Strategy saved.');
 }
 window._saveScoutStrategyEditor = _saveScoutStrategyEditor;
+
+// Inline on* handlers resolve against the global scope — export every mutator.
+Object.assign(window, {
+  _stratSet, _stratApplyPreset, _stratSetAggression, _stratSetFloor, _stratQuickFloor,
+  _stratToggleArr, _stratSetFa, _stratToggleFaPos, _stratAddSellRule, _stratRemoveSellRule,
+  _stratSellRuleInput, _stratUntouchInput, _stratAddUntouchable, _stratRemoveUntouchable, _stratRenderBody,
+});
 
 function renderTeamCommandPanel() {
   const host = document.getElementById('panel-team-content');
@@ -1514,7 +2043,6 @@ function renderTeamCommandPanel() {
   const pickValueTotal = picks.reduce((sum, pk) => sum + (pk.value || 0), 0);
   const faab = _scoutFaab(roster);
   const needs = (assessment?.needs || []).map(n => typeof n === 'string' ? n : n.pos).filter(Boolean);
-  const strengths = assessment?.strengths || [];
   const rooms = _scoutRosterRooms(roster, assessment);
   const topRooms = rooms.slice().sort((a, b) => hasValueData ? ((b.value || 0) - (a.value || 0)) : ((b.count || 0) - (a.count || 0))).slice(0, 3).map(r => r.pos).join(', ') || '—';
   const weakRooms = needs.slice(0, 3).join(', ') || rooms.filter(r => r.status === 'thin' || r.status === 'deficit').slice(0, 3).map(r => r.pos).join(', ') || 'none';
@@ -1524,27 +2052,13 @@ function renderTeamCommandPanel() {
   const fallbackHealth = maxValue > 0 ? Math.max(10, Math.round((totalValue / maxValue) * 100)) : null;
   const rawHealth = Number(assessment?.healthScore || 0);
   const health = rawHealth > 0 ? Math.round(rawHealth) : (fallbackHealth ?? '—');
+  // Light depth gate: free sees the generic tier; paid sees the strategic window timeline.
+  const _teamGated = typeof canAccess === 'function' && !canAccess(window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning');
 
-  const actionRows = [
-    {
-      label: weakRooms && weakRooms !== 'none' ? `Fix ${weakRooms}` : 'Stress-test roster',
-      meta: 'Ask Scout to rank the moves that change your title path.',
-      action: `fillGlobalChat('Audit my roster and tell me the 3 highest leverage moves. Weak rooms: ${weakRooms}.')`,
-      cta: 'Ask'
-    },
-    {
-      label: strengths.length ? `Convert ${strengths.slice(0, 2).join(', ')} surplus` : 'Find a trade partner',
-      meta: 'Turn surplus into starters, picks, or future leverage.',
-      action: "mobileTab('trades')",
-      cta: 'Trade'
-    },
-    {
-      label: 'Open full roster board',
-      meta: 'Keep the granular player-by-player view one tap away.',
-      action: "mobileTab('roster')",
-      cta: 'Board'
-    }
-  ];
+  // Inline roster control-bar state (mirrors the shared renderer in ui.js).
+  const _curRosterFilter = typeof window.getRosterFilter === 'function' ? window.getRosterFilter() : 'all';
+  const _curRosterSortLabel = typeof window.rosterSortLabel === 'function' ? window.rosterSortLabel() : 'Value ↓';
+  const _curRosterGroupLabel = typeof window.rosterGroupLabel === 'function' ? window.rosterGroupLabel() : 'Slot';
 
   host.innerHTML = `<div class="scout-command-shell">
     <section class="scout-hero scout-team-hero">
@@ -1559,28 +2073,30 @@ function renderTeamCommandPanel() {
           <small>Health</small>
         </div>
       </div>
-      <div class="scout-mini-read">
+      ${_teamGated ? '' : `<div class="scout-mini-read">
         <strong>Scout read:</strong> ${weakRooms && weakRooms !== 'none'
           ? `Your biggest roster pressure is ${_esc(weakRooms)}. ${hasValueData ? 'Best rooms by value' : 'Deepest rooms by count'}: ${_esc(topRooms)}.`
           : `No critical room is flashing red. Use surplus and pick capital to improve your weekly ceiling.`}
-      </div>
+      </div>`}
     </section>
 
-    <section class="scout-metric-grid">
+    <section class="scout-metric-grid scout-metric-strip">
       <div class="scout-metric-card"><span>Roster DHQ</span><strong>${hasValueData ? Math.round(totalValue).toLocaleString() : 'Syncing'}</strong><small>${hasValueData && rank.rank ? `#${rank.rank}/${rank.total} ${rank.basis}` : 'DHQ cache warming up'}</small></div>
       <div class="scout-metric-card"><span>Draft Bank</span><strong>${Math.round(pickValueTotal).toLocaleString()}</strong><small>${picks.length} picks in next 3 years</small></div>
       <div class="scout-metric-card"><span>FAAB</span><strong>${faab.isFAAB ? '$' + faab.remaining : 'Priority'}</strong><small>${faab.isFAAB ? '$' + faab.budget + ' budget' : '#' + (roster.settings?.waiver_position || '?') + ' waiver claim'}</small></div>
-      <div class="scout-metric-card"><span>Window</span><strong>${_esc(assessment?.window || tier)}</strong><small>${needs.length ? `Need ${needs.slice(0, 2).join(', ')}` : 'No major gaps'}</small></div>
+      <div class="scout-metric-card"><span>Window</span><strong>${_esc((_teamGated ? null : assessment?.window) || tier)}</strong><small>${needs.length ? `Need ${needs.slice(0, 2).join(', ')}` : 'No major gaps'}</small></div>
     </section>
 
-    <section class="scout-section-card">
-      <div class="scout-section-head">
-        <div><span class="scout-kicker">Roster Rooms</span><h2>Where your team is built or exposed</h2></div>
-        <button class="scout-secondary-btn" onclick="mobileTab('roster')">Full Board</button>
-      </div>
+    <details class="scout-section-card scout-rooms-card">
+      <summary class="scout-rooms-summary">
+        <div class="scout-rooms-head"><span class="scout-kicker">Roster Rooms</span>
+          <span class="scout-rooms-tags">${_teamGated ? 'Depth by room' : `${hasValueData && topRooms !== '—' ? `<b class="is-strong">Strong</b> ${_esc(topRooms)}` : 'Depth by room'}${weakRooms && weakRooms !== 'none' ? ` · <b class="is-thin">Thin</b> ${_esc(weakRooms)}` : ''}`}</span>
+        </div>
+        <span class="scout-rooms-caret" aria-hidden="true">▾</span>
+      </summary>
       <div class="scout-room-grid">
         ${rooms.map(room => {
-          const tone = _scoutStatusTone(room.status);
+          const tone = _teamGated ? { cls: '', label: '' } : _scoutStatusTone(room.status);
           const top = room.top?.pid ? `${pNameShort(room.top.pid)}${hasValueData ? ' · ' + Math.round(room.top.val).toLocaleString() : ''}` : 'No usable asset';
           const pct = hasValueData ? Math.min(100, Math.round((room.value / totalValue) * 180)) : Math.min(100, Math.max(12, room.count * 18));
           return `<button class="scout-room-card ${tone.cls}" onclick="fillGlobalChat('Audit my ${room.pos} room and tell me who to keep, trade, add, and drop.')">
@@ -1591,20 +2107,25 @@ function renderTeamCommandPanel() {
           </button>`;
         }).join('')}
       </div>
-    </section>
+    </details>
 
-    <section class="scout-section-card">
-      <div class="scout-section-head">
-        <div><span class="scout-kicker">Next Moves</span><h2>Actions that preserve depth</h2></div>
+    <div id="scout-tagged-sets-host"></div>
+
+    <div class="scout-roster-bar">
+      <div class="rfbtn-row" id="team-roster-filters">
+        ${[['all', 'All'], ['OFF', 'Offense'], ['IDP', 'IDP'], ['taxi', 'Taxi']].map(([k, l]) =>
+          `<button class="rfbtn${_curRosterFilter === k ? ' active' : ''}" onclick="setRosterFilter('${k}',this)">${l}</button>`).join('')}
       </div>
-      <div class="scout-action-list">
-        ${actionRows.map(row => `<button class="scout-action-row" onclick="${row.action}">
-          <span><strong>${_esc(row.label)}</strong><small>${_esc(row.meta)}</small></span>
-          <em>${_esc(row.cta)}</em>
-        </button>`).join('')}
-      </div>
-    </section>
+      <button class="rfbtn js-roster-group" onclick="cycleRosterGroup()">Group: ${_esc(_curRosterGroupLabel)}</button>
+      <button class="rfbtn js-roster-sort" onclick="cycleRosterSort()">Sort: ${_esc(_curRosterSortLabel)}</button>
+    </div>
+    <div id="team-roster-host" class="scout-roster-host"></div>
   </div>`;
+
+  // Mount the shared roster-card renderer inline (the roster is the page now).
+  if (typeof window.setRosterHost === 'function') window.setRosterHost('team-roster-host');
+  if (typeof window.buildRosterTable === 'function') window.buildRosterTable();
+  if (typeof window.renderTaggedSets === 'function') window.renderTaggedSets('scout-tagged-sets-host');
 }
 window.renderTeamCommandPanel = renderTeamCommandPanel;
 
@@ -1622,8 +2143,11 @@ function renderToolsPanel() {
     { key: 'waivers', title: 'Waiver Workbench', sub: 'Find add/drop upgrades, bid ranges, fresh drops, and market pressure.', metric: typeof getFAAB === 'function' ? (_scoutFaab(roster)?.isFAAB ? '$' + _scoutFaab(roster).remaining + ' FAAB' : 'Claims') : 'Adds', action: "mobileTab('waivers')" },
     { key: 'draft', title: 'Dynamic Mock Draft', sub: 'Mock by owner tendencies, history, pick values, and trade-up/down paths.', metric: 'Mock room', action: "openDynamicMockDraft()" },
     { key: 'board', title: 'Rookie Big Board', sub: 'Manage tiers, flags, needs, and rookie targets for draft day.', metric: 'Board', action: "openRookieBigBoard()" },
-    { key: 'lineup', title: 'Start/Sit Lab', sub: 'Weekly lineup decisions with projection, role, and risk context.', metric: 'Coming Soon', action: '', soon: true },
-    { key: 'league', title: 'League Intel', sub: 'Owner profiles, tendencies, market leverage, and team dossiers.', metric: `${(S.rosters || []).length || 0} teams`, action: "mobileTab('league')" }
+    { key: 'lineup', title: 'Start/Sit Lab', sub: 'Weekly lineup decisions with projection, role, and risk context.', metric: 'This week', action: "mobileTab('startsit')" },
+    { key: 'league', title: 'League Intel', sub: 'Owner profiles, tendencies, market leverage, and team dossiers.', metric: `${(S.rosters || []).length || 0} teams`, action: "mobileTab('league')" },
+    { key: 'calendar', title: 'League Calendar', sub: 'Draft, trade deadline, playoffs, waivers, and your own custom dates.', metric: 'Key dates', action: "mobileTab('calendar')" },
+    { key: 'history', title: 'League History', sub: 'Champions timeline, all-time standings, and career records.', metric: 'All-time', action: "mobileTab('history')" },
+    { key: 'analytics', title: 'Analytics', sub: 'War Room depth — preset command-center dashboards of league KPIs.', metric: 'Command center', action: "mobileTab('analytics')" }
   ];
 
   host.innerHTML = `<div class="scout-command-shell">
@@ -1659,6 +2183,95 @@ function renderToolsPanel() {
   </div>`;
 }
 window.renderToolsPanel = renderToolsPanel;
+
+// ── AI tab (dedicated Ask-Alex surface) ────────────────────────
+// The 4th bottom-nav tab. Reuses the existing global-chat engine
+// (gm-bar / sendGlobalChat / fillGlobalChat) — this panel is the
+// resting landing: greeting, daily allowance, smart suggestions,
+// and what Alex can do. Tapping a suggestion routes through the
+// same chat pipeline; the conversation itself plays in the GM bar.
+function renderAIPanel() {
+  const host = document.getElementById('panel-ai-content');
+  if (!host) return;
+  const S = window.S || {};
+
+  const tier = (typeof getTier === 'function') ? getTier() : 'free';
+  const isPaidLike = tier === 'paid' || tier === 'trial';
+  const hasKey = !!(S.apiKey) || (typeof hasServerAI === 'function' && hasServerAI());
+  const lim = window.FREE_CHAT_DAILY_LIMIT || 3;
+  const remaining = (typeof getDailyChatRemaining === 'function') ? getDailyChatRemaining() : lim;
+  const unlimited = isPaidLike || hasKey;
+  const allowance = unlimited ? 'Unlimited' : `${remaining}/${lim} today`;
+  const limited = !unlimited && remaining <= 0;
+
+  // Smart suggestions: GM field intel (live, roster-aware) on top of the
+  // canned ai chips so the prompts feel like Scout already read the team.
+  // The field-intel reads are Scout Pro; free gets the canned prompt starters only.
+  const _aiPro = typeof window.isScoutPro !== 'function' || window.isScoutPro();
+  const fi = _aiPro ? (window.GMEngine?.generateFieldIntel?.() || []).slice(0, 2) : [];
+  const fiPrompts = fi.map(s => ({ title: s, prompt: s }));
+  const canned = (TAB_CHIPS.ai || []).map(c => ({ title: c.title, sub: c.sub, prompt: `${c.title}: ${c.sub}` }));
+  const suggestions = [...fiPrompts, ...canned].slice(0, 5);
+
+  const caps = [
+    { t: 'Lineups', d: 'Start/sit calls with projections' },
+    { t: 'Trades', d: 'Packages tuned to owner DNA' },
+    { t: 'Waivers', d: 'Add/drop + bid plans' },
+    { t: 'Scouting', d: 'Player reads and league intel' },
+  ];
+
+  const greeting = S.user ? 'Ask Alex anything about your team.' : 'Connect a league and Alex gets to work.';
+
+  host.innerHTML = `<div class="scout-command-shell">
+    <section class="scout-hero">
+      <div class="scout-hero-row" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div class="scout-kicker">AI GM · Alex</div>
+        <span class="scout-ai-allowance" style="font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:999px;border:1px solid var(--border2);color:${unlimited ? 'var(--accent)' : 'var(--text3)'}">${_esc(allowance)}</span>
+      </div>
+      <h1>${_esc(greeting)}</h1>
+      <p>One advisor across lineups, trades, waivers, and the draft — grounded in your real league.</p>
+      <button class="scout-ai-launcher" onclick="${limited ? `showUpgradePrompt('${(window.FEATURES && FEATURES.UNLIMITED_CHAT) || 'unlimited_chat'}')` : "var i=document.getElementById('global-chat-in');if(i){i.focus();}"}"
+        style="margin-top:12px;width:100%;display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:12px;border:1px solid var(--border2);background:var(--bg2);color:var(--text3);cursor:pointer;text-align:left;font-size:14px">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" stroke-width="1.6"><path d="M12 3l1.7 4.5L18 9.2l-4.3 1.7L12 15l-1.7-4.1L6 9.2l4.3-1.7z"/></svg>
+        ${limited ? 'Daily limit reached — upgrade for unlimited' : 'Message Alex…'}
+      </button>
+    </section>
+
+    <section class="scout-section-card">
+      <div class="scout-section-head">
+        <div><span class="scout-kicker">Suggested</span><h2>Start here</h2></div>
+      </div>
+      <div class="scout-action-list" id="scout-ai-suggest-list">
+        ${suggestions.map(s => `<button class="scout-action-row scout-ai-suggest" data-ask="${_esc(s.prompt)}">
+          <span><strong>${_esc(s.title)}</strong>${s.sub ? `<small>${_esc(s.sub)}</small>` : ''}</span>
+          <em>Ask →</em>
+        </button>`).join('')}
+      </div>
+    </section>
+
+    <section class="scout-section-card">
+      <div class="scout-section-head">
+        <div><span class="scout-kicker">What Alex can do</span><h2>Your whole season, one chat</h2></div>
+      </div>
+      <div class="scout-ai-caps" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${caps.map(c => `<div style="padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
+          <div style="font-weight:700;font-size:13px;color:var(--text)">${_esc(c.t)}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${_esc(c.d)}</div>
+        </div>`).join('')}
+      </div>
+      ${!unlimited ? `<div class="scout-mini-read" style="margin-top:12px"><strong>Free:</strong> ${lim} Alex messages/day on the fast model. <a onclick="showUpgradePrompt('${(window.FEATURES && FEATURES.UNLIMITED_CHAT) || 'unlimited_chat'}')" style="color:var(--accent);cursor:pointer">Upgrade</a> for unlimited on the pro model.</div>` : ''}
+    </section>
+  </div>`;
+
+  // Delegated click for suggestions — avoids attribute-quoting pitfalls with
+  // field-intel prompts that contain quotes/apostrophes.
+  const list = document.getElementById('scout-ai-suggest-list');
+  if (list) list.onclick = (e) => {
+    const btn = e.target.closest('.scout-ai-suggest');
+    if (btn && typeof fillGlobalChat === 'function') fillGlobalChat(btn.dataset.ask || '');
+  };
+}
+window.renderAIPanel = renderAIPanel;
 
 function _scoutStorageJson(key, fallback) {
   try {
@@ -1963,7 +2576,7 @@ function _scoutPortfolioPlayerCommand(allRows, activeNeeds) {
     </div>
     <div class="scout-player-command-read">${_esc(read)}</div>
     <div class="scout-player-command-controls">
-      <input value="${_scoutAttr(state.query)}" placeholder="Search player, team, owner..." oninput="scoutPortfolioPlayerSearch(this.value)">
+      <input id="portfolio-player-search" value="${_scoutAttr(state.query)}" placeholder="Search player, team, owner..." oninput="scoutPortfolioPlayerSearch(this.value)">
       <div class="scout-player-filter-row">
         ${filterOptions.map(([key, label]) => `<button class="${state.filter === key ? 'active' : ''}" onclick="scoutPortfolioPlayerFilter('${key}')">${label}</button>`).join('')}
       </div>
@@ -1994,9 +2607,18 @@ function scoutPortfolioPlayerPos(pos) {
 }
 window.scoutPortfolioPlayerPos = scoutPortfolioPlayerPos;
 
+let _scoutPortfolioSearchTimer = null;
 function scoutPortfolioPlayerSearch(query) {
   _scoutPortfolioPlayersState.query = query || '';
-  renderPortfolioPanel();
+  // Debounce the full-panel re-render so it fires once the user pauses typing
+  // rather than on every keystroke; restore focus + caret afterward since the
+  // render replaces the input element.
+  if (_scoutPortfolioSearchTimer) clearTimeout(_scoutPortfolioSearchTimer);
+  _scoutPortfolioSearchTimer = setTimeout(() => {
+    renderPortfolioPanel();
+    const el = document.getElementById('portfolio-player-search');
+    if (el) { el.focus(); const n = el.value.length; try { el.setSelectionRange(n, n); } catch(e){} }
+  }, 150);
 }
 window.scoutPortfolioPlayerSearch = scoutPortfolioPlayerSearch;
 
@@ -2364,7 +2986,15 @@ const FL_CATEGORY_LABELS = {
 // ── Activity panel helpers ────────────────────────────────────
 
 function _modeLabel(mode) {
-  const labels = { rebuild: 'Rebuild', balanced_rebuild: 'Balanced Rebuild', contend: 'Contend', win_now: 'Win Now' };
+  // Prefer the shared engine's canonical label (single source of truth); fall
+  // back to a legacy-aware map so pre-port stored values still read cleanly.
+  if (mode) {
+    try {
+      const d = window.WR?.GmMode?.describe?.(mode);
+      if (d && d.label) return d.label;
+    } catch (_) { /* fall through */ }
+  }
+  const labels = { rebuild: 'Rebuild', balanced_rebuild: 'Balanced Rebuild', compete: 'Compete', contend: 'Contend', win_now: 'Win Now', custom: 'Custom' };
   return labels[mode] || mode || 'current';
 }
 
@@ -2540,7 +3170,10 @@ function renderFieldLogPanel() {
   }
 
   // ── SECTION 2: GM INSIGHTS ──────────────────────────────
-  const intel = window.GMEngine?.generateFieldIntel ? window.GMEngine.generateFieldIntel() : [];
+  // GM Insights = generateFieldIntel sell/target/aggression reads → Scout Pro only
+  // (same gate as the brief's "Alex's Read"). Free keeps the raw Behavior Profile grid.
+  const _fiGated = typeof canAccess === 'function' && !canAccess(window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning');
+  const intel = (!_fiGated && window.GMEngine?.generateFieldIntel) ? window.GMEngine.generateFieldIntel() : [];
   const tradeFreq = _getTradeFrequency(log);
   const faabStyle = _getFaabStyle(log);
   const posBias   = _getPositionBias(log);
@@ -2559,7 +3192,9 @@ function renderFieldLogPanel() {
             <span class="activity-intel-icon">🧠</span>
             <span class="activity-intel-text">${_esc(obs)}</span>
           </div>`).join('')
-        : `<div style="font-size:13px;color:var(--text3);padding:8px 0">Make some moves and GM Insights will start mapping your patterns.</div>`
+        : _fiGated
+          ? `<button class="activity-intel-item scout-gated-more" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font:inherit" onclick="if(window.showProLaunchPage){showProLaunchPage()}else{showUpgradePrompt('${window.FEATURES?.BRIEFING_REASONING || 'briefing_reasoning'}')}"><span class="activity-intel-icon" aria-hidden="true">🔒</span><span class="activity-intel-text">Unlock GM Insights with Scout Pro — Alex's read on your moves, sell windows, and targets.</span></button>`
+          : `<div style="font-size:13px;color:var(--text3);padding:8px 0">Make some moves and GM Insights will start mapping your patterns.</div>`
       }
     </div>
     <div class="activity-behavior-profile">
@@ -3494,12 +4129,24 @@ function renderLeagueIntelPanel() {
   const rebuilders = rows.filter(r => r.tier === 'REBUILDING' || r.postureKey === 'SELLER').length;
   const marketRead = _leagueIntelMarketRead(rows, me, best);
 
+  // Depth gate: free gets standings + KPIs + your own dossier + one trade-fit
+  // teaser; paid unlocks owner DNA, full market map, leverage, pressure, and
+  // every opponent dossier.
+  const _liGated = typeof canAccess === 'function' && !canAccess(window.FEATURES?.OWNER_DNA || 'owner_dna');
+  const _liKey = window.FEATURES?.OWNER_DNA || 'owner_dna';
+  const _mmSorted = opponents.slice().sort((a, b) => (b.fit || 0) - (a.fit || 0));
+  const _mmShow = _mmSorted.slice(0, _liGated ? 1 : 4);
+  const _mmRows = _mmShow.map(row => _leagueIntelMarketRow(row)).join('') || _leagueIntelEmpty('No trade fits yet.');
+  const _mmMore = (_liGated && _mmSorted.length > 1)
+    ? `<button class="league-intel-market-row scout-gated-more" style="width:100%;cursor:pointer;background:none;border:none;text-align:left;color:var(--accent);font:inherit;display:flex;align-items:center;gap:8px;padding:10px 0" onclick="if(window.showProLaunchPage){showProLaunchPage()}else{showUpgradePrompt('${_liKey}')}"><span aria-hidden="true">🔒</span><span>See all ${_mmSorted.length} trade partners — Pro</span></button>`
+    : '';
+
   host.innerHTML = `<div class="league-intel-hq">
     <section class="league-intel-hero">
       <div>
         <div class="scout-kicker">League Intel</div>
         <h1>Read the room before you make the move.</h1>
-        <p>${_esc(marketRead.body)}</p>
+        <p>${_liGated ? 'Browse the league below — every roster, record, future pick, and FAAB budget in one place. You make the read.' : _esc(marketRead.body)}</p>
       </div>
       <div class="league-intel-hero-actions">
         ${best ? `<button class="scout-primary-btn" onclick="leagueIntelBuildTrade('${_leagueIntelRid(best.rosterId)}')">Build with ${_esc(best.shortName)}</button>` : ''}
@@ -3518,16 +4165,16 @@ function renderLeagueIntelPanel() {
       <div class="league-intel-card">
         <div class="league-intel-card-head"><span>Market Map</span><em>${opponents.length} owners</em></div>
         <div class="league-intel-market-list">
-          ${opponents.slice().sort((a, b) => (b.fit || 0) - (a.fit || 0)).slice(0, 4).map(row => _leagueIntelMarketRow(row)).join('') || _leagueIntelEmpty('No trade fits yet.')}
+          ${_mmRows}${_mmMore}
         </div>
       </div>
       <div class="league-intel-card">
         <div class="league-intel-card-head"><span>Leverage</span><em>${me ? me.shortName : 'You'}</em></div>
-        ${_leagueIntelLeverage(me, pickLeader, faabLeader)}
+        ${_liGated ? _tierGatePlaceholder('League Leverage', _liKey) : _leagueIntelLeverage(me, pickLeader, faabLeader)}
       </div>
       <div class="league-intel-card">
         <div class="league-intel-card-head"><span>Position Pressure</span><em>Needs vs supply</em></div>
-        ${_leagueIntelPressure(rows, me)}
+        ${_liGated ? _tierGatePlaceholder('Position Pressure', _liKey) : _leagueIntelPressure(rows, me)}
       </div>
     </section>
 
@@ -3540,7 +4187,7 @@ function renderLeagueIntelPanel() {
         <button class="scout-secondary-btn" onclick="mobileTab('trades')">Trade Studio</button>
       </div>
       <div class="league-intel-controls">
-        <input id="league-intel-search" type="search" value="${_leagueIntelAttr(_leagueIntelState.query)}" placeholder="Search owner, team, need, DNA..." oninput="leagueIntelSearch(this.value)">
+        <input id="league-intel-search" type="search" value="${_leagueIntelAttr(_leagueIntelState.query)}" placeholder="${_liGated ? 'Search owner, team, need...' : 'Search owner, team, need, DNA...'}" oninput="leagueIntelSearch(this.value)">
         <div class="league-intel-filter-row">
           ${[
             ['all', 'All'],
@@ -3552,7 +4199,7 @@ function renderLeagueIntelPanel() {
         </div>
       </div>
       <div class="league-owner-list" id="league-owner-list">
-        ${rows.map(row => _leagueIntelOwnerCard(row, me)).join('')}
+        ${rows.map(row => _leagueIntelOwnerCard(row, me, _liGated)).join('')}
       </div>
       <div class="league-intel-no-results" id="league-intel-no-results" style="display:none">No owner matches this view.</div>
     </section>
@@ -3735,7 +4382,8 @@ function _leagueIntelPressure(rows, me) {
   </div>`;
 }
 
-function _leagueIntelOwnerCard(row, me) {
+function _leagueIntelOwnerCard(row, me, gated) {
+  const _dnaGated = gated && !row.isMe; // your own DNA stays visible
   const safeRid = _leagueIntelRid(row.rosterId);
   const isOpen = String(_leagueIntelState.dossier) === String(row.rosterId);
   const tierCls = _leagueIntelToneFor(row);
@@ -3744,7 +4392,7 @@ function _leagueIntelOwnerCard(row, me) {
   const data = [
     row.teamName,
     row.ownerName,
-    row.dna,
+    _dnaGated ? '' : row.dna, // don't let free users filter opponents by locked DNA
     row.postureLabel,
     row.tierLabel,
     needs.join(' '),
@@ -3758,7 +4406,7 @@ function _leagueIntelOwnerCard(row, me) {
         <small>${_esc(row.record)} &middot; ${_esc(row.tierLabel)} &middot; ${Math.round(row.value || 0).toLocaleString()} DHQ</small>
         <span class="league-owner-chipline">
           <i>${_esc(row.postureLabel)}</i>
-          ${row.dna ? `<i>${_esc(row.dna)}</i>` : ''}
+          ${row.dna && !_dnaGated ? `<i>${_esc(row.dna)}</i>` : ''}
           ${row.tradeCount ? `<i>${row.tradeCount} trades</i>` : ''}
         </span>
       </span>
@@ -3768,16 +4416,31 @@ function _leagueIntelOwnerCard(row, me) {
       </span>
     </button>
     <div class="league-owner-detail-row">
-      <span><b>Needs</b>${needs.length ? needs.map(p => `<em class="bad">${_esc(p)}</em>`).join('') : '<em>Stable</em>'}</span>
-      <span><b>Has</b>${strengths.length ? strengths.map(p => `<em class="good">${_esc(p)}</em>`).join('') : '<em>Flat</em>'}</span>
+      ${_dnaGated
+        ? `<span><b>Needs</b><em>🔒 Pro</em></span>
+      <span><b>Has</b><em>🔒 Pro</em></span>`
+        : `<span><b>Needs</b>${needs.length ? needs.map(p => `<em class="bad">${_esc(p)}</em>`).join('') : '<em>Stable</em>'}</span>
+      <span><b>Has</b>${strengths.length ? strengths.map(p => `<em class="good">${_esc(p)}</em>`).join('') : '<em>Flat</em>'}</span>`}
       <span><b>Capital</b><em>${row.picks.length} picks</em><em>${row.faab.isFAAB ? '$' + row.faab.remaining : 'Priority'}</em></span>
     </div>
-    ${isOpen ? _leagueIntelDossier(row, me) : ''}
+    ${isOpen ? _leagueIntelDossier(row, me, gated) : ''}
   </div>`;
 }
 
-function _leagueIntelDossier(row, me) {
+function _leagueIntelDossier(row, me, gated) {
   const safeRid = _leagueIntelRid(row.rosterId);
+  // Free: your own dossier is full; opponents show the Scout Read teaser + a
+  // gated placeholder for the deep DNA dossier (assets/rooms/capital/history).
+  if (gated && !row.isMe) {
+    // Free = raw snapshot only. The Scout Read (fit-why) and full dossier are Pro:
+    // "no scout reads or needs analysis of other teams" — you scout them yourself.
+    return `<div class="league-owner-dossier">
+      ${_tierGatePlaceholder('Scout read, roster needs & full owner dossier — assets, rooms, capital, trade history & DNA', window.FEATURES?.OWNER_DNA || 'owner_dna')}
+      <div class="league-dossier-actions">
+        <button class="scout-primary-btn" onclick="event.stopPropagation();leagueIntelBuildTrade('${safeRid}')">Build Trade</button>
+      </div>
+    </div>`;
+  }
   const myNeeds = new Set(me?.needs || []);
   const targetPlayers = row.players.filter(p => myNeeds.has(p.pos)).slice(0, 4);
   const topPlayers = (targetPlayers.length ? targetPlayers : row.players.slice(0, 4));
@@ -3845,7 +4508,7 @@ function _leagueIntelDossier(row, me) {
   </div>`;
 }
 
-function _leagueIntelFitWhy(row, me) {
+function _leagueIntelFitWhy(row, me, gated) {
   if (row.isMe) {
     return `This is your current team context: ${row.tierLabel}, ${row.record}, ${row.picks.length} future picks, and ${row.faab.isFAAB ? '$' + row.faab.remaining + ' FAAB' : 'waiver priority context'}.`;
   }
@@ -3856,7 +4519,13 @@ function _leagueIntelFitWhy(row, me) {
   const parts = [];
   if (theyHave.length) parts.push(`They can solve your ${theyHave.slice(0, 2).join(', ')} pressure.`);
   if (theyWant.length) parts.push(`Your ${theyWant.slice(0, 2).join(', ')} surplus matches their board.`);
-  parts.push(`${row.postureLabel} posture with ${row.dna || 'unknown DNA'} means ${_leagueIntelPostureAdvice(row)}.`);
+  // Free: keep posture (a free signal) but never expose the OWNER_DNA-gated value
+  // or DNA-derived advice — that's what the dossier placeholder is locking.
+  if (gated) {
+    parts.push(`${row.postureLabel} posture — unlock Owner DNA for how to approach them.`);
+  } else {
+    parts.push(`${row.postureLabel} posture with ${row.dna || 'unknown DNA'} means ${_leagueIntelPostureAdvice(row)}.`);
+  }
   if (row.picks.length) parts.push(`${row.picks.length} picks give them package flexibility.`);
   return parts.join(' ');
 }
@@ -4100,13 +4769,13 @@ function _patchMobileTab() {
     window._activeTab = tab;
     renderCtxChips(tab);
 
-    if (tab === 'league' || tab === 'fieldlog') {
+    if (tab === 'league' || tab === 'fieldlog' || tab === 'ai' || tab === 'calendar' || tab === 'history' || tab === 'analytics') {
       // Handle new tabs directly
       document.querySelectorAll('.mobile-nav-item').forEach(b => b.classList.remove('active'));
       if (btn) {
         btn.classList.add('active');
       } else {
-        const idMap = { league: 'mnav-portfolio', fieldlog: 'mnav-portfolio' };
+        const idMap = { league: 'mnav-tools', fieldlog: 'mnav-tools', ai: 'mnav-ai', calendar: 'mnav-tools', history: 'mnav-tools', analytics: 'mnav-tools' };
         const el = document.getElementById(idMap[tab]);
         if (el) el.classList.add('active');
       }
@@ -4116,6 +4785,10 @@ function _patchMobileTab() {
 
       if (tab === 'league')    window.renderLeaguePanel();
       if (tab === 'fieldlog')  renderFieldLogPanel();
+      if (tab === 'ai' && typeof renderAIPanel === 'function') renderAIPanel();
+      if (tab === 'calendar' && typeof window.renderCalendarPanel === 'function') window.renderCalendarPanel();
+      if (tab === 'history' && typeof window.renderHistoryPanel === 'function') window.renderHistoryPanel();
+      if (tab === 'analytics' && typeof window.renderAnalyticsPanel === 'function') window.renderAnalyticsPanel();
     } else {
       // Call the original pre-patch mobileTab (which calls switchTab for panel activation)
       original(tab, btn);
@@ -4125,7 +4798,7 @@ function _patchMobileTab() {
       if (btn) {
         btn.classList.add('active');
       } else {
-        const newMap = { digest:'mnav-home', team:'mnav-team', tools:'mnav-tools', portfolio:'mnav-portfolio', draftroom:'mnav-tools', waivers:'mnav-tools', trades:'mnav-tools', roster:'mnav-team', startsit:'mnav-tools', settings:null };
+        const newMap = { digest:'mnav-home', team:'mnav-team', tools:'mnav-tools', ai:'mnav-ai', draftroom:'mnav-tools', waivers:'mnav-tools', trades:'mnav-tools', roster:'mnav-team', startsit:'mnav-team', league:'mnav-tools', fieldlog:'mnav-tools', calendar:'mnav-tools', history:'mnav-tools', analytics:'mnav-tools', settings:null };
         const navId = newMap[tab];
         if (navId) { const el = document.getElementById(navId); if (el) el.classList.add('active'); }
       }
@@ -4162,6 +4835,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window._activeTab === 'digest') renderWarRoomBrief();
     if (window._activeTab === 'team') renderTeamCommandPanel();
     if (window._activeTab === 'tools') renderToolsPanel();
+    if (window._activeTab === 'ai') renderAIPanel();
     if (window._activeTab === 'portfolio') renderPortfolioPanel();
     if (typeof renderTrialBanner === 'function') renderTrialBanner();
     if (typeof _updateChatPlaceholder === 'function') _updateChatPlaceholder();

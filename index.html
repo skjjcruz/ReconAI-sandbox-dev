@@ -276,11 +276,33 @@
       </div>
     </div>
 
-    <!-- PORTFOLIO -->
+    <!-- PORTFOLIO (legacy — no longer in bottom nav; kept for deep links) -->
     <div class="panel" id="panel-portfolio">
       <div id="panel-portfolio-content">
         <div class="scout-empty-card">Connect or choose a league to load your portfolio.</div>
       </div>
+    </div>
+
+    <!-- AI / ASK ALEX -->
+    <div class="panel" id="panel-ai">
+      <div id="panel-ai-content">
+        <div class="scout-empty-card">Loading Alex…</div>
+      </div>
+    </div>
+
+    <!-- LEAGUE CALENDAR (premium) -->
+    <div class="panel" id="panel-calendar">
+      <div id="panel-calendar-content"></div>
+    </div>
+
+    <!-- LEAGUE HISTORY (premium) -->
+    <div class="panel" id="panel-history">
+      <div id="panel-history-content"></div>
+    </div>
+
+    <!-- ANALYTICS command-center (premium) -->
+    <div class="panel" id="panel-analytics">
+      <div id="panel-analytics-content"></div>
     </div>
 
     <!-- START/SIT / LINEUP -->
@@ -404,6 +426,7 @@
     </div>
 
     <!-- PLAYER PROFILE — Mobile bottom sheet -->
+    <div id="compare-scout-panel" class="pm-overlay" aria-hidden="true"></div>
     <div id="player-modal" class="pm-overlay" aria-hidden="true">
       <div class="pm-card">
         <div class="bottom-sheet-handle"></div>
@@ -500,6 +523,9 @@
 
         <!-- Your picks summary (compact, always visible on entry) -->
         <div id="draft-entry-picks"></div>
+
+        <!-- Draft gameplan: archetype picker + round-by-round blueprint (App.DraftGameplan) -->
+        <div id="draft-entry-gameplan"></div>
       </div>
 
       <!-- Big Board full-screen view -->
@@ -609,31 +635,12 @@
         </div>
       </details>
 
-      <!-- Alex Style Picker (collapsed by default) -->
-      <details style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:14px">
-        <summary style="padding:14px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none">
-          <span style="font-size:14px;font-weight:700;color:var(--text);flex:1">Alex's Style</span>
-          <span id="alex-style-current" style="font-size:12px;color:var(--text3)"></span>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-        </summary>
-        <div style="padding:0 16px 14px">
-          <div style="font-size:12px;color:var(--text3);margin-bottom:10px">How Alex communicates across all AI responses.</div>
-          <div id="alex-style-picker" style="display:flex;flex-direction:column;gap:6px"></div>
-          <button class="btn btn-ghost" onclick="window.replayScoutTutorial&&window.replayScoutTutorial()" style="margin-top:10px;width:100%;padding:9px 12px;font-size:13px;border-color:rgba(212,175,55,.28);color:var(--accent)">Replay GM Briefing</button>
-        </div>
-      </details>
-      <script>
-      (function(){
-        const el=document.getElementById('alex-style-picker');if(!el)return;
-        function render(){
-          const styles=window.ALEX_STYLES||{};const cur=localStorage.getItem('wr_alex_style')||'default';
-          const curLabel=document.getElementById('alex-style-current');
-          if(curLabel&&styles[cur])curLabel.textContent=styles[cur].name||'Default';
-          el.innerHTML=Object.entries(styles).map(([k,s])=>`<button onclick="localStorage.setItem('wr_alex_style','${k}');this.closest('details').querySelector('#alex-style-current').textContent='${(s.name||'').replace(/'/g,"\\'")}';document.querySelectorAll('#alex-style-picker button').forEach(b=>{b.style.borderColor='var(--border)';b.style.background='var(--bg3)';b.querySelector('div').style.color='var(--text)'});this.style.borderColor='var(--accent)';this.style.background='rgba(212,175,55,.06)';this.querySelector('div').style.color='var(--accent)'" style="text-align:left;padding:10px 12px;background:${k===cur?'rgba(212,175,55,.06)':'var(--bg3)'};border:1px solid ${k===cur?'var(--accent)':'var(--border)'};border-radius:8px;cursor:pointer;font-family:inherit"><div style="font-size:13px;font-weight:700;color:${k===cur?'var(--accent)':'var(--text)'}">${s.name}${k===cur?' ✓':''}</div><div style="font-size:11px;color:var(--text3);line-height:1.4;margin-top:2px">${(s.tone||'').substring(0,80)}...</div></button>`).join('');
-        }
-        if(window.ALEX_STYLES)render();else setTimeout(render,500);
-      })();
-      </script>
+      <!-- Alex Ingram — single canonical voice (persona picker retired 2026-07-08) -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Alex Ingram</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Your GM chief of staff. Replay the walkthrough any time.</div>
+        <button class="btn btn-ghost" onclick="window.replayScoutTutorial&&window.replayScoutTutorial()" style="width:100%;padding:9px 12px;font-size:13px;border-color:rgba(212,175,55,.28);color:var(--accent)">Replay GM Briefing</button>
+      </div>
 
       <!-- 1. System Status -->
       <div id="settings-status" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:14px">
@@ -857,15 +864,15 @@
   </button>
   <button class="mobile-nav-item" id="mnav-team" onclick="mobileTab('team',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l8 4v5c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V7l8-4z"/><path d="M8.5 12.5l2.3 2.3 4.7-5.2"/></svg>
-    Team
+    My Team
   </button>
   <button class="mobile-nav-item" id="mnav-tools" onclick="mobileTab('tools',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.1-3.1a6 6 0 01-7.9 7.9l-5.7 5.7a2.1 2.1 0 01-3-3l5.7-5.7a6 6 0 017.9-7.9l-3.1 3.1z"/></svg>
     Tools
   </button>
-  <button class="mobile-nav-item" id="mnav-portfolio" onclick="mobileTab('portfolio',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="M12 18v2"/><path d="M7 9h4"/><path d="M7 13h2"/><path d="M14 9h3"/><path d="M14 13h3"/></svg>
-    Portfolio
+  <button class="mobile-nav-item" id="mnav-ai" onclick="mobileTab('ai',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l1.7 4.5L18 9.2l-4.3 1.7L12 15l-1.7-4.1L6 9.2l4.3-1.7z"/><path d="M18.5 14l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z"/></svg>
+    AI
   </button>
 </div>
 

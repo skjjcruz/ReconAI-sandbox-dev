@@ -13,6 +13,13 @@ const sf=path=>fetch(SLEEPER+path).then(r=>{if(!r.ok)throw new Error('HTTP '+r.s
 // Thin wrapper: delegates to shared API, stores result in War Room Scout state S.trending.
 // shared/sleeper-api.js owns the raw fetch; this owns the state assignment.
 async function fetchTrending(){
+  // Trending is a 24h-lookback list — it barely moves intraday, yet this ran 2
+  // fresh network calls on every loadAllData. Reuse the last result for 30min
+  // (the fetchedAt stamp was recorded but never consulted).
+  if(S.trending&&S.trending.fetchedAt&&Date.now()-S.trending.fetchedAt<30*60*1000
+     &&((S.trending.adds&&S.trending.adds.length)||(S.trending.drops&&S.trending.drops.length))){
+    return;
+  }
   try{
     const [adds,drops]=await Promise.all([
       window.Sleeper.fetchTrending('add',24,20).catch(()=>[]),
@@ -85,11 +92,15 @@ async function loadRosterStats(){
 
   try{
     // ── TWO API CALLS replace 36 ────────────────────────────────────────────
-    // Sleeper aggregate endpoint: full season totals per player, one call each
+    // Sleeper aggregate endpoint: full season totals per player, one call each.
+    // Route through the shared IndexedDB-backed, in-flight-deduped season cache
+    // so we DON'T re-download the same multi-MB season blobs loadLeagueIntel just
+    // fetched in the same load (they ran concurrently and each pulled cur+prev).
+    const sfStats = window.Sleeper?.fetchSeasonStats || (yr => sf(`/stats/nfl/regular/${yr}`));
     const [curAgg, prevAgg] = await Promise.all([
       isOffseason ? Promise.resolve({}) :
-        sf(`/stats/nfl/regular/${curSeason}`).catch(()=>({})),
-      sf(`/stats/nfl/regular/${prevSeason}`).catch(()=>({})),
+        sfStats(curSeason).catch(()=>({})),
+      sfStats(prevSeason).catch(()=>({})),
     ]);
 
     // If prev season is empty, try one more year back (e.g. 2025 may not be finalized yet, fallback to 2024)
@@ -98,7 +109,7 @@ async function loadRosterStats(){
     if(!Object.keys(prevAgg).length){
       const fallbackSeason=String(parseInt(prevSeason)-1);
       console.log('Previous season stats empty for '+prevSeason+', trying '+fallbackSeason);
-      effectivePrev=await sf(`/stats/nfl/regular/${fallbackSeason}`).catch(()=>({}));
+      effectivePrev=await sfStats(fallbackSeason).catch(()=>({}));
       effectivePrevSeason=fallbackSeason;
     }
 

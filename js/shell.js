@@ -1,8 +1,9 @@
 // js/shell.js — Native app shell: bottom sheets, pull-to-refresh, gestures
 
-const SHELL_PRIMARY_TABS = ['digest', 'team', 'tools', 'portfolio'];
+const SHELL_PRIMARY_TABS = ['digest', 'team', 'tools', 'ai'];
 const SHELL_TAB_GROUPS = {
   digest: 'digest',
+  fieldlog: 'digest',
   team: 'team',
   roster: 'team',
   startsit: 'team',
@@ -10,9 +11,12 @@ const SHELL_TAB_GROUPS = {
   waivers: 'tools',
   trades: 'tools',
   draftroom: 'tools',
-  portfolio: 'portfolio',
-  league: 'portfolio',
-  fieldlog: 'portfolio',
+  league: 'tools',
+  calendar: 'tools',
+  history: 'tools',
+  analytics: 'tools',
+  ai: 'ai',
+  portfolio: 'tools',
 };
 
 function _prefersReducedMotion() {
@@ -293,7 +297,21 @@ function _markShellEnvironment() {
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   document.body.classList.toggle('ios-standalone', !!(ios && standalone));
   document.body.classList.toggle('touch-device', window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+  _applyScoutProChrome();
 }
+
+// Scout Pro chrome — the .is-pro body class (drives CSS-gated surfaces like the
+// iPad/landscape layout) + the header wordmark. Safe to re-run; called at boot
+// and again after loadUserTier() resolves the async paid tier.
+function _applyScoutProChrome() {
+  try {
+    const pro = typeof window.isScoutPro === 'function' && window.isScoutPro();
+    document.body.classList.toggle('is-pro', !!pro);
+    const logoSpan = document.querySelector('.logo span');
+    if (logoSpan) logoSpan.textContent = pro ? 'Scout Pro' : 'Scout';
+  } catch (_) { /* ignore */ }
+}
+window._applyScoutProChrome = _applyScoutProChrome;
 
 function _patchNavigationHooks() {
   if (window.mobileTab && !window.mobileTab.__shellPatched) {

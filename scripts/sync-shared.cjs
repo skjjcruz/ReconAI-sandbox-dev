@@ -51,6 +51,9 @@ const FALLBACK_MODULES = [
   'dhq-engine.js', 'nfl-fit.js', 'team-assess.js', 'analytics-engine.js',
   'dhq-ai.js', 'assistant-tutorial.js', 'ai-dispatch.js', 'strategy.js',
   'trade-engine.js', 'mock-engine.js', 'gm-engine.js', 'player-modal.js', 'rookie-data.js',
+  // Browser engines promoted from War Room into DHQ-Shared
+  'startsit-engine.js', 'weekly-proj.js', 'nfl-context.js', 'matchup.js',
+  'player-value.js', 'draft-gameplan.js', 'alex-voice.js', 'gm-mode.js',
 ];
 
 const SOURCE = findSourceDir();

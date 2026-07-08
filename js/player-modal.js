@@ -103,9 +103,11 @@ function openPlayerModal(playerId){
   $('pm-name').innerHTML=`${pName(playerId)} ${onMyTeam?'<span style="font-size:13px;color:var(--green);font-weight:600">✓ roster</span>':''}`;
   $('pm-bio').innerHTML=`${displayPos} · ${fullTeam(p.team)} · Age ${age} · ${exp}yr exp${p.college?' · '+p.college:''}`;
 
-  // Alex Says — strategy-aware verdict at top of every player card
+  // Alex Says — strategy-aware verdict at top of every player card.
+  // Scout Pro only: the buy/sell/hold call is the app deciding for you. Free browses raw.
   const verdictEl=$('pm-verdict');
-  if(verdictEl){
+  const _pmPro=typeof window.isScoutPro!=='function'||window.isScoutPro();
+  if(verdictEl&&_pmPro){
     const meta2=liLoaded?li.playerMeta?.[playerId]:null;
     const pa2=typeof getPlayerAction==='function'?getPlayerAction(playerId):{label:'Hold',col:'var(--accent)',reason:''};
 
@@ -130,8 +132,13 @@ function openPlayerModal(playerId){
       if(stratLabel==='SELL')stratCol='var(--red)';
     }
 
-    // Check sell rules (sell above age threshold)
-    const sellRule=(strat.sellRules||[]).find(r=>r.pos===pos&&(age||0)>=r.ageAbove);
+    // Check sell rules (sell above age threshold). Rules are free-text strings
+    // (or legacy objects) — parse each to {pos,ageAbove} the same way checkAlignment does.
+    const _parseRule=window.App?.Strategy?.parseSellRule||window.GMStrategy?.parseSellRule;
+    const _sellPos=window.App?.normPos?.(pos)||pos;
+    const sellRule=_parseRule
+      ?(strat.sellRules||[]).map(_parseRule).find(r=>r.pos&&r.pos===_sellPos&&(!r.ageAbove||(age||0)>=r.ageAbove))
+      :(strat.sellRules||[]).find(r=>r&&typeof r==='object'&&r.pos===pos&&(age||0)>=r.ageAbove);
     if(sellRule&&stratLabel!=='SKIP'){
       stratLabel='SELL HIGH';stratReason='Age '+age+' triggers your sell rule for '+pos+'. Trade while value holds.';stratCol='var(--amber)';
     }
@@ -161,6 +168,9 @@ function openPlayerModal(playerId){
       </div>
       <div style="font-size:12px;color:var(--text2);line-height:1.45">${escHtml(stratReason)}</div>
     </div>`;
+  } else if(verdictEl){
+    verdictEl.style.display='none';
+    verdictEl.innerHTML='';
   }
   // IDP data
   const isIDPModal=['DL','LB','DB'].includes(pos);
@@ -170,9 +180,9 @@ function openPlayerModal(playerId){
   if(idpBadge)idpBadge.innerHTML=''; // no longer rendered as banner badge
   const idpPPGModal=isIDPModal&&rawModal?+(calcIDPScore(rawModal,scModal)/Math.max(1,rawModal.gp||17)).toFixed(1):null;
 
-  // Value insight blurb
+  // Value insight blurb — interpretive dynasty read; Scout Pro only. Free sees raw value.
   const insightEl=$('pm-insight');
-  if(insightEl){
+  if(insightEl&&_pmPro){
     const meta=liLoaded?li.playerMeta?.[playerId]:null;
     if(meta){
       const mappedPos=meta.pos||pos;
@@ -247,7 +257,7 @@ function openPlayerModal(playerId){
         insightEl.innerHTML=`<div style="font-size:13px;color:${blurbColor};line-height:1.5;padding:8px 12px;background:${bg};border-radius:8px">${blurb}</div>`;
       }else insightEl.innerHTML='';
     }else insightEl.innerHTML='';
-  }
+  } else if(insightEl){ insightEl.innerHTML=''; }
 
   // Tags
   const tags=[];
@@ -368,13 +378,13 @@ function openPlayerModal(playerId){
 
     rightPanel.innerHTML=`
       <div style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Trade Profile${isIDPModal?' <span style="font-size:13px;color:var(--accent);background:var(--accentL);padding:1px 5px;border-radius:4px;font-weight:700;vertical-align:middle;margin-left:4px">IDP</span>':''}</div>
-      <div style="font-size:20px;font-weight:800;color:${pa.col}">${pa.label}</div>
+      ${_pmPro?`<div style="font-size:20px;font-weight:800;color:${pa.col}">${pa.label}</div>`:''}
       <div style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:10px;background:${tvTier.bg};font-size:11px;font-weight:700;color:${tvTier.col}">${tvTier.label}</div>
       <div style="font-size:13px;color:var(--text2);margin-top:6px">
 	        <span style="font-weight:600;color:${mktTrendCol}">${mktTrendLabel}</span> · ${peakYrsLeft>0?peakYrsLeft+' peak yr'+(peakYrsLeft>1?'s':'')+' left':pk.desc||'Past value window'}
       </div>
-      <div style="font-size:13px;color:var(--text3);margin-top:4px">${pa.reason}</div>
-      ${ownerDnaHtml}`;
+      ${_pmPro?`<div style="font-size:13px;color:var(--text3);margin-top:4px">${pa.reason}</div>`:''}
+      ${_pmPro?ownerDnaHtml:''}`;
   }
 
   // Tag + note section
@@ -390,7 +400,8 @@ function openPlayerModal(playerId){
     let curNotes={};
     try{ curNotes=JSON.parse(localStorage.getItem(noteKey)||'{}'); }catch(e){ curNotes={}; }
     const curNote=curNotes[playerId]||'';
-    tagSec.innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--text3);margin-bottom:4px">TAG</div>
+    tagSec.innerHTML=`<button class="chip" onclick="closePlayerModal();window.CompareScout&&window.CompareScout.add('${playerId}');" style="margin-bottom:10px;font-weight:700">Compare player</button>
+      <div style="font-size:13px;font-weight:700;color:var(--text3);margin-bottom:4px">TAG</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">${tagOpts.map(t=>{
         const isActive=curTag===t.key;
         return`<button class="chip" onclick="tagPlayer('${playerId}','${t.key}')" style="${isActive?'background:var(--accentL);color:var(--accent);border-color:var(--accent)':''}">${t.label}</button>`;
@@ -651,6 +662,8 @@ function tagPlayer(pid,tag){
     btn.style.borderColor=isActive?'var(--accent)':'';
   });
   if(typeof showToast==='function')showToast(tags[pid]===tag?'Tagged':'Tag removed');
+  if(typeof window.refreshTaggedSetsDisplay==='function')window.refreshTaggedSetsDisplay();
+  if(typeof window.buildRosterTable==='function')window.buildRosterTable(); // refresh the roster row's tag chip (matches _rosterTag)
 }
 window.tagPlayer=tagPlayer;
 

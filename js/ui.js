@@ -198,6 +198,7 @@ function getDcLabel(pid){
 
 async function renderRoster(){
   const my=myR();if(!my)return;
+  setRosterHost('roster-tbody');
   buildRosterTable();
 }
 
@@ -228,6 +229,12 @@ function valueWindowEnd(pos){
 
 // Roster sort/filter
 let rosterSortKey='value', rosterSortDir=-1, rosterFilter='all';
+// Render target for buildRosterTable — lets the same renderer mount on the
+// standalone roster tab ('roster-tbody') or inline under My Team ('team-roster-host').
+let _rosterHost='roster-tbody';
+function setRosterHost(id){_rosterHost=id||'roster-tbody';}
+window.setRosterHost=setRosterHost;
+window.getRosterFilter=()=>rosterFilter;
 const _rosterSortCycle=[
   {key:'value',dir:-1,label:'Value ↓'},
   {key:'pos',dir:1,label:'Position'},
@@ -243,15 +250,21 @@ function cycleRosterSort(){
   rosterSortKey=s.key;rosterSortDir=s.dir;
   const btn=$('roster-sort-btn');
   if(btn)btn.textContent='Sort: '+s.label;
+  document.querySelectorAll('.js-roster-sort').forEach(b=>{b.textContent='Sort: '+s.label;});
   buildRosterTable();
 }
+function rosterSortLabel(){return _rosterSortCycle[_rosterSortIdx].label;}
+window.rosterSortLabel=rosterSortLabel;
 function sortRoster(key){
   if(rosterSortKey===key)rosterSortDir*=-1;else{rosterSortKey=key;rosterSortDir=-1;}
   buildRosterTable();
 }
 function setRosterFilter(f, btn){
   rosterFilter=f;
-  document.querySelectorAll('#roster-filter-btns .rfbtn').forEach(b=>b.classList.remove('active'));
+  // Clear active state within the clicked button's own row so this works on
+  // both the standalone roster tab and the inline My Team control bar.
+  const scope=btn?btn.parentElement:document.getElementById('roster-filter-btns');
+  if(scope)scope.querySelectorAll('.rfbtn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   buildRosterTable();
 }
@@ -259,15 +272,100 @@ function resetRosterSort(){rosterSortKey='value';rosterSortDir=-1;rosterFilter='
 
 // Recon verdict helper — delegates to shared getPlayerAction()
 function _reconVerdict(pid){
+  // The buy/sell/hold verdict is a recommendation → Scout Pro only. Free sees raw values.
+  if(typeof window.isScoutPro==='function'&&!window.isScoutPro())return null;
   if(typeof getPlayerAction!=='function')return null;
   const v=getPlayerAction(pid);
   if(!v||v.action==='HOLD'&&v.reason==='Not enough data')return null;
   return v;
 }
 
+// ── Roster grouping + inline row expansion ─────────────────────────
+let _rosterGroup='slot'; // slot | pos | verdict
+let _rosterExpanded=null;
+const _ROSTER_GROUPS_ALL=[{key:'slot',label:'Slot'},{key:'pos',label:'Position'},{key:'verdict',label:'Verdict'}];
+// Verdict grouping = a buy/sell/hold recommendation lens → Scout Pro only.
+function _rosterGroupCycleArr(){
+  const pro=typeof window.isScoutPro!=='function'||window.isScoutPro();
+  return pro?_ROSTER_GROUPS_ALL:_ROSTER_GROUPS_ALL.filter(g=>g.key!=='verdict');
+}
+let _rosterGroupIdx=0;
+function cycleRosterGroup(){
+  const cyc=_rosterGroupCycleArr();
+  _rosterGroupIdx=(_rosterGroupIdx+1)%cyc.length;
+  _rosterGroup=cyc[_rosterGroupIdx].key;
+  document.querySelectorAll('.js-roster-group').forEach(b=>{b.textContent='Group: '+cyc[_rosterGroupIdx].label;});
+  buildRosterTable();
+}
+function rosterGroupLabel(){const cyc=_rosterGroupCycleArr();return (cyc[_rosterGroupIdx]||cyc[0]).label;}
+window.cycleRosterGroup=cycleRosterGroup;
+window.rosterGroupLabel=rosterGroupLabel;
+function _rosterVerdictBucket(pid){
+  const v=_reconVerdict(pid);const a=(v&&v.action)||'';
+  if(['BUY','CORE','BUILD'].includes(a))return{key:'build',label:'Build / Buy',rank:0};
+  if(['SELL','SELL_HIGH'].includes(a))return{key:'sell',label:'Sell',rank:2};
+  if(a==='STASH')return{key:'stash',label:'Stash',rank:3};
+  return{key:'hold',label:'Hold',rank:1};
+}
+function _rosterGroupInfo(r){
+  if(_rosterGroup==='pos'){const order=['QB','RB','WR','TE','DL','LB','DB','K','DEF'];const i=order.indexOf(r.pos);return{key:r.pos,label:r.pos,rank:i<0?99:i};}
+  if(_rosterGroup==='verdict')return _rosterVerdictBucket(r.pid);
+  if(r.isReserve)return{key:'ir',label:'IR / Reserve',rank:2};
+  if(r.isTaxi)return{key:'taxi',label:'Taxi Squad',rank:3};
+  if(r.isStarter)return{key:'starters',label:'Starters',rank:0};
+  return{key:'bench',label:'Bench',rank:1};
+}
+function _rosterTag(pid,tag){
+  const lid=S.currentLeagueId||'';
+  const tags={...(window._playerTags||{})};
+  if(tags[pid]===tag)delete tags[pid];else tags[pid]=tag;
+  window._playerTags=tags;
+  try{localStorage.setItem('player_tags_'+lid,JSON.stringify(tags));}catch(e){/* ignore */}
+  if(window.OD&&window.OD.savePlayerTags)window.OD.savePlayerTags(lid,tags);
+  buildRosterTable();
+  if(typeof window.refreshTaggedSetsDisplay==='function')window.refreshTaggedSetsDisplay();
+}
+window._rosterTag=_rosterTag;
+function _rosterToggle(pid){_rosterExpanded=_rosterExpanded===pid?null:pid;buildRosterTable();}
+window._rosterToggle=_rosterToggle;
+function _rosterReadLine(r){
+  const tierLabel=(typeof tradeValueTier==='function'?(tradeValueTier(r.val).tier||''):'')||'Rostered';
+  const meta=LI_LOADED?LI.playerMeta?.[r.pid]:null;
+  const trend=meta?.trend||0;
+  const trendWord=trend>=15?' and trending up':trend<=-15?' and slipping':'';
+  const prod=r.avg>0?`Averaging ${r.avg.toFixed(1)} ppg`:(r.prev>0?`Put up ${r.prev.toFixed(1)} ppg last season`:'Thin recent production');
+  return `${tierLabel} at ${r.pos}${r.val>0?' ('+r.val.toLocaleString()+' DHQ'+trendWord+')':''}. ${prod}. ${r.pk.label}${r.pk.desc?' — '+r.pk.desc:''}.`;
+}
+function _rosterExpansion(r){
+  const phaseCol=r.pk.cls==='peak'||r.pk.cls==='rising'?'var(--green)':r.pk.cls==='seedling'?'var(--blue)':r.pk.cls==='veteran'?'var(--amber)':'var(--red)';
+  const sig=(label,val,col)=>`<div class="rr-sig"><span>${label}</span><strong${col?` style="color:${col}"`:''}>${val}</strong></div>`;
+  const signals=[
+    sig('Phase',r.pk.label+(r.pk.desc?' · '+r.pk.desc:''),phaseCol),
+    r.wk!=null?sig('This wk',r.wk.toFixed(1)+(r.wkLo!=null&&r.wkHi!=null?` (${r.wkLo.toFixed(0)}–${r.wkHi.toFixed(0)})`:'')):'',
+    r.avg>0?sig('PPG',r.avg.toFixed(1)):'',
+    r.prev>0?sig('Prev yr',r.prev.toFixed(1)):'',
+    r.val>0?sig('DHQ',r.val.toLocaleString(),'var(--accent)'):'',
+  ].filter(Boolean).join('');
+  const tag=window._playerTags?.[r.pid]||'';
+  const tBtn=(k,l)=>`<button class="rr-x-tag${tag===k?' active':''}" onclick="event.stopPropagation();_rosterTag('${r.pid}','${k}')">${l}</button>`;
+  const nm=(r.name||'').replace(/'/g,"\\'");
+  const _rrPro=typeof window.isScoutPro!=='function'||window.isScoutPro();
+  return `<div class="rr-expand">
+    ${_rrPro?`<div class="rr-read">${_rosterReadLine(r)}</div>`:''}
+    <div class="rr-sigs">${signals}</div>
+    <div class="rr-x-tags">${tBtn('untouchable','Untouchable')}${tBtn('trade','Shop')}${tBtn('watch','Watch')}${tBtn('cut','Cut')}</div>
+    <div class="rr-x-actions">
+      <button class="btn btn-sm" onclick="event.stopPropagation();fillGlobalChat('Give me the full read on ${nm} (${r.pos}) — role, outlook, and whether to buy, hold, or sell.')">Ask Scout</button>
+      <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openTradeBuilderForPlayer('${r.pid}')">Trade</button>
+      <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openPlayerModal('${r.pid}')">Details</button>
+    </div>
+  </div>`;
+}
+
+window.buildRosterTable=()=>buildRosterTable();
 function buildRosterTable(){
   const my=myR();if(!my){
-    $('roster-tbody').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">Connect to load roster.</div>';
+    const _h=$(_rosterHost);if(_h)_h.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">Connect to load roster.</div>';
     return;
   }
   const league=S.leagues.find(l=>l.league_id===S.currentLeagueId);
@@ -279,17 +377,26 @@ function buildRosterTable(){
   const offPos=new Set(['QB','RB','WR','TE','K']);
   const idpPos=new Set(['DL','LB','DB']);
 
+  // Engine this-week projection (reuses the Start/Sit WeeklyProj wiring); skill positions only.
+  const _WP=window.App&&window.App.WeeklyProj;
+  const _wkScoring=league?.scoring_settings||{};
+  const _wkWeek=Number(S.currentWeek)||(_WP&&_WP.currentWeek&&_WP.currentWeek())||1;
+  let _wkStats=null,_wkPrior=null;
+  if(_WP&&S.playerStats){_wkStats={};_wkPrior={};for(const _pid of allPlayers){const _ps=S.playerStats[_pid];if(!_ps)continue;if(_ps.curRawStats)_wkStats[_pid]=_ps.curRawStats;if(_ps.prevRawStats)_wkPrior[_pid]=_ps.prevRawStats;}}
+
   let rows=allPlayers.map(pid=>{
     const p=S.players[pid]||{};
     const stats=S.playerStats?.[pid]||{};
     const val=dynastyValue(pid);
     const pk=peakYears(pid);
+    let wk=null,wkLo=null,wkHi=null;
+    if(_WP&&['QB','RB','WR','TE'].includes(pPos(pid))){try{const _pr=_WP.projectPlayer(pid,{playersData:S.players,statsData:_wkStats,priorData:_wkPrior,scoring:_wkScoring,week:_wkWeek});if(_pr&&_pr.points&&_pr.available!==false){wk=+_pr.points.median||null;if(_pr.points.floor!=null)wkLo=+_pr.points.floor;if(_pr.points.ceiling!=null)wkHi=+_pr.points.ceiling;}}catch(e){/* omit on failure */}}
     const slotIdx=[...starters].indexOf(pid);
     const isTaxi=taxi.has(pid);
     const isRes=reserve.has(pid);
     const slot=slotIdx>=0?(positions[slotIdx]||'FLEX'):isRes?'IR':isTaxi?'Taxi':pPos(pid)||'BN';
     return{
-      pid,p,stats,val,pk,slot,
+      pid,p,stats,val,pk,slot,wk,wkLo,wkHi,
       isStarter:starters.has(pid),isReserve:isRes,isTaxi,
       pos:pPos(pid)||'?',name:pName(pid),
       age:p.age||99,value:val,
@@ -302,11 +409,11 @@ function buildRosterTable(){
   if(rosterFilter==='taxi')rows=rows.filter(r=>r.isTaxi);
 
   const posOrder2=['QB','RB','WR','TE','DL','LB','DB','K','DEF'];
+  // Group (Slot/Position/Verdict), then sort within each group by the active key.
+  rows.forEach(r=>{r._g=_rosterGroupInfo(r);});
   rows.sort((a,b)=>{
-    if(rosterFilter!=='taxi'){
-      const sec=r=>r.isReserve?2:r.isTaxi?2:0;
-      const sd=sec(a)-sec(b);if(sd!==0)return sd;
-    }
+    const gr=a._g.rank-b._g.rank;if(gr!==0)return gr;
+    if(a._g.key!==b._g.key)return a._g.label<b._g.label?-1:1;
     let av=a[rosterSortKey]??'',bv=b[rosterSortKey]??'';
     if(rosterSortKey==='name'){av=av.toLowerCase();bv=bv.toLowerCase();}
     if(rosterSortKey==='pos'){av=posOrder2.indexOf(av)<0?99:posOrder2.indexOf(av);bv=posOrder2.indexOf(bv)<0?99:posOrder2.indexOf(bv);}
@@ -319,20 +426,20 @@ function buildRosterTable(){
   const countEl=$('roster-count');
   if(countEl)countEl.textContent=rows.length+' player'+(rows.length!==1?'s':'');
 
-  const wrap=$('roster-tbody');
+  const wrap=$(_rosterHost);
+  if(!wrap)return;
   let html=`<div class="roster-header-sticky" style="display:flex;align-items:center;gap:8px;padding:4px 14px 6px;font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;opacity:.6">
     <span style="min-width:36px"></span><span style="flex:1">Player</span><span style="min-width:54px;text-align:right">DHQ</span><span style="min-width:44px;text-align:right">PPG</span><span style="min-width:42px;text-align:right">Phase</span>
   </div>`;
-  let lastSection='';
+  let lastGroup='';
 
   rows.forEach(r=>{
-    const {pid,p,stats,val,pk,isStarter,isReserve,isTaxi,pos,age}=r;
+    const {pid,p,stats,val,pk,isStarter,isReserve,isTaxi,pos,age,wk}=r;
 
-    // Section headers
-    const section=(r.isReserve||r.isTaxi)?(r.isReserve?'IR / Reserve':'Taxi Squad'):'';
-    if(section&&section!==lastSection){
-      html+=`<div class="rr-section-hdr">${section}</div>`;
-      lastSection=section;
+    // Group divider (Slot / Position / Verdict)
+    if(r._g.key!==lastGroup){
+      html+=`<div class="rr-section-hdr">${r._g.label}</div>`;
+      lastGroup=r._g.key;
     }
 
     const {col}=tradeValueTier(val);
@@ -352,7 +459,8 @@ function buildRosterTable(){
     const playerTag=window._playerTags?.[pid];
     const tagHtml=playerTag?'<span style="font-size:11px;padding:1px 5px;border-radius:4px;font-weight:700;background:'+(playerTag==='trade'?'var(--amberL)':playerTag==='cut'?'var(--redL)':playerTag==='untouchable'?'var(--greenL)':'var(--blueL)')+';color:'+(playerTag==='trade'?'var(--amber)':playerTag==='cut'?'var(--red)':playerTag==='untouchable'?'var(--green)':'var(--blue)')+'">'+( playerTag==='trade'?'TB':playerTag==='cut'?'CUT':playerTag==='untouchable'?'UT':'W')+'</span>':'';
 
-    html+=`<div class="${cardCls}" onclick="openPlayerModal('${pid}')">
+    const _expanded=_rosterExpanded===pid;
+    html+=`<div class="${cardCls}${_expanded?' rr-expanded':''}" onclick="_rosterToggle('${pid}')">
       <img class="rr-photo" src="https://sleepercdn.com/content/nfl/players/${pid}.jpg" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span class=rr-initials>${initials}</span>')" loading="lazy"/>
       <div style="flex:1;min-width:0;overflow:hidden">
         <div style="display:flex;align-items:center;gap:6px">
@@ -367,11 +475,13 @@ function buildRosterTable(){
           <span>${p.team||'FA'} · ${age||'?'}</span>
           <span class="rr-val" style="color:${col};font-weight:700;font-family:'JetBrains Mono',monospace">${val>0?val.toLocaleString():'—'}${trendHtml}</span>
           ${ppg?'<span>'+ppg.toFixed(1)+'</span>':''}
+          ${wk!=null?'<span class="mono" style="color:var(--text2)" title="This-week projection (engine)">Wk '+wk.toFixed(1)+'</span>':''}
           <span style="color:${phaseCol};font-size:11px;font-weight:600">${pk.label}</span>
         </div>
       </div>
       <div class="rr-chevron"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
     </div>`;
+    if(_expanded)html+=_rosterExpansion(r);
   });
 
   wrap.innerHTML=html||'<div style="padding:20px;text-align:center;color:var(--text3)">No players found.</div>';
@@ -893,7 +1003,9 @@ function renderTopPickupHero(){
 
   // Strategy context for FAAB scaling
   const strat=window.GMStrategy?.getStrategy?window.GMStrategy.getStrategy():{};
-  const aggression=strat.aggression||'medium';
+  // Map canonical GM Strategy aggression (conservative/medium/aggressive) onto the
+  // high/medium/low bands this FAAB block branches on (legacy values pass through).
+  const aggression=(strat.aggression==='aggressive'||strat.aggression==='high')?'high':(strat.aggression==='conservative'||strat.aggression==='low')?'low':'medium';
   const aggrMult=aggression==='high'?1.4:aggression==='low'?0.7:1.0;
   const targetPositions=strat.targetPositions||[];
 
@@ -1153,6 +1265,11 @@ function renderWaiverWorkbench() {
   }
 
   const data = _wwBuildCandidateData();
+  // Depth gate: free gets the WHO (ranked adds, upgrades, gap matrix, explorer);
+  // paid gets the HOW-MUCH + competition (bid plans, market leverage, fresh drops).
+  const _wwGated = typeof canAccess === 'function' && !canAccess(window.FEATURES?.FAAB_INTELLIGENCE || 'faab_intelligence');
+  const _wwKey = window.FEATURES?.FAAB_INTELLIGENCE || 'faab_intelligence';
+  const _wwFit = c => c.needFit ? 'Need' : c.targetFit ? 'Target' : 'Value';
   const primary = data.candidates[0] || null;
   const topAdds = data.candidates.slice(0, 5);
   const upgrades = data.candidates.filter(c => c.drop && c.upgrade > 250).slice(0, 4);
@@ -1182,7 +1299,7 @@ function renderWaiverWorkbench() {
 
   const kpi = [
     ['Best add', primary ? pNameShort(primary.id) : 'None', primary ? `${primary.pos} · ${Math.round(primary.val).toLocaleString()} DHQ` : 'No targets'],
-    ['Bid plan', primary?.bid?.label || (data.faab.isFAAB ? '$0' : 'Claim'), primary?.bid?.confidence || (data.faab.isFAAB ? `$${data.faab.remaining} left` : 'Priority mode')],
+    ['Bid plan', _wwGated ? '🔒 Pro' : (primary?.bid?.label || (data.faab.isFAAB ? '$0' : 'Claim')), _wwGated ? 'Unlock FAAB intelligence' : (primary?.bid?.confidence || (data.faab.isFAAB ? `$${data.faab.remaining} left` : 'Priority mode'))],
     ['Outbid risk', `${threatCount}`, data.faab.isFAAB ? 'teams above you' : 'priority threats'],
     ['Roster slots', `${data.slots.openBench}`, 'open bench spots'],
   ];
@@ -1221,7 +1338,7 @@ function renderWaiverWorkbench() {
         ${topAdds.length ? topAdds.map((c, idx) => `<div class="ww-add-row" onclick="openPlayerModal('${c.id}')">
           <b>${idx + 1}</b>
           <div><strong>${_uiEsc(pName(c.id))}</strong><small>${c.pos} · ${c.p.team || 'FA'} · ${c.age || '?'} · ${Math.round(c.val).toLocaleString()} DHQ</small></div>
-          <aside><span>${_uiEsc(c.bid.label)}</span><small>${_uiEsc(c.needFit ? 'Need' : c.targetFit ? 'Target' : 'Value')}</small></aside>
+          <aside><span>${_uiEsc(_wwGated ? _wwFit(c) : c.bid.label)}</span><small>${_uiEsc(_wwGated ? 'Bid · Pro' : _wwFit(c))}</small></aside>
         </div>`).join('') : '<div class="ww-empty">No priority adds found.</div>'}
       </div>
 
@@ -1239,7 +1356,7 @@ function renderWaiverWorkbench() {
     <section class="ww-grid">
       <div class="ww-card">
         <div class="ww-card-head"><span>Market Leverage</span><em>${data.faab.isFAAB ? `$${data.faab.remaining} FAAB` : 'priority'}</em></div>
-        ${highestThreats.map(r => `<div class="ww-market-row ${r.remaining > data.faab.remaining ? 'danger' : ''}"><span>${_uiEsc(r.name)}</span><strong>${data.faab.isFAAB ? '$' + r.remaining : '#' + r.priority}</strong></div>`).join('') || '<div class="ww-empty">No competitor budget data.</div>'}
+        ${_wwGated ? (typeof _tierGatePlaceholder==='function'?_tierGatePlaceholder('Market Leverage', _wwKey):'') : (highestThreats.map(r => `<div class="ww-market-row ${r.remaining > data.faab.remaining ? 'danger' : ''}"><span>${_uiEsc(r.name)}</span><strong>${data.faab.isFAAB ? '$' + r.remaining : '#' + r.priority}</strong></div>`).join('') || '<div class="ww-empty">No competitor budget data.</div>')}
       </div>
 
       <div class="ww-card">
@@ -1252,7 +1369,7 @@ function renderWaiverWorkbench() {
 
     ${data.trendingDrops.length ? `<section class="ww-card">
       <div class="ww-card-head"><span>Fresh Drop Alerts</span><em>Sleeper trend</em></div>
-      ${data.trendingDrops.map(c => `<div class="ww-add-row" onclick="openPlayerModal('${c.id}')">
+      ${_wwGated ? (typeof _tierGatePlaceholder==='function'?_tierGatePlaceholder('Fresh Drop Alerts', _wwKey):'') : data.trendingDrops.map(c => `<div class="ww-add-row" onclick="openPlayerModal('${c.id}')">
         <b>↓</b><div><strong>${_uiEsc(pName(c.id))}</strong><small>${c.pos} · ${c.p.team || 'FA'} · ${Math.round(c.val).toLocaleString()} DHQ</small></div><aside><span>Review</span><small>${c.ppg ? c.ppg + ' PPG' : 'value'}</small></aside>
       </div>`).join('')}
     </section>` : ''}
@@ -1270,13 +1387,13 @@ function renderWaiverWorkbench() {
         <button onclick="_wwSetSort('fit')">Fit${_wwSort.key === 'fit' ? (_wwSort.dir > 0 ? ' ▲' : ' ▼') : ''}</button>
         <button onclick="_wwSetSort('name')">Player${_wwSort.key === 'name' ? (_wwSort.dir > 0 ? ' ▲' : ' ▼') : ''}</button>
         <button onclick="_wwSetSort('dhq')">DHQ${_wwSort.key === 'dhq' ? (_wwSort.dir > 0 ? ' ▲' : ' ▼') : ''}</button>
-        <button onclick="_wwSetSort('bid')">Bid${_wwSort.key === 'bid' ? (_wwSort.dir > 0 ? ' ▲' : ' ▼') : ''}</button>
+        ${_wwGated ? '<span style="opacity:.55">Bid 🔒</span>' : `<button onclick="_wwSetSort('bid')">Bid${_wwSort.key === 'bid' ? (_wwSort.dir > 0 ? ' ▲' : ' ▼') : ''}</button>`}
       </div>
       ${marketRows.map(c => `<div class="ww-market-item" onclick="openPlayerModal('${c.id}')">
         <span class="ww-pos">${c.pos}</span>
         <div><strong>${_uiEsc(pName(c.id))}</strong><small>${c.p.team || 'FA'} · ${c.age || '?'} · ${c.why}</small></div>
         <span>${Math.round(c.val).toLocaleString()}</span>
-        <em>${_uiEsc(c.bid.label)}</em>
+        <em>${_wwGated ? 'Pro' : _uiEsc(c.bid.label)}</em>
       </div>`).join('') || '<div class="ww-empty">No players match this search.</div>'}
     </section>
   </div>`;
@@ -1427,7 +1544,8 @@ function renderWaiverAlexTop5() {
   }
 
   const strat = window.GMStrategy?.getStrategy ? window.GMStrategy.getStrategy() : {};
-  const aggression = strat.aggression || 'medium';
+  // Map canonical aggression onto the high/medium/low bands (legacy values pass through).
+  const aggression = (strat.aggression === 'aggressive' || strat.aggression === 'high') ? 'high' : (strat.aggression === 'conservative' || strat.aggression === 'low') ? 'low' : 'medium';
   const aggrMult = aggression === 'high' ? 1.4 : aggression === 'low' ? 0.7 : 1.0;
   const targetPositions = strat.targetPositions || [];
   const assess = typeof assessTeamFromGlobal === 'function' ? assessTeamFromGlobal(S.myRosterId) : null;
@@ -1469,8 +1587,15 @@ function renderWaiverAlexTop5() {
   const top5 = scored.slice(0, 5);
 
   // ── Section A: Alex's Top Picks (compact) ──
+  // Scout Pro: the app scoring/recommending waiver targets for you (NEED/TARGET fit +
+  // FAAB bids) is an AI read. Free keeps the raw sortable board (Section B) only.
+  const _wtGated = typeof window.isScoutPro === 'function' && !window.isScoutPro();
   let html = '';
-  if (top5.length) {
+  if (_wtGated) {
+    html += typeof _tierGatePlaceholder === 'function'
+      ? _tierGatePlaceholder("Alex's Top Picks", window.FEATURES?.FAAB_INTELLIGENCE || 'faab_intelligence')
+      : '';
+  } else if (top5.length) {
     html += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:10px 12px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Alex's Top Picks</div>`;
     top5.forEach((a, i) => {
@@ -2131,37 +2256,77 @@ function _buildLineupState(){
   const myPids=my.players||[];
   if(!myPids.length)return null;
 
+  // Engine-quality weekly projections (WS0 vendored App.WeeklyProj/App.StartSit into Scout).
+  // Skill positions project a league-scored stat line (floor/median/ceiling); K/DEF/IDP and
+  // any failure fall back to the season-average heuristic so this never regresses.
+  const WP=window.App&&window.App.WeeklyProj;
+  const scoring=league.scoring_settings||{};
+  const week=Number(S.currentWeek)||(WP&&WP.currentWeek&&WP.currentWeek())||1;
+  let statsData=null,priorData=null;
+  if(WP&&S.playerStats){
+    statsData={};priorData={};
+    for(const pid of myPids){const ps=S.playerStats[pid];if(!ps)continue;if(ps.curRawStats)statsData[pid]=ps.curRawStats;if(ps.prevRawStats)priorData[pid]=ps.prevRawStats;}
+  }
   const scored=myPids.map(pid=>{
     const p=S.players?.[pid];if(!p)return null;
-    const stats=S.playerStats?.[pid]||{};
-    const proj=S.playerProj?.[pid]||0;
-    const ppg=stats.seasonAvg||stats.trail3||stats.prevAvg||0;
-    const score=proj||ppg;
     const pos=normPos(p.position)||p.position;
-    return{pid,pos,score,name:p.full_name||pName(pid),team:p.team||'FA',injury:p.injury_status};
+    let score=null,floor=null,ceiling=null,projSrc='ppg';
+    if(WP&&['QB','RB','WR','TE'].includes(pos)){
+      try{
+        const pr=WP.projectPlayer(pid,{playersData:S.players,statsData,priorData,scoring,week});
+        if(pr&&pr.points){score=(pr.available===false)?0:(+pr.points.median||0);floor=pr.points.floor??null;ceiling=pr.points.ceiling??null;projSrc='engine';}
+      }catch(e){/* fall back to heuristic */}
+    }
+    if(score===null){
+      const stats=S.playerStats?.[pid]||{};
+      const projv=S.playerProj?.[pid]||0;
+      score=projv||(stats.seasonAvg||stats.trail3||stats.prevAvg||0);projSrc='ppg';
+    }
+    return{pid,pos,score,floor,ceiling,projSrc,name:p.full_name||pName(pid),team:p.team||'FA',injury:p.injury_status};
   }).filter(Boolean);
 
   const flexMap={SUPER_FLEX:['QB','RB','WR','TE'],WRTQ:['QB','RB','WR','TE'],FLEX:['RB','WR','TE'],REC_FLEX:['WR','TE'],IDP_FLEX:['DL','LB','DB']};
+  const _slotLabel=slot=>slot==='SUPER_FLEX'?'SF':slot==='IDP_FLEX'?'IDP_FLX':slot==='REC_FLEX'?'R_FLX':flexMap[slot]?'FLX':slot;
   const used=new Set();
-  const lineup=[];
+  let lineup=[];
 
-  // Fixed positions first
-  starterSlots.filter(s=>!flexMap[s]).forEach(slot=>{
-    const pos=normPos(slot)||slot;
-    const displaySlot=slot;
-    const best=scored.filter(p=>p.pos===pos&&!used.has(p.pid)).sort((a,b)=>b.score-a.score)[0];
-    if(best){used.add(best.pid);lineup.push({slot:displaySlot,player:best,isFlex:false});}
-    else lineup.push({slot:displaySlot,player:null,isFlex:false});
-  });
+  // Exact, slot-aware optimal lineup via the engine (provably optimal for nested
+  // SF/FLEX/IDP-FLEX eligibility, where the old greedy could misassign). Greedy fallback.
+  const SS=window.App&&window.App.StartSit;
+  let _solved=false;
+  // The provably-optimal solver is Scout Pro; free falls to the greedy fallback below.
+  const _luPro=typeof window.isScoutPro!=='function'||window.isScoutPro();
+  if(_luPro&&SS&&typeof SS.optimalLineupWeekly==='function'){
+    try{
+      const byPid={};scored.forEach(p=>{byPid[p.pid]=p;});
+      const players=scored.map(p=>({pid:p.pid,pos:p.pos,available:true,pts:p.score}));
+      const opt=SS.optimalLineupWeekly(players,starterSlots);
+      const slots=opt&&(opt.slots||opt.starters);
+      if(Array.isArray(slots)&&slots.length){
+        lineup=slots.map(s=>{const player=s.pid?(byPid[s.pid]||null):null;if(player)used.add(player.pid);return{slot:_slotLabel(s.slot),player,isFlex:!!flexMap[s.slot]};});
+        _solved=true;
+      }
+    }catch(e){_solved=false;}
+  }
+  if(!_solved){
+    // Greedy fallback: fixed positions first, then flex by score.
+    starterSlots.filter(s=>!flexMap[s]).forEach(slot=>{
+      const pos=normPos(slot)||slot;
+      const best=scored.filter(p=>p.pos===pos&&!used.has(p.pid)).sort((a,b)=>b.score-a.score)[0];
+      if(best){used.add(best.pid);lineup.push({slot,player:best,isFlex:false});}
+      else lineup.push({slot,player:null,isFlex:false});
+    });
+    starterSlots.filter(s=>flexMap[s]).forEach(slot=>{
+      const eligible=flexMap[slot]||[];
+      const best=scored.filter(p=>eligible.includes(p.pos)&&!used.has(p.pid)).sort((a,b)=>b.score-a.score)[0];
+      if(best){used.add(best.pid);lineup.push({slot:_slotLabel(slot),player:best,isFlex:true});}
+      else lineup.push({slot:_slotLabel(slot),player:null,isFlex:true});
+    });
+  }
 
-  // Flex slots
-  starterSlots.filter(s=>flexMap[s]).forEach(slot=>{
-    const eligible=flexMap[slot]||[];
-    const best=scored.filter(p=>eligible.includes(p.pos)&&!used.has(p.pid)).sort((a,b)=>b.score-a.score)[0];
-    const label=slot==='SUPER_FLEX'?'SF':slot==='IDP_FLEX'?'IDP_FLX':slot==='REC_FLEX'?'R_FLX':'FLX';
-    if(best){used.add(best.pid);lineup.push({slot:label,player:best,isFlex:true});}
-    else lineup.push({slot:label,player:null,isFlex:true});
-  });
+  // Clean display grouping order so section headers stay contiguous.
+  const _grpOrder={QB:0,RB:1,WR:2,TE:3,FLX:4,SF:4,R_FLX:4,K:5,DL:6,LB:6,DB:6,IDP_FLX:7,DEF:8};
+  lineup.sort((a,b)=>((_grpOrder[a.slot]??9)-(_grpOrder[b.slot]??9)));
 
   // Bench alternatives by position
   const benchByPos={};
@@ -2230,13 +2395,17 @@ function renderStartSit(){
   if(optBar){
     if(suboptimalCount>0){
       const gain=betterOptions.reduce((s,b)=>s+b.delta,0);
+      // Free sees that better options EXIST (a teaser), but the projected gain
+      // and the one-tap auto-optimize (which enumerates every swap) are the
+      // STARTSIT_DEPTH-gated depth — same board _renderBenchView paywalls.
+      const _ssDepth = typeof canAccess !== 'function' || canAccess(window.FEATURES?.STARTSIT_DEPTH || 'startsit_depth');
       optBar.innerHTML=`<div class="optimize-bar">
         <div class="optimize-count has-swaps">${suboptimalCount}</div>
         <div class="optimize-text">
           <div class="optimize-title">${suboptimalCount} better option${suboptimalCount>1?'s':''} found</div>
-          <div class="optimize-sub">+${gain.toFixed(1)} projected points available</div>
+          <div class="optimize-sub">${_ssDepth?`+${gain.toFixed(1)} projected points available`:'Unlock lineup depth to auto-optimize'}</div>
         </div>
-        <button class="optimize-btn" onclick="optimizeLineup()">Optimize</button>
+        ${_ssDepth?`<button class="optimize-btn" onclick="optimizeLineup()">Optimize</button>`:`<button class="optimize-btn" onclick="showUpgradePrompt(window.FEATURES?.STARTSIT_DEPTH||'startsit_depth')">Unlock</button>`}
       </div>`;
     } else {
       optBar.innerHTML=`<div class="optimize-bar clean">
@@ -2265,6 +2434,10 @@ function renderStartSit(){
 function _renderStartersView(analyzed){
   const wrap=$('startsit-content');if(!wrap)return;
 
+  // Depth gate: free gets median projection + the single inline swap; paid gets
+  // floor/ceiling variance bands (and the full bench upgrade ranking).
+  const _ssDepth = typeof canAccess !== 'function' || canAccess(window.FEATURES?.STARTSIT_DEPTH || 'startsit_depth');
+
   // Group by position category for section headers
   const posOrder=['QB','RB','WR','TE','FLX','SF','R_FLX','K','DL','LB','DB','IDP_FLX'];
   const offPos=new Set(['QB','RB','WR','TE']);
@@ -2278,8 +2451,8 @@ function _renderStartersView(analyzed){
     const slot=l.slot;
     let group='';
     if(offPos.has(slot))group=slot;
-    else if(idpPos.has(slot))group='IDP';
-    else if(['FLX','SF','R_FLX','IDP_FLX'].includes(slot))group='FLEX';
+    else if(idpPos.has(slot)||slot==='IDP_FLX')group='IDP';
+    else if(['FLX','SF','R_FLX'].includes(slot))group='FLEX';
     else group=slot;
 
     if(group!==lastGroup){
@@ -2320,13 +2493,15 @@ function _renderStartersView(analyzed){
       </div>
       <div class="lu-score-col">
         <div class="lu-score" style="color:${scoreCol}">${p.score.toFixed(1)}</div>
-        <div class="lu-confidence ${confLabelCls}">${confLabel}</div>
+        ${(_ssDepth&&p.floor!=null&&p.ceiling!=null)?`<div class="mono" style="font-size:10px;color:var(--text3);white-space:nowrap;margin-top:1px">${p.floor.toFixed(0)}–${p.ceiling.toFixed(0)}</div>`:''}
+        ${_ssDepth?`<div class="lu-confidence ${confLabelCls}">${confLabel}</div>`:''}
       </div>
       <div class="lu-chevron"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
     </div>`;
 
-    // Inline swap hint for suboptimal starters
-    if(l.confidence==='suboptimal'&&l.bestAlt){
+    // Inline swap hint for suboptimal starters — the actual named "start X instead" rec
+    // (with point gain) is STARTSIT_DEPTH depth; free sees only the count teaser above.
+    if(_ssDepth&&l.confidence==='suboptimal'&&l.bestAlt){
       html+=`<div class="lu-swap-hint" onclick="event.stopPropagation();openPlayerModal('${l.bestAlt.pid}')">
         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/></svg>
         Start instead: ${l.bestAlt.name}
@@ -2342,10 +2517,19 @@ function _renderBenchView(state){
   const wrap=$('lineup-bench-content');if(!wrap)return;
   const{betterOptions,allBench}=state;
 
+  // Depth gate: free sees the single inline swap (starters view) + the plain
+  // bench list; paid sees the full ranked "Upgrades Available" board.
+  const _ssDepth = typeof canAccess !== 'function' || canAccess(window.FEATURES?.STARTSIT_DEPTH || 'startsit_depth');
+
   let html='';
 
-  // Better options section
-  if(betterOptions.length){
+  // Better options section (paid depth)
+  if(!_ssDepth && betterOptions.length){
+    html+=`<div style="margin-bottom:14px">
+      <div class="lu-pos-group" style="color:var(--amber)">Upgrades Available</div>
+      ${typeof _tierGatePlaceholder==='function'?_tierGatePlaceholder(`${betterOptions.length} lineup upgrade${betterOptions.length===1?'':'s'} found`, window.FEATURES?.STARTSIT_DEPTH || 'startsit_depth'):''}
+    </div>`;
+  } else if(betterOptions.length){
     html+=`<div style="margin-bottom:14px">
       <div class="lu-pos-group" style="color:var(--amber)">Upgrades Available</div>
       ${betterOptions.map(bo=>{
@@ -2418,6 +2602,12 @@ function switchLineupView(view){
 // Optimize lineup — show diff then re-render
 function optimizeLineup(){
   if(!_luState)return;
+  // Backstop: STARTSIT_DEPTH gates the full ranked swap reveal. Even if the
+  // Optimize button is reached, free users get the upgrade prompt, not the depth.
+  if(typeof canAccess==='function' && !canAccess(window.FEATURES?.STARTSIT_DEPTH||'startsit_depth')){
+    if(typeof showUpgradePrompt==='function') showUpgradePrompt(window.FEATURES?.STARTSIT_DEPTH||'startsit_depth');
+    return;
+  }
   const{betterOptions,totalProj}=_luState;
   if(!betterOptions.length)return;
 

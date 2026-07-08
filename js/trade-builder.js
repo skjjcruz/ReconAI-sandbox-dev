@@ -415,6 +415,9 @@ function _tbEnsureOverlay() {
 // ── Partner Insight Card ─────────────────────────────────────
 function _tbPartnerInsight(targetRosterId, targetName) {
   if (!targetRosterId) return '';
+  // Owner behavioral intel (DNA/tendency/tactical tips) is Scout Pro — same OWNER_DNA
+  // gate League Intel uses. Free builds trades with raw values only.
+  if (typeof canAccess === 'function' && !canAccess(window.FEATURES?.OWNER_DNA || 'owner_dna')) return '';
   const profile = window.App?.LI?.ownerProfiles?.[targetRosterId];
   if (!profile || profile.trades < 1) return '';
 
@@ -589,12 +592,12 @@ function _tbRenderPanel() {
         </div>
         <span style="font-size:12px;color:var(--text3);text-align:right">You Get<br><strong style="font-family:'JetBrains Mono',monospace;color:var(--text);font-size:13px">${theirTotal.toLocaleString()}</strong></span>
       </div>
-      <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:5px">
+      ${(typeof canAccess === 'function' && !canAccess(window.FEATURES?.OWNER_DNA || 'owner_dna')) ? '' : `<div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:5px">
         <div style="height:100%;width:${prob}%;background:${prob >= 60 ? 'var(--green)' : prob >= 35 ? 'var(--amber)' : 'var(--red)'};border-radius:3px;transition:width .3s"></div>
-      </div>
+      </div>`}
       <div style="display:flex;justify-content:space-between;font-size:11px">
         <span style="color:${diffCol};font-weight:700">${diffStr} DHQ</span>
-        <span style="color:var(--text3)">${prob}% acceptance probability</span>
+        ${(typeof canAccess === 'function' && !canAccess(window.FEATURES?.OWNER_DNA || 'owner_dna')) ? '' : `<span style="color:var(--text3)">${prob}% acceptance probability</span>`}
       </div>
     </div>` : ''}
 

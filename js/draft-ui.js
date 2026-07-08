@@ -592,6 +592,72 @@ function renderLiveDraftUI(ended) {
 }
 window.renderLiveDraftUI = renderLiveDraftUI;
 
+// ── Draft gameplan: archetype picker + round-by-round blueprint ───
+// Surfaces the shared App.DraftGameplan engine (WS0-vendored) in Scout's
+// draft entry view. Pure/year-round: derives the blueprint from the league's
+// roster slots + scoring, so it works offseason with no scheduled draft.
+let _draftGameplanArch = 'balanced';
+function setDraftGameplanArch(k) { _draftGameplanArch = k; renderDraftGameplan(); }
+window.setDraftGameplanArch = setDraftGameplanArch;
+
+function renderDraftGameplan() {
+  const el = document.getElementById('draft-entry-gameplan');
+  if (!el) return;
+  // Archetype blueprint / round-by-round plan is a draft optimizer → Scout Pro.
+  // Mirrors the sibling renderDraftNeeds gate; free drafts old-school.
+  if (typeof canAccess === 'function' && !canAccess(window.FEATURES?.DRAFT_ARCHETYPES || 'draft_archetypes')) { el.innerHTML = ''; return; }
+  // Dynasty (E5): no gameplan for dynasty leagues at any tier — format gate
+  // COMPOSES with the tier gate above, never replaces it.
+  if (typeof window.currentLeagueAllowsRedraftFeatures === 'function'
+      && !window.currentLeagueAllowsRedraftFeatures()) { el.innerHTML = ''; return; }
+  const DG = window.App && window.App.DraftGameplan;
+  const S = window.S || {};
+  const league = S.leagues?.find(l => l.league_id === S.currentLeagueId);
+  if (!DG || !league || !league.roster_positions || !league.roster_positions.length) { el.innerHTML = ''; return; }
+  // Full roster build (engine front-loads offense, tails K/DEF/IDP). Capping
+  // rounds would crowd out RB/WR in deep-IDP leagues, so build full and cap the DISPLAY.
+  let plan;
+  try { plan = DG.build(league); } catch (e) { el.innerHTML = ''; return; }
+  if (!plan || !plan.archetypes || !plan.archetypes.length) { el.innerHTML = ''; return; }
+  if (!plan.archetypes.find(a => a.key === _draftGameplanArch)) _draftGameplanArch = plan.archetypes[0].key;
+  const sel = plan.archetypes.find(a => a.key === _draftGameplanArch) || plan.archetypes[0];
+
+  const POSC = { QB: 'var(--blue)', RB: 'var(--green)', WR: 'var(--blue)', TE: 'var(--amber)', K: 'var(--text2)', DEF: 'var(--red)', IDP: '#fb923c' };
+  const esc = window.escHtml || (s => String(s));
+
+  const chips = plan.archetypes.map(a => {
+    const on = a.key === sel.key;
+    return `<button onclick="setDraftGameplanArch('${a.key}')" style="flex:0 0 auto;font-size:12px;font-weight:600;padding:7px 11px;border-radius:16px;cursor:pointer;font-family:inherit;white-space:nowrap;border:1px solid ${on ? 'rgba(212,175,55,.32)' : 'var(--border2)'};background:${on ? 'var(--accentL)' : 'transparent'};color:${on ? 'var(--accent)' : 'var(--text2)'}">${esc(a.label)}</button>`;
+  }).join('');
+
+  const tg = sel.targets || {};
+  const tgPills = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'IDP'].filter(p => tg[p] > 0).map(p =>
+    `<span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text2)"><span style="color:${POSC[p]};font-weight:700">${p}</span> ${tg[p]}</span>`
+  ).join('<span style="color:var(--text3);margin:0 2px">·</span>');
+
+  const _shown = (sel.picks || []).slice(0, 14);
+  const _more = (sel.picks || []).length - _shown.length;
+  const rounds = _shown.map(p =>
+    `<div style="flex:0 0 auto;text-align:center;min-width:38px;padding:6px 4px;background:var(--bg3);border-radius:8px">
+       <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">R${p.round}</div>
+       <div style="font-size:12px;font-weight:700;color:${POSC[p.pos] || 'var(--text2)'};margin-top:2px">${p.pos}</div>
+     </div>`
+  ).join('') + (_more > 0 ? `<div style="flex:0 0 auto;display:flex;align-items:center;padding:0 8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">+${_more} rd</div>` : '');
+
+  el.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em">Draft Gameplan</span>
+        <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">${plan.superflex ? 'SF' : '1QB'} · ${esc(plan.ppr)}${plan.tePremium ? ' · TE-prem' : ''} · ${plan.rounds} rd</span>
+      </div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px">${chips}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:10px">${esc(sel.blurb)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:11px">${tgPills}</div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">${rounds}</div>
+    </div>`;
+}
+window.renderDraftGameplan = renderDraftGameplan;
+
 // ── DNA intel strip for mock draft on-the-clock ──────────────
 function _renderDNAIntelStrip(round) {
   const LI = window.LI || {};
@@ -959,6 +1025,8 @@ let _mockLastInsightPickIdx = -99;
 const MOCK_INSIGHT_EVERY_N_PICKS = 3;
 
 async function _mockFireAlexInsight(trigger, context) {
+  // Live AI draft commentary is Scout Pro — free runs the mock old-school (no Alex watching).
+  if (typeof window.isScoutPro === 'function' && !window.isScoutPro()) return;
   if (_mockInsightInFlight) return;
   if (_mockState && (_mockState.currentIdx - _mockLastInsightPickIdx) < MOCK_INSIGHT_EVERY_N_PICKS) return;
   if (typeof hasAnyAI !== 'function' || !hasAnyAI(false)) return;
@@ -1051,8 +1119,11 @@ function _mockDNAInformedPick(rosterId, available, round, pickNumber) {
   if (!available.length) return available[0] || null;
   const assessTeamFromGlobal = window.assessTeamFromGlobal || window.App?.assessTeamFromGlobal;
 
-  // Delegate to shared MockEngine when available (canonical 10-layer engine)
-  if (window.App?.MockEngine?.personaPick) {
+  // Delegate to shared MockEngine when available (canonical 10-layer engine).
+  // Persona/DNA-informed opponents are Scout Pro ("AI-powered mock draft"); free
+  // opponents draft pure best-available (the BPA fallback below).
+  const _mockPro = typeof window.isScoutPro !== 'function' || window.isScoutPro();
+  if (_mockPro && window.App?.MockEngine?.personaPick) {
     const LI = window.LI || {};
     const assess = typeof assessTeamFromGlobal === 'function' ? assessTeamFromGlobal(rosterId) : null;
     const dna = _getDraftDNAForRoster(rosterId);
@@ -1381,6 +1452,7 @@ let _rookieShowAll=false;
 let _rookieGroupByPos=false;
 let _rookieSearch='';
 let _rookieTagFilter='';
+let _rookieLane='market'; // 'market' (DHQ) | 'ai' (re-ranked) | 'my' (custom board)
 
 function _rookieEsc(s) {
   const esc = window.escHtml || window.App?.escHtml;
@@ -1467,9 +1539,105 @@ function _rookieOpen(pid) {
 }
 window._rookieOpen = _rookieOpen;
 
+// ── Big-board lanes (Market / AI / My) — port of warroom/js/draft ──────────
+// AI Board re-ranks the DHQ pool by roster need + GM strategy (buildAiRecommendedOrder,
+// context.js). My Board is a user-owned ordering with ▲/▼ moves + 1-12 tiers, persisted
+// to localStorage (WR's onMovePlayer/onEditTier pattern; no drag-drop needed on mobile).
+function _bigBoardKey(){ const lid = window.S?.currentLeagueId || window.App?.S?.currentLeagueId || ''; return 'rookie_big_board_' + lid; }
+function _bigBoardData(){
+  try { const b = JSON.parse(localStorage.getItem(_bigBoardKey()) || '{}') || {}; b.myOrder = b.myOrder || []; b.tiers = b.tiers || {}; return b; }
+  catch { return { myOrder: [], tiers: {} }; }
+}
+function _bigBoardSave(patch){
+  const b = _bigBoardData();
+  Object.assign(b, patch || {});
+  try { localStorage.setItem(_bigBoardKey(), JSON.stringify(b)); } catch { /* ignore */ }
+  if (window.OD?.saveBigBoard) { try { window.OD.saveBigBoard(_bigBoardKey(), b); } catch { /* ignore */ } }
+}
+// Re-rank a rookie pool by roster need + GM strategy. Scout simplifications vs WR:
+// no format adapter (positionMultipliers=1) and no projectPlayerValue (base = raw DHQ).
+function buildAiRookieOrder(rookies){
+  const strat = (window.GMStrategy?.getStrategy ? window.GMStrategy.getStrategy() : {}) || {};
+  const assess = (window.assessTeamFromGlobal || window.App?.assessTeamFromGlobal || (() => null))(window.S?.myRosterId);
+  const needs = new Set((assess?.needs || []).map(n => typeof n === 'string' ? n : n?.pos).filter(Boolean));
+  const _rawDs = strat.draftStyle || strat.mode || 'mix';
+  // Canonical 'positional_need' maps to this board's 'need' vocabulary.
+  const draftStyle = _rawDs === 'positional_need' ? 'need' : _rawDs;
+  const needBias = draftStyle === 'need' ? 1.35 : draftStyle === 'bpa' ? 0.8 : 1;
+  const youthPremium = (strat.timeline === 'rebuild' || strat.timeline === '2_3_years' || strat.timeline === 'dynasty_long') ? 1.12 : 1;
+  const targets = new Set(strat.targetPositions || strat.targets || []);
+  const fades = new Set(strat.sellPositions || strat.blockPositions || []);
+  const score = p => {
+    const pos = p.pos || p.position || '';
+    const base = Number(p.dhq || 0);
+    let v = base;
+    if (needs.has(pos)) v *= (1 + 0.12 * needBias);
+    if (targets.has(pos)) v *= 1.05;
+    if (fades.has(pos)) v *= 0.96;
+    const age = Number(p.age || 0);
+    if (age && age <= 24 && ['RB', 'WR', 'TE'].includes(pos)) v *= youthPremium;
+    if (parseInt(p.csvTier, 10) === 1) v *= 1.04;
+    if (base) v = Math.max(base * 0.82, Math.min(base * 1.22, v)); // clamp ±22% of base
+    return v;
+  };
+  return rookies.slice().sort((a, b) => { const d = score(b) - score(a); return Math.abs(d) > 0.001 ? d : (b.dhq || 0) - (a.dhq || 0); }).map(r => r.pid);
+}
+// AI Board + My Board are premium ("AI+custom boards"); gate on ANALYTICS_DEPTH
+// (the War Room-depth bucket). Market lane stays free. getTier()='paid' on
+// localhost, so this only bites real free users — guard at the action layer.
+function _rookieLanesLocked(){ return typeof canAccess === 'function' && !canAccess(window.FEATURES?.ANALYTICS_DEPTH || 'analytics_depth'); }
+function _rookiePromptUpgrade(){ if (typeof showUpgradePrompt === 'function') showUpgradePrompt(window.FEATURES?.ANALYTICS_DEPTH || 'analytics_depth'); }
+function _rookieSetLane(lane){
+  if ((lane === 'ai' || lane === 'my') && _rookieLanesLocked()) { _rookiePromptUpgrade(); return; }
+  _rookieLane = lane; _rookieShowAll = false; renderRookieBoard();
+}
+window._rookieSetLane = _rookieSetLane;
+function _rookieSeedFromAi(){
+  if (_rookieLanesLocked()) { _rookiePromptUpgrade(); return; }
+  const pool = window._rookieFullPool || Object.values(window._rookieCache || {}); // full pool, not the filtered view
+  if (!pool.length) return;
+  _bigBoardSave({ myOrder: buildAiRookieOrder(pool) });
+  if (typeof showToast === 'function') showToast('Seeded My Board from AI');
+  renderRookieBoard();
+}
+window._rookieSeedFromAi = _rookieSeedFromAi;
+function _rookieMove(pid, delta){
+  if (_rookieLanesLocked()) { _rookiePromptUpgrade(); return; }
+  const b = _bigBoardData();
+  let order = (b.myOrder || []).slice();
+  // Lazy-init from the FULL pool in DHQ-desc order — matching the empty-myOrder
+  // display baseline — so the first move only nudges the tapped player instead
+  // of scrambling the board into raw build order.
+  if (!order.length) order = (window._rookieFullPool || Object.values(window._rookieCache || {})).slice().sort((a, b) => (b.dhq || 0) - (a.dhq || 0)).map(r => r.pid);
+  let idx = order.indexOf(pid);
+  if (idx < 0) { order.push(pid); idx = order.length - 1; }
+  const next = Math.max(0, Math.min(order.length - 1, idx + Number(delta)));
+  if (next !== idx) { const [m] = order.splice(idx, 1); order.splice(next, 0, m); }
+  _bigBoardSave({ myOrder: order });
+  renderRookieBoard();
+}
+window._rookieMove = _rookieMove;
+function _rookieSetTier(pid){
+  if (_rookieLanesLocked()) { _rookiePromptUpgrade(); return; }
+  const b = _bigBoardData();
+  const cur = b.tiers[pid] || '';
+  const raw = prompt('Tier for this prospect (1-12, blank to clear):', cur ? String(cur) : '');
+  if (raw === null) return;
+  const t = String(raw).trim();
+  const tiers = { ...b.tiers };
+  if (t === '') { delete tiers[pid]; }
+  else { const v = parseInt(t, 10); if (!Number.isFinite(v) || v < 1 || v > 12) { if (typeof showToast === 'function') showToast('Tier must be 1-12'); return; } tiers[pid] = v; }
+  _bigBoardSave({ tiers });
+  renderRookieBoard();
+}
+window._rookieSetTier = _rookieSetTier;
+
 function renderRookieBoard(){
   const $ = window.$ || (id => document.getElementById(id));
   const S = window.S || window.App?.S || {};
+  // Lane selection is per-session, but data is per-league — reset to Market on a
+  // league switch so a stale 'My Board' header doesn't sit over an empty order.
+  if (window._rbLastLeague !== S.currentLeagueId) { _rookieLane = 'market'; window._rbLastLeague = S.currentLeagueId; }
   const LI = window.LI || window.App?.LI || {};
   const dynastyValue = window.dynastyValue || window.App?.dynastyValue || (() => 0);
   const assessTeamFromGlobal = window.assessTeamFromGlobal || window.App?.assessTeamFromGlobal;
@@ -1581,6 +1749,11 @@ function renderRookieBoard(){
   }, {});
   _syncRookieHqTagCounts(allBoardTagCounts);
 
+  // Capture the FULL unfiltered pool for big-board seed / My-Board lazy-init, so a
+  // custom board built while a pos/search/tag filter is active isn't silently
+  // truncated to the visible subset.
+  window._rookieFullPool = rookies.slice();
+
   // Apply position filter
   if(_rookiePosFilter)rookies=rookies.filter(r=>r.pos===_rookiePosFilter);
 
@@ -1615,6 +1788,17 @@ function renderRookieBoard(){
     return 0;
   });
 
+  // Big-board lanes: re-order the pool by the AI recommendation or the user's custom board.
+  if(_rookieLane==='ai'){
+    const aiIdx={}; buildAiRookieOrder(rookies).forEach((pid,i)=>{aiIdx[pid]=i;});
+    rookies.sort((a,b)=>(aiIdx[a.pid]??9999)-(aiIdx[b.pid]??9999));
+  } else if(_rookieLane==='my'){
+    const myIdx={}; (_bigBoardData().myOrder||[]).forEach((pid,i)=>{myIdx[pid]=i;});
+    rookies.sort((a,b)=>{const ai=myIdx[a.pid],bi=myIdx[b.pid]; if(ai!=null&&bi!=null)return ai-bi; if(ai!=null)return -1; if(bi!=null)return 1; return (b.dhq||0)-(a.dhq||0);});
+  }
+  // Read the board once per render (tiers map) instead of per-row in _renderRookieRow.
+  window._rbBoardCache = _rookieLane==='my' ? _bigBoardData() : null;
+
   rookies=rookies.slice(0,120);
   window._rookieCache = {};
   rookies.forEach(r => { window._rookieCache[r.pid] = r; });
@@ -1640,11 +1824,13 @@ function renderRookieBoard(){
 
   // Hero card — Alex's decisive pick, big and bold
   const _rbStrat = window.GMStrategy?.getStrategy ? window.GMStrategy.getStrategy() : {};
-  const _rbDs = _rbStrat.draftStyle || 'bpa';
+  const _rbDs = (_rbStrat.draftStyle === 'positional_need' ? 'need' : _rbStrat.draftStyle) || 'bpa';
   const _rbAssess = typeof assessTeamFromGlobal === 'function' ? assessTeamFromGlobal(S.myRosterId) : null;
   const _rbNeeds = (_rbAssess?.needs || []).map(n => typeof n === 'string' ? n : n.pos);
+  // The decisive "Alex says: Take X" hero is the app making the pick for you → Scout Pro.
+  // Free gets the raw value-sorted board below and decides for themselves.
   let _rbHero = '';
-  if (rookies.length > 0) {
+  if (rookies.length > 0 && (typeof window.isScoutPro !== 'function' || window.isScoutPro())) {
     let _rbPick = rookies[0];
     if (_rbDs === 'need' && _rbNeeds.length) _rbPick = rookies.find(r => _rbNeeds.includes(r.pos)) || _rbPick;
     else if (_rbDs === 'mix' && _rbNeeds.length) _rbPick = rookies.find(r => _rbNeeds.includes(r.pos) || (_rbStrat.targetPositions||[]).includes(r.pos)) || _rbPick;
@@ -1681,6 +1867,7 @@ function renderRookieBoard(){
   }, {});
   const allTagCount = tagCountBase.length;
   const boardTitle = _rookieTagFilter ? `${_rookieTagLabel(_rookieTagFilter)} Board` : 'Market Board';
+  const _boardLocked = _rookieLanesLocked();
 
   el.innerHTML=`
     <section class="rookie-board-shell">
@@ -1693,9 +1880,16 @@ function renderRookieBoard(){
         <button class="scout-secondary-btn" onclick="openDynamicMockDraft()">Mock</button>
       </div>
       <div class="rookie-board-tools">
-        <input value="${_rookieEsc(_rookieSearch)}" placeholder="Search rookies, college, team..." oninput="_rookieSetSearch(this.value)" />
+        <input id="rookie-search" value="${_rookieEsc(_rookieSearch)}" placeholder="Search rookies, college, team..." oninput="_rookieSetSearch(this.value)" />
         <button onclick="_rookieSetSearch('')" ${_rookieSearch ? '' : 'disabled'}>Clear</button>
       </div>
+      <div class="rookie-lane-row">
+        <button class="${_rookieLane==='market'?'active':''}" onclick="_rookieSetLane('market')">Market</button>
+        <button class="${_rookieLane==='ai'?'active':''}${_boardLocked?' rookie-lane-locked':''}" onclick="_rookieSetLane('ai')">AI Board${_boardLocked?' <span class="rookie-lane-pro">PRO</span>':''}</button>
+        <button class="${_rookieLane==='my'?'active':''}${_boardLocked?' rookie-lane-locked':''}" onclick="_rookieSetLane('my')">My Board${_boardLocked?' <span class="rookie-lane-pro">PRO</span>':''}</button>
+        ${_rookieLane==='my'&&!_boardLocked?`<button class="rookie-lane-seed" onclick="_rookieSeedFromAi()">Seed from AI</button>`:''}
+      </div>
+      ${_rookieLane!=='market'?`<div class="rookie-lane-note">${_rookieLane==='ai'?'Re-ranked for your roster needs + GM strategy — value clamped ±22% of DHQ.':'Your custom board — tap a player to move it or set a tier. Edits save to this device.'}</div>`:''}
       <div class="rookie-tag-filter-row">
         ${[
           ['', 'All tags', allTagCount],
@@ -1750,10 +1944,20 @@ function _rookieShowMore(){
   _rookieShowAll=true;
   renderRookieBoard();
 }
+let _rookieSearchTimer=null;
 function _rookieSetSearch(value){
   _rookieSearch=value||'';
   _rookieShowAll=false;
-  renderRookieBoard();
+  // Debounce the full board re-render (which re-scans the ~12k player DB and
+  // rebuilds the panel) so it fires once the user pauses, not on every
+  // keystroke. The DOM input keeps the typed value in the meantime; restore
+  // focus + caret afterward since the render replaces the input element.
+  if(_rookieSearchTimer) clearTimeout(_rookieSearchTimer);
+  _rookieSearchTimer=setTimeout(()=>{
+    renderRookieBoard();
+    const el=document.getElementById('rookie-search');
+    if(el){ el.focus(); const n=el.value.length; try{ el.setSelectionRange(n,n); }catch(e){} }
+  },150);
 }
 function _rookieSetTagFilter(tag){
   _rookieTagFilter=_rookieTagFilter===tag?'':tag;
@@ -1776,6 +1980,9 @@ function _renderRookieRow(r, i) {
   const posStyle=typeof getPosBadgeStyle==='function'?getPosBadgeStyle(r.pos):'';
   const tag = _rookieTags()[r.pid] || '';
   const tagChip = tag ? `<span class="rookie-row-tag ${_rookieTagClass(tag)}">${_rookieTagLabel(tag)}</span>` : '';
+  const _myBoard = _rookieLane === 'my' ? (window._rbBoardCache || _bigBoardData()) : null;
+  const _myTier = _myBoard?.tiers?.[r.pid];
+  const tierChip = _myTier ? `<span class="rookie-row-tier">T${_myTier}</span>` : '';
   // Draft badge: drafted players get team + round.pick chip; UDFA gets a UDFA chip
   const draftChip = r.draftRound && r.draftPick
     ? `<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--accentL);color:var(--accent);font-family:'JetBrains Mono',monospace;flex-shrink:0">${_rookieEsc(r.nflTeam||'???')} ${window.formatNFLDraftSlot(r.draftRound, r.draftPick)}</span>`
@@ -1793,6 +2000,7 @@ function _renderRookieRow(r, i) {
         </div>
       </div>
       ${draftChip}
+      ${tierChip}
       ${tagChip}
       <span style="width:36px;text-align:center"><span class="rr-pos" style="${posStyle};font-size:13px;padding:1px 4px">${r.pos}</span></span>
       <span style="width:32px;text-align:center;font-size:13px;color:var(--text3)">${r.age||'\u2014'}</span>
@@ -1808,6 +2016,11 @@ function _renderRookieRow(r, i) {
       </div>
       ${r.csvSummary?'<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:8px;padding:8px;background:var(--bg3);border-radius:6px">'+_rookieEsc(r.csvSummary)+(r.csvSummary.length>=300?'...':'')+'</div>':''}
       ${_rookieTagControls(r.pid)}
+      ${_rookieLane==='my'?`<div class="rookie-my-controls">
+        <button onclick="event.stopPropagation();_rookieMove('${r.pid}',-1)">&#9650; Move up</button>
+        <button onclick="event.stopPropagation();_rookieMove('${r.pid}',1)">&#9660; Move down</button>
+        <button onclick="event.stopPropagation();_rookieSetTier('${r.pid}')">Set tier${_myTier?' (T'+_myTier+')':''}</button>
+      </div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-sm" onclick="fillGlobalChat('Full scouting report on ${(r.p?.full_name||r.name||'').replace(/'/g,"\\'")} (${r.pos}, ${r.college||'Unknown'}). Include strengths, weaknesses, NFL comparison, and where I should draft them.')">Scout Report</button>
         <button class="btn btn-sm btn-ghost" onclick="_rookieOpen('${r.pid}')">Player Card</button>
@@ -1823,7 +2036,9 @@ function _renderGroupedRookies(rookies) {
   return posOrder
     .filter(pos => groups[pos]?.length)
     .map(pos => {
-      const players = groups[pos].sort((a, b) => b.dhq - a.dhq);
+      // Market lane sorts each group by DHQ; AI/My lanes keep the incoming
+      // (already lane-ordered) sequence so grouping doesn't discard the ranking.
+      const players = _rookieLane === 'market' ? groups[pos].sort((a, b) => b.dhq - a.dhq) : groups[pos];
       const topDHQ = players[0]?.dhq || 0;
       const header = `<div style="padding:8px 8px 4px;font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;border-top:1px solid var(--border);margin-top:4px">${pos} · ${players.length} prospects · Top: ${topDHQ.toLocaleString()} DHQ</div>`;
       return header + players.map((r, i) => _renderRookieRow(r, i)).join('');
@@ -1898,6 +2113,8 @@ function _toggleMockTendencies(){
 window._toggleMockTendencies=_toggleMockTendencies;
 
 async function runDraftScouting(){
+  // AI draft scouting report is Scout Pro — free drafts without the AI analysis.
+  if(typeof window.isScoutPro==='function'&&!window.isScoutPro())return;
   if(!hasAnyAI()){switchTab('settings');return;}
   if(typeof trackUsage==='function')trackUsage('draft_targets_flagged');
   const btn=$('draft-scout-btn');btn.textContent='Scouting...';btn.disabled=true;
@@ -2057,7 +2274,7 @@ function renderTopProspects(){
 
   // Strategy context
   const strat = window.GMStrategy?.getStrategy ? window.GMStrategy.getStrategy() : {};
-  const draftStyle = strat.draftStyle || 'bpa';
+  const draftStyle = (strat.draftStyle === 'positional_need' ? 'need' : strat.draftStyle) || 'bpa';
   const targetPos = strat.targetPositions || [];
 
   // Find rookies by source=FC_ROOKIE, sorted by DHQ value
@@ -2263,7 +2480,9 @@ function renderTopProspects(){
   const needPills = needPositions.slice(0, 5).map((p, i) =>
     `<span class="${i === 0 ? 'danger' : ''}">${window.App?.posLabel?.(p)||(p==='DEF'?'D/ST':p)}</span>`
   ).join('');
-  const scoutPlanPrompt = `Build my rookie draft plan. My first pick is ${firstPickLabel}, my needs are ${needPositions.join(', ') || 'none'}, and Alex currently recommends ${alexPick.name}.`;
+  // The decisive "Take X" rookie recommendation is Scout Pro (mirrors _rbHero); free gets the raw board.
+  const _rtpPro = typeof window.isScoutPro !== 'function' || window.isScoutPro();
+  const scoutPlanPrompt = `Build my rookie draft plan. My first pick is ${firstPickLabel}, my needs are ${needPositions.join(', ') || 'none'}${_rtpPro ? `, and Alex currently recommends ${alexPick.name}` : ''}.`;
 
   html += `<section class="rookie-hq">
     <div class="rookie-hq-hero">
@@ -2286,7 +2505,7 @@ function renderTopProspects(){
     </div>
 
     <div class="rookie-hq-grid">
-      <button class="rookie-priority-card" onclick="openPlayerModal('${alexPick.pid}')">
+      ${_rtpPro ? `<button class="rookie-priority-card" onclick="openPlayerModal('${alexPick.pid}')">
         <div class="rookie-card-head"><span>Scout Priority</span><em>${alexPick.pos} · ${alexPick.val.toLocaleString()} DHQ</em></div>
         <strong>Take ${escHtml(alexPick.name)}</strong>
         <p>${escHtml(alexWhy)}.</p>
@@ -2294,7 +2513,7 @@ function renderTopProspects(){
           ${alexPickNeedFit || alexPickTargetFit ? '<span class="good">Aligned</span>' : '<span>Best available</span>'}
           ${tierGap > 1000 ? '<span class="danger">Tier break</span>' : ''}
         </div>
-      </button>
+      </button>` : ''}
 
       <div class="rookie-hq-card">
         <div class="rookie-card-head"><span>Draft Path</span><em>${_ownedCount} picks</em></div>
@@ -2764,13 +2983,16 @@ function renderMockDraftUI(){
     const myProfile=_mockState.teamProfiles?.[S.myRosterId]||{};
     const myNeeds=myProfile.needs||[];
 
-    // Alex recommendation: top pick at need position or BPA
+    // Alex recommendation: top pick at need position or BPA — Scout Pro only.
+    // Free drafts old-school: raw available board, no "take him" nudge.
     let alexPick=null,alexReason='';
-    for(const pos of myNeeds){
-      const candidate=available.find(p=>p.pos===pos);
-      if(candidate){alexPick=candidate;alexReason=`fills your ${pos} gap`;break;}
+    if(typeof window.isScoutPro!=='function'||window.isScoutPro()){
+      for(const pos of myNeeds){
+        const candidate=available.find(p=>p.pos===pos);
+        if(candidate){alexPick=candidate;alexReason=`fills your ${pos} gap`;break;}
+      }
+      if(!alexPick&&available.length){alexPick=available[0];alexReason='best player available';}
     }
-    if(!alexPick&&available.length){alexPick=available[0];alexReason='best player available';}
 
     // Consensus rank for top picks
     const enriched=available.map(p=>{
@@ -3156,7 +3378,7 @@ window.renderDynamicMockSetup = renderDynamicMockSetup;
 
 function onDraftTabOpen(){
   renderTopProspects();
-  if(!_draftScoutingRun&&LI_LOADED&&hasAnyAI()){
+  if(!_draftScoutingRun&&LI_LOADED&&hasAnyAI()&&(typeof window.isScoutPro!=='function'||window.isScoutPro())){
     _draftScoutingRun=true;
     const contentEl=$('draft-scout-content');
     if(contentEl)contentEl.style.display='block';

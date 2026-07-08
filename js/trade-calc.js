@@ -904,12 +904,8 @@ async function renderTradeCalc() {
   const el = $('trade-calc-container');
   if (!el) return;
 
-  // Paywall gate for trade calculator
-  if (typeof canAccess === 'function' && !canAccess('trade-calc')) {
-    el.innerHTML = '';
-    showUpgradePrompt('trade-calc', el);
-    return;
-  }
+  // Trade Studio entry is free (builder only); premium depth — Trade Finder,
+  // Owner DNA, acceptance odds, AI trade help — is gated per-view downstream.
 
   if (!S.rosters?.length || !S.players || !Object.keys(S.players).length) {
     el.innerHTML = `<div class="card" style="text-align:center;padding:32px;color:var(--text3)">
@@ -980,7 +976,12 @@ async function renderTradeStudio() {
   }
 
   if (!_tcAssessments.length) return;
-  if (_tcActiveView === 'overview') _tcActiveView = 'finder';
+  // Free = builder only (the Trade Finder is premium); don't land free users on a
+  // wall. _tcActiveView defaults to 'finder', so catch that too (not just 'overview').
+  if (_tcActiveView === 'overview' || _tcActiveView === 'finder') {
+    const finderGated = typeof canAccess === 'function' && !canAccess(FEATURES?.TRADE_SCENARIOS || 'trade_scenarios');
+    _tcActiveView = finderGated ? 'builder' : 'finder';
+  }
   try {
     _renderTradeStudioHero(hero);
   } catch (e) {
@@ -1034,6 +1035,8 @@ function _renderTradeStudioHero(hero) {
   const bestAssessment = best?.assessment || null;
   const dnaKey = bestAssessment ? (_tcDnaMap[bestAssessment.rosterId] || 'NONE') : 'NONE';
   const dna = DNA_TYPES[dnaKey] || DNA_TYPES.NONE;
+  // Free = builder only: hide DNA label + lead with the manual builder CTA.
+  const _heroGated = typeof canAccess === 'function' && !canAccess(FEATURES?.OWNER_DNA || 'owner_dna');
   const needs = (my.needs || []).map(n => n.pos).filter(Boolean);
   const surplus = (my.strengths || []).filter(Boolean);
   const chips = _tcTradeableAssets(S.myRosterId);
@@ -1068,7 +1071,7 @@ function _renderTradeStudioHero(hero) {
       <button onclick="${bestAssessment ? `_tcStartTrade(${bestAssessment.rosterId})` : `_tcSwitchView('partners')`}">
         <span>Best Partner</span>
         <strong>${_tcEsc(bestAssessment?.ownerName || 'Scan Market')}</strong>
-        <small>${bestAssessment ? _tcEsc(dna.label || 'Owner DNA') : 'Find a match'}</small>
+        <small>${bestAssessment ? (_heroGated ? 'Best fit' : _tcEsc(dna.label || 'Owner DNA')) : 'Find a match'}</small>
       </button>
       <button onclick="_tcSwitchView('finder')">
         <span>Trade Chips</span>
@@ -1087,8 +1090,10 @@ function _renderTradeStudioHero(hero) {
       </button>
     </div>
     <div class="tc-studio-actions">
-      <button class="scout-primary-btn" onclick="_tcSwitchView('finder')">Generate Deals</button>
-      <button class="scout-secondary-btn" onclick="${bestAssessment ? `_tcStartTrade(${bestAssessment.rosterId})` : `_tcSwitchView('builder')`}">Build Manually</button>
+      ${_heroGated
+        ? `<button class="scout-primary-btn" onclick="${bestAssessment ? `_tcStartTrade(${bestAssessment.rosterId})` : `_tcSwitchView('builder')`}">Build a Trade</button>`
+        : `<button class="scout-primary-btn" onclick="_tcSwitchView('finder')">Generate Deals</button>
+      <button class="scout-secondary-btn" onclick="${bestAssessment ? `_tcStartTrade(${bestAssessment.rosterId})` : `_tcSwitchView('builder')`}">Build Manually</button>`}
       <button class="scout-secondary-btn" onclick="fillGlobalChat(${JSON.stringify(scoutPrompt)})">Ask Scout</button>
     </div>
   </section>`;
@@ -1203,6 +1208,8 @@ function renderLeagueOverview(assessments, container) {
 
   // Sort by health score descending
   const sorted = [...assessments].sort((a, b) => b.healthScore - a.healthScore);
+  // Owner DNA chips are the behavioral layer — paid/trial only.
+  const _loGated = typeof canAccess === 'function' && !canAccess(FEATURES?.OWNER_DNA || 'owner_dna');
 
   let html = `<div class="sec">League Overview <span class="sec-line"></span></div>`;
   html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">`;
@@ -1234,7 +1241,7 @@ function renderLeagueOverview(assessments, container) {
         <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <div style="font-size:13px;color:var(--text2)"><span style="font-weight:600">${a.wins}-${a.losses}${a.ties ? '-' + a.ties : ''}</span></div>
           <div style="font-size:13px;color:var(--text3)">${a.weeklyPts > 0 ? a.weeklyPts.toFixed(1) + ' ppg' : '--'}</div>
-          ${dnaKey !== 'NONE' ? `<span style="font-size:13px;padding:1px 7px;border-radius:10px;background:${dna.color}22;color:${dna.color};font-weight:600">${dna.label}</span>` : ''}
+          ${!_loGated && dnaKey !== 'NONE' ? `<span style="font-size:13px;padding:1px 7px;border-radius:10px;background:${dna.color}22;color:${dna.color};font-weight:600">${dna.label}</span>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
           <div style="font-size:13px;color:var(--text3);min-width:52px">Health</div>
@@ -1266,6 +1273,9 @@ function renderTeamScout(assessment, container) {
   const dna = DNA_TYPES[dnaKey] || DNA_TYPES.NONE;
   const posture = calcOwnerPosture(a, dnaKey);
   const isMe = _isMyRoster(a.rosterId);
+  // Owner DNA + posture are the behavioral layer — paid/trial only. Health,
+  // panic, window, and the position grid are value/assessment and stay free.
+  const _tsGated = !isMe && typeof canAccess === 'function' && !canAccess(FEATURES?.OWNER_DNA || 'owner_dna');
   const compat = _tcMyAssessment && !isMe ? calcComplementarity(_tcMyAssessment, a) : null;
 
   const _ini2 = (a.ownerName || '?')[0].toUpperCase();
@@ -1307,8 +1317,10 @@ function renderTeamScout(assessment, container) {
 
       <!-- DNA + Posture + Window -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        ${dnaKey !== 'NONE' ? `<span class="pill" style="background:${dna.color}18;color:${dna.color};border-color:${dna.color}40;font-size:13px">DNA: ${dna.label}</span>` : '<span class="pill pd" style="font-size:13px">DNA: Not Set</span>'}
-        <span class="pill" style="background:${posture.color}18;color:${posture.color};border-color:${posture.color}40;font-size:13px">${posture.label}</span>
+        ${_tsGated
+          ? '<span class="pill pd" style="font-size:13px">DNA 🔒 Pro</span>'
+          : (dnaKey !== 'NONE' ? `<span class="pill" style="background:${dna.color}18;color:${dna.color};border-color:${dna.color}40;font-size:13px">DNA: ${dna.label}</span>` : '<span class="pill pd" style="font-size:13px">DNA: Not Set</span>')}
+        ${!_tsGated ? `<span class="pill" style="background:${posture.color}18;color:${posture.color};border-color:${posture.color}40;font-size:13px">${posture.label}</span>` : ''}
         <span class="pill pd" style="font-size:13px">Window: ${a.window}</span>
       </div>
     </div>`;
@@ -1415,6 +1427,8 @@ function renderPartnerFinder(myAssessment, allAssessments, container) {
   }
 
   const partners = findBestPartners(myAssessment, allAssessments);
+  // Free keeps the compatibility ranking + fit positions; Owner DNA labels are gated.
+  const _pfGated = typeof canAccess === 'function' && !canAccess(FEATURES?.OWNER_DNA || 'owner_dna');
 
   let html = `<div class="sec">Partner Finder <span class="sec-line"></span></div>
   <div style="font-size:13px;color:var(--text3);margin-bottom:8px">by dynasty value</div>`;
@@ -1462,7 +1476,7 @@ function renderPartnerFinder(myAssessment, allAssessments, container) {
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
                 <span style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.ownerName}</span>
                 <span style="font-size:13px;color:${a.tierColor};font-weight:600">${a.tier}</span>
-                ${dnaKey !== 'NONE' ? `<span style="font-size:13px;padding:1px 5px;border-radius:8px;background:${dna.color}22;color:${dna.color};font-weight:600">${dna.label}</span>` : ''}
+                ${!_pfGated && dnaKey !== 'NONE' ? `<span style="font-size:13px;padding:1px 5px;border-radius:8px;background:${dna.color}22;color:${dna.color};font-weight:600">${dna.label}</span>` : ''}
               </div>
               <div style="display:flex;gap:8px;font-size:13px;color:var(--text3);flex-wrap:wrap">
                 ${p.theyProvide.length ? `<span>They give: <span style="color:var(--green);font-weight:600">${p.theyProvide.join(', ')}</span></span>` : ''}
@@ -1491,13 +1505,11 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
   if (!container) container = $('tc-view-content');
   if (!container) return;
 
-  // Tier gate — Trade Scenarios require trial or paid
-  if (typeof canAccess === 'function' && !canAccess(FEATURES?.TRADE_SCENARIOS || 'trade_scenarios')) {
-    container.innerHTML = typeof _tierGatePlaceholder === 'function'
-      ? _tierGatePlaceholder('Trade Scenario Builder', FEATURES?.TRADE_SCENARIOS || 'trade_scenarios')
-      : '<div style="padding:24px;text-align:center;color:var(--text3)">Upgrade to unlock the Trade Scenario Builder.</div>';
-    return;
-  }
+  // Free = builder only: the math (assets, values, fairness verdict, trade-impact
+  // simulator, value-based rebalance) is free. The behavioral layer — Owner DNA,
+  // posture, acceptance odds, psych factors, AI trade help — is gated. Using
+  // OWNER_DNA keeps trial/paid identical (it's trial-unlocked); only free is carved.
+  const _tcGated = typeof canAccess === 'function' && !canAccess(FEATURES?.OWNER_DNA || 'owner_dna');
 
   const myAssessment = _tcAssessments.find(a => a.rosterId === myRosterId);
   const theirAssessment = theirRosterId ? _tcAssessments.find(a => a.rosterId === theirRosterId) : null;
@@ -1544,8 +1556,8 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
         <div style="font-size:16px;font-weight:700">${theirAssessment.ownerName}</div>
         <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;align-items:center">
           <span style="font-size:13px;color:${theirAssessment.tierColor};font-weight:600">${theirAssessment.tier}</span>
-          ${theirDnaKey !== 'NONE' ? `<span style="font-size:13px;padding:1px 5px;border-radius:8px;background:${theirDna.color}22;color:${theirDna.color};font-weight:600">${theirDna.label}</span>` : ''}
-          <span style="font-size:13px;padding:1px 5px;border-radius:8px;background:${posture.color}22;color:${posture.color};font-weight:600">${posture.label}</span>
+          ${!_tcGated && theirDnaKey !== 'NONE' ? `<span style="font-size:13px;padding:1px 5px;border-radius:8px;background:${theirDna.color}22;color:${theirDna.color};font-weight:600">${theirDna.label}</span>` : ''}
+          ${!_tcGated ? `<span style="font-size:13px;padding:1px 5px;border-radius:8px;background:${posture.color}22;color:${posture.color};font-weight:600">${posture.label}</span>` : ''}
         </div>
         ${tradeAngle ? `<div style="font-size:13px;color:var(--green);margin-top:4px;font-weight:600">${tradeAngle}</div>` : ''}
       </div>
@@ -1598,7 +1610,10 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
       verdictLabel = bigWin ? 'STRONG WIN' : 'GOOD TRADE';
       verdictColor = 'var(--green)';
       verdictBg = 'var(--greenL)';
-      verdictAction = acceptance >= 50 ? 'Send now before they reconsider.' : 'Great value for you but low acceptance — consider sweetening slightly.';
+      // Free doesn't get the acceptance-odds read, so keep the prose value-only.
+      verdictAction = _tcGated
+        ? 'Strong value in your favor — send it or sweeten if they pass.'
+        : (acceptance >= 50 ? 'Send now before they reconsider.' : 'Great value for you but low acceptance — consider sweetening slightly.');
     } else {
       verdictLabel = bigWin ? 'NOT FAVORABLE' : 'SLIGHT OVERPAY';
       verdictColor = 'var(--red)';
@@ -1612,13 +1627,13 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
         <span style="font-size:13px;font-weight:700;color:${verdictColor}">${youWin ? 'You win' : close ? 'Nearly fair' : 'You lose'} by ${close ? '<500' : absDiff.toLocaleString()} DHQ</span>
       </div>
       <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:6px">${verdictAction}</div>
-      <div style="display:flex;align-items:center;gap:10px">
+      ${!_tcGated ? `<div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:13px;color:var(--text3)">Acceptance</div>
         <div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden">
           <div style="height:100%;width:${acceptance}%;background:${acceptance >= 65 ? 'var(--green)' : acceptance >= 40 ? 'var(--amber)' : 'var(--red)'};border-radius:3px"></div>
         </div>
         <div style="font-size:14px;font-weight:800;font-family:'JetBrains Mono',monospace;color:${acceptance >= 65 ? 'var(--green)' : acceptance >= 40 ? 'var(--amber)' : 'var(--red)'}">${acceptance}%</div>
-      </div>
+      </div>` : ''}
     </div>`;
   }
 
@@ -1639,7 +1654,21 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
         const league = S.leagues?.find(l => l.league_id === S.currentLeagueId);
         const nflStarterSet = buildNflStarterSetFromGlobal();
         const picksByOwner = window.App.buildPicksByOwner(S.rosters, league, S.tradedPicks);
-        const simAssess = assessTeam(simRoster, S.players, S.playerStats, league, S.leagueUsers, nflStarterSet, picksByOwner[myRosterId] || []);
+        // NOTE: bare `assessTeam` (and window.App.assessTeam) resolve to trade-calc's
+        // local 4-arg copy, which shadows the shared engine — calling it with the
+        // data-first signature below threw (ownerPicks landed on S.playerStats →
+        // "myPicks is not iterable") and the whole builder render aborted, so Load
+        // Builder showed nothing. Use the shared engine alias so the simulated "after"
+        // matches the assessTeamFromGlobal "before" baseline (also shared). Pass only
+        // weeklyTarget — the league-median target drives healthScore, so before/after
+        // must share it; the shared engine derives idealRoster/pos-weights itself,
+        // identically to the baseline.
+        const rosterPositions = league?.roster_positions || [];
+        const allPPGs = (S.rosters || [])
+          .map(r => window.calcOptimalPPGShared(r.players || [], S.players, S.playerStats, rosterPositions))
+          .filter(v => v > 0);
+        const weeklyTarget = allPPGs.length ? allPPGs.sort((a, b) => a - b)[Math.floor(allPPGs.length / 2)] * 1.05 : 150;
+        const simAssess = window.assessTeamShared(simRoster, S.players, S.playerStats, league, S.leagueUsers, nflStarterSet, picksByOwner[myRosterId] || [], S.rosters, { weeklyTarget });
 
         if (simAssess) {
           const hsDelta = simAssess.healthScore - myAssessNow.healthScore;
@@ -1688,8 +1717,8 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
     }
   }
 
-  // ── PSYCHOLOGICAL FACTORS (elevated) ─────────────────
-  if (psychTaxes.length && hasTrade) {
+  // ── PSYCHOLOGICAL FACTORS (elevated) — behavioral, paid ─────────────────
+  if (!_tcGated && psychTaxes.length && hasTrade) {
     const topInsights = psychTaxes.slice(0, 3);
     html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">`;
     topInsights.forEach(t => {
@@ -1772,8 +1801,8 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
       suggestions.push({ text: 'Add a ' + roundNeeded + ' round pick (~' + absDiff.toLocaleString() + ' value gap)', action: null, type: 'pick' });
     }
 
-    // 3. If acceptance is low regardless of value, explain why
-    if (acceptance < 40 && suggestions.length < 3) {
+    // 3. If acceptance is low regardless of value, explain why (DNA-based — paid)
+    if (!_tcGated && acceptance < 40 && suggestions.length < 3) {
       const dnaKey = _tcDnaMap[theirRosterId] || 'NONE';
       if (dnaKey === 'STALWART') suggestions.push({ text: 'This owner is attachment-heavy — make the surplus clear and avoid messy packages', action: null, type: 'tip' });
       else if (dnaKey === 'FLEECER') suggestions.push({ text: 'This owner hunts surplus value — lead with a clean edge or expect a counter', action: null, type: 'tip' });
@@ -1796,8 +1825,8 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
     }
   }
 
-  // ── SEND TRADE CTA ──────────────────────────────────
-  if (hasTrade) {
+  // ── SEND TRADE CTA (AI trade help — paid) ───────────
+  if (hasTrade && !_tcGated) {
     html += `<div style="display:flex;gap:8px;margin-bottom:12px">
       <button class="btn" style="flex:1;padding:14px;font-size:15px;font-weight:700" onclick="goAsk('Draft a Sleeper trade message for this trade: I give ${_tcBuilderMyAssets.players.map(p=>pNameShort(p)).join(', ')||'nothing'} and receive ${_tcBuilderTheirAssets.players.map(p=>pNameShort(p)).join(', ')||'nothing'} from ${theirAssessment.ownerName}. Make it persuasive.')">
         Send Trade Message
@@ -1806,6 +1835,12 @@ function renderTradeBuilder(myRosterId, theirRosterId, container) {
         Ask AI
       </button>
     </div>`;
+  } else if (hasTrade && _tcGated) {
+    // Free conversion nudge: the values + fairness are shown above; the
+    // behavioral read + AI trade help are the upgrade.
+    html += `<button class="scout-secondary-btn" style="width:100%;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px" onclick="if(window.showProLaunchPage){showProLaunchPage()}else{showUpgradePrompt('${FEATURES?.OWNER_DNA || 'owner_dna'}')}">
+      <span aria-hidden="true">🔒</span> Unlock acceptance odds, Owner DNA &amp; AI trade help
+    </button>`;
   }
 
   container.innerHTML = html;
@@ -2522,6 +2557,9 @@ function _finderActionableAcceptanceFloor() {
   } catch (_) {}
   try {
     const strategy = window.GMStrategy?.getStrategy?.() || {};
+    // Explicit, user-set Trade Acceptance Floor (GM Strategy editor) wins.
+    const explicit = Number(strategy.acceptanceFloor);
+    if (Number.isFinite(explicit) && explicit > 0) return Math.max(55, Math.min(90, Math.round(explicit)));
     if (strategy.tradeAggression != null) return _finderAcceptanceFloorFromAggression(strategy.tradeAggression);
     if (strategy.aggression === 'aggressive' || strategy.aggression === 'high') return 55;
     if (strategy.aggression === 'conservative' || strategy.aggression === 'low') return 85;
@@ -2552,6 +2590,27 @@ function _finderToggleMoonshots() {
   _finderRefresh();
 }
 window._finderToggleMoonshots = _finderToggleMoonshots;
+
+// Roster-fit scoring — does the deal fill MY needs / cash in MY surplus?
+// Adds .fit (rank signal), .fillsNeed, .fromSurplus, .reason to a trade.
+function _finderScoreFit(t, myAssess) {
+  const np = window.App?.normPos || (p => p);
+  const needPos = new Set((myAssess?.needs || []).map(n => typeof n === 'string' ? n : n.pos).filter(Boolean));
+  const strengths = new Set(myAssess?.strengths || []);
+  const recvPos = (t.receive || []).map(p => np(pPos(p.pid)));
+  const givePos = (t.give || []).map(p => np(pPos(p.pid)));
+  const fillsNeed = recvPos.find(p => needPos.has(p)) || null;
+  const fromSurplus = givePos.find(p => strengths.has(p)) || null;
+  t.fillsNeed = fillsNeed;
+  t.fromSurplus = fromSurplus;
+  // Blend: need-fill dominates, surplus-use next, acceptance as a tie-breaker.
+  t.fit = (fillsNeed ? 60 : 0) + (fromSurplus ? 25 : 0) + (t.likelihood || 0) * 0.3;
+  t.reason = (fillsNeed && fromSurplus) ? `Moves your ${fromSurplus} surplus for a ${fillsNeed} need.`
+    : fillsNeed ? `Fills your ${fillsNeed} need.`
+      : fromSurplus ? `Cashes in your ${fromSurplus} depth.`
+        : (t.diff > 0 ? 'Slight value in your favor.' : 'Fair-value swap.');
+  return t;
+}
 
 function _finderGenerate(pid) {
   const val = dynastyValue(pid);
@@ -2621,7 +2680,8 @@ function _finderGenerate(pid) {
         }
       });
 
-      trades.sort((b,c) => c.likelihood - b.likelihood);
+      trades.forEach(t => _finderScoreFit(t, myAssess));
+      trades.sort((b,c) => c.fit - b.fit);
       if (trades.length) results.push({ assessment: a, dnaKey, trades }); // all viable trades per team, sorted by likelihood
     });
   } else {
@@ -2683,14 +2743,15 @@ function _finderGenerate(pid) {
       }
     });
 
-    trades.sort((b,c) => c.likelihood - b.likelihood);
-    if (trades.length) results.push({ assessment: theirAssess, dnaKey, trades }); // all viable offers, sorted by likelihood
+    trades.forEach(t => _finderScoreFit(t, myAssess));
+    trades.sort((b,c) => c.fit - b.fit);
+    if (trades.length) results.push({ assessment: theirAssess, dnaKey, trades }); // all viable offers, sorted by roster fit
   }
 
-  // Sort teams by best likelihood — return every team with at least one viable trade
+  // Sort teams by best roster-fit — return every team with at least one viable trade
   results.sort((a,b) => {
-    const aMax = Math.max(...a.trades.map(t => t.likelihood));
-    const bMax = Math.max(...b.trades.map(t => t.likelihood));
+    const aMax = Math.max(...a.trades.map(t => t.fit || 0));
+    const bMax = Math.max(...b.trades.map(t => t.fit || 0));
     return bMax - aMax;
   });
   _finderResults = results;
@@ -2764,6 +2825,15 @@ function renderTradeFinder(container) {
   if (!container) return;
   _finderContainer = container;
 
+  // Trade Finder (auto-generated deal packages) is premium — free uses the
+  // manual builder. Trial/paid keep it (TRADE_SCENARIOS is trial-unlocked).
+  if (typeof canAccess === 'function' && !canAccess(FEATURES?.TRADE_SCENARIOS || 'trade_scenarios')) {
+    container.innerHTML = `<div class="sec">Deal Generator <span class="sec-line"></span></div>`
+      + (typeof _tierGatePlaceholder === 'function' ? _tierGatePlaceholder('Trade Finder — auto-generated deal packages with acceptance odds', FEATURES?.TRADE_SCENARIOS || 'trade_scenarios') : '')
+      + `<button class="scout-secondary-btn" style="margin-top:10px;width:100%" onclick="_tcSwitchView('builder')">Build a trade manually →</button>`;
+    return;
+  }
+
   const myRosterId = S.myRosterId;
   const myPlayers = (S.rosters?.find(r => r.roster_id === myRosterId)?.players || [])
     .map(pid => ({ pid, name: pName(pid), pos: pPos(pid), val: dynastyValue(pid) }))
@@ -2809,7 +2879,7 @@ function renderTradeFinder(container) {
     const acceptanceFloor = _finderActionableAcceptanceFloor();
     const hiddenMoonshotCount = _finderResults.reduce((sum, r) => sum + (r.trades || []).filter(t => t.likelihood < acceptanceFloor).length, 0);
     const visibleResults = _finderResults
-      .map(r => ({ ...r, trades: _finderShowMoonshots ? (r.trades || []) : (r.trades || []).filter(t => t.likelihood >= acceptanceFloor) }))
+      .map(r => ({ ...r, _allTrades: r.trades || [], trades: _finderShowMoonshots ? (r.trades || []) : (r.trades || []).filter(t => t.likelihood >= acceptanceFloor) }))
       .filter(r => r.trades.length);
     if (!visibleResults.length) {
       html += `<div style="text-align:center;padding:20px;color:var(--text3)">No actionable trades clear ${acceptanceFloor}% acceptance.</div>`;
@@ -2827,7 +2897,11 @@ function renderTradeFinder(container) {
       if (r.dnaKey !== 'NONE') html += `<span style="font-size:13px;color:${dna.color};font-weight:700">${dna.label}</span>`;
       html += `</div>`;
 
-      r.trades.forEach((t, tradeIndex) => {
+      r.trades.forEach((t) => {
+        // Index into the UNFILTERED trades array (what _tcGetFinderDeal resolves
+        // against); the visible loop is moonshot-filtered + fit-sorted, so the
+        // filtered position can diverge from the real index.
+        const tradeIndex = r._allTrades.indexOf(t);
         const giveTotal = t.give.reduce((s,p) => s + p.val, 0) + t.givePicks.reduce((s,p) => s + (p.val||0), 0);
         const getTotal = t.receive.reduce((s,p) => s + p.val, 0) + t.receivePicks.reduce((s,p) => s + (p.val||0), 0);
         const diffLabel = t.diff >= 0 ? `+${Math.round(t.diff).toLocaleString()}` : Math.round(t.diff).toLocaleString();
@@ -2836,8 +2910,8 @@ function renderTradeFinder(container) {
 
         html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:6px">`;
         html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">`;
-        html += `<span style="font-size:13px;color:var(--accent);font-weight:700;text-transform:uppercase">${t.type}</span>`;
-        html += `<div style="display:flex;gap:8px;align-items:center">`;
+        html += `<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="font-size:13px;color:var(--accent);font-weight:700;text-transform:uppercase">${t.type}</span>${t.fillsNeed ? `<span style="font-size:11px;font-weight:700;color:var(--green);background:rgba(52,211,153,.12);padding:1px 7px;border-radius:4px;white-space:nowrap">FILLS ${t.fillsNeed}</span>` : ''}</div>`;
+        html += `<div style="display:flex;gap:8px;align-items:center;flex-shrink:0">`;
         html += `<span style="font-size:13px;color:${diffCol}">${diffLabel} DHQ</span>`;
         html += `<span style="font-size:13px;font-weight:800;color:${lklCol};background:${lklCol}15;padding:2px 8px;border-radius:4px">${Math.round(t.likelihood)}%</span>`;
         html += `</div></div>`;
@@ -2855,6 +2929,7 @@ function renderTradeFinder(container) {
         t.receive.forEach(p => html += `<div style="font-size:13px;font-weight:600">${pName(p.pid)} <span style="color:var(--text3);font-size:13px">${pPos(p.pid)} ${p.val.toLocaleString()}</span></div>`);
         t.receivePicks.forEach(pk => html += `<div style="font-size:13px;color:var(--accent);font-weight:600">${pk.year} R${pk.round} <span style="color:var(--text3);font-size:13px">${(pk.val||0).toLocaleString()}</span></div>`);
         html += `</div></div>
+          ${t.reason ? `<div style="font-size:13px;color:var(--text3);margin-top:7px">${t.reason}</div>` : ''}
           <div class="tc-deal-actions">
             <button onclick="_tcLoadFinderDeal(${r.assessment.rosterId},${tradeIndex})">Load Builder</button>
             <button onclick="_tcSaveFinderDeal(${r.assessment.rosterId},${tradeIndex})">Save</button>

@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Tab switching ──────────────────────────────────────────────
 function switchTab(tab,btn){
   // Guard: redirect to home if not connected (except settings and shell tabs that can explain next steps)
-  const publicTabs = new Set(['digest','settings','league','fieldlog','portfolio','tools','trades']);
+  const publicTabs = new Set(['digest','settings','league','fieldlog','portfolio','tools','trades','ai','calendar','history','analytics']);
   if(!S.user && !publicTabs.has(tab)){
     tab='digest';btn=null;
     showToast('Connect your Sleeper account first');
@@ -183,6 +183,7 @@ function switchTab(tab,btn){
     if(typeof window.exitDraftRoom==='function')window.exitDraftRoom();
     if(typeof window._refreshDraftEntrySubtitles==='function')window._refreshDraftEntrySubtitles();
     if(typeof window.renderDraftEntryPicks==='function')window.renderDraftEntryPicks();
+    if(typeof window.renderDraftGameplan==='function')window.renderDraftGameplan();
     const draftDirectMode = window._draftDirectMode;
     window._draftDirectMode = null;
     if(draftDirectMode&&typeof window.enterDraftRoom==='function'){
@@ -195,6 +196,10 @@ function switchTab(tab,btn){
   }
   if(tab==='team'&&typeof window.renderTeamCommandPanel==='function')window.renderTeamCommandPanel();
   if(tab==='tools'&&typeof window.renderToolsPanel==='function')window.renderToolsPanel();
+  if(tab==='ai'&&typeof window.renderAIPanel==='function')window.renderAIPanel();
+  if(tab==='calendar'&&typeof window.renderCalendarPanel==='function')window.renderCalendarPanel();
+  if(tab==='history'&&typeof window.renderHistoryPanel==='function')window.renderHistoryPanel();
+  if(tab==='analytics'&&typeof window.renderAnalyticsPanel==='function')window.renderAnalyticsPanel();
   if(tab==='portfolio'&&typeof window.renderPortfolioPanel==='function')window.renderPortfolioPanel();
   if(tab==='settings'&&typeof updateSettingsStatus==='function')updateSettingsStatus();
   if(tab==='settings'&&typeof updateTrialSettingsSection==='function')updateTrialSettingsSection();
@@ -268,7 +273,7 @@ async function connect(usernameOverride){
     S.leagues=leagues;
     if(typeof saveDiscoveredSleeperLeagues==='function')saveDiscoveredSleeperLeagues(leagues,username);
     prog(30);ss('conn-status','Loading player database (refreshing team assignments)...');
-    S.players=await sf('/players/nfl');
+    S.players=await (window.fetchPlayers ? window.fetchPlayers() : sf('/players/nfl'));
     prog(50);
     showLeaguePicker(leagues,user.user_id);
     if(btn)btn.textContent='Connected ✓';ss('conn-status','');prog(60);
@@ -391,7 +396,7 @@ async function connectESPN(){
     prog(15);ss('conn-status','Loading player database...');
     if(!S.players||Object.keys(S.players).length<100){
       try{
-        S.players=await window.App.sf('/players/nfl');
+        S.players=await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl'));
       }catch(e){
         console.warn('[ESPN] Could not load Sleeper player DB — crosswalk will be limited:',e);
         S.players=S.players||{};
@@ -521,7 +526,7 @@ async function connectMFL(){
     prog(15);ss('conn-status','Loading player database...');
     if(!S.players||Object.keys(S.players).length<100){
       try{
-        S.players=await window.App.sf('/players/nfl');
+        S.players=await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl'));
       }catch(e){
         console.warn('[MFL] Could not load Sleeper player DB — crosswalk will be limited:',e);
         S.players=S.players||{};
@@ -659,7 +664,7 @@ async function connectYahooManual(){
 
   try{
     if(!S.players||Object.keys(S.players).length<100){
-      try{S.players=await window.App.sf('/players/nfl');}catch(e){S.players=S.players||{};}
+      try{S.players=await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl'));}catch(e){S.players=S.players||{};}
     }
     await _connectYahooLeague(keyRaw,null);
   }catch(e){
@@ -905,7 +910,7 @@ async function loadLeagueFromRegistry(leagueId){
       if(!sleeperUsername){renderLeagueHub();setTimeout(()=>{const st=$('conn-status');if(st){st.textContent='Reconnect Sleeper to load this league';st.classList.add('err');}},100);return;}
       DhqStorage.setStr(STORAGE_KEYS.USERNAME,sleeperUsername);
       if(!S.players||Object.keys(S.players).length<100){
-        try{S.players=await window.App.sf('/players/nfl');}catch(e2){S.players=S.players||{};}
+        try{S.players=await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl'));}catch(e2){S.players=S.players||{};}
       }
       const step=$('scan-step');if(step)step.textContent='Loading Sleeper data...';
       prog(20);
@@ -971,6 +976,20 @@ function showLeagueUpgradeFromHub(leagueId,leagueName){
 }
 window.showLeagueUpgradeFromHub=showLeagueUpgradeFromHub;
 window.App.showLeagueUpgradeFromHub=showLeagueUpgradeFromHub;
+
+// Dynasty leagues hide redraft-era features (owner directive 2026-07-05,
+// fail-open: keeper/unknown keep everything). One accessor over the shared
+// predicate so every Scout gate agrees with warroom's LeagueSkin flags.
+// Game Day surfaces (Start/Sit Lab, lineup check, bye planner) are EXEMPT
+// per ruling E1 — do not wire this into those.
+function currentLeagueAllowsRedraftFeatures(){
+  const l=S.leagues?.find(x=>x.league_id===S.currentLeagueId);
+  return window.App?.Intelligence?.allowRedraftFeatures
+    ? window.App.Intelligence.allowRedraftFeatures(l)
+    : !(l?.settings?.type===2); // fallback = today's behavior
+}
+window.currentLeagueAllowsRedraftFeatures=currentLeagueAllowsRedraftFeatures;
+window.App.currentLeagueAllowsRedraftFeatures=currentLeagueAllowsRedraftFeatures;
 
 function clearLeagueLoadingState(){
   if(!S.currentLeagueId||!S.myRosterId)return false;
@@ -1792,7 +1811,7 @@ async function loadRegistryLeague(entry) {
       if(!sleeperUsername){_error('Reconnect Sleeper to load this league.');return;}
       DhqStorage.setStr(STORAGE_KEYS.USERNAME,sleeperUsername);
       if (!S.players || Object.keys(S.players).length < 100) {
-        try { S.players = await window.App.sf('/players/nfl'); } catch(e) { S.players = S.players || {}; }
+        try { S.players = await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl')); } catch(e) { S.players = S.players || {}; }
       }
       const uInput = $('u-input');
       if (uInput) uInput.value = sleeperUsername;
@@ -1826,7 +1845,7 @@ async function loadRegistryLeague(entry) {
         const s2  = espnS2   || sessionStorage.getItem('espn_s2')   || localStorage.getItem('espn_s2')   || '';
         const sw  = espnSwid || sessionStorage.getItem('espn_swid') || localStorage.getItem('espn_swid') || '';
         if (!S.players || Object.keys(S.players).length < 100) {
-          try { S.players = await window.App.sf('/players/nfl'); } catch(e) { S.players = S.players || {}; }
+          try { S.players = await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl')); } catch(e) { S.players = S.players || {}; }
         }
         const res = await window.ESPN.connectLeague(espnLeagueId || leagueId, yr, s2 || null, sw || null);
         S.myRosterId = String(espnMyTeam || savedRosterId);
@@ -1851,7 +1870,7 @@ async function loadRegistryLeague(entry) {
         const yr = parseInt(mflYear || String(new Date().getFullYear()));
         const ak = mflApiKey || sessionStorage.getItem('mfl_api_key') || localStorage.getItem('mfl_api_key') || '';
         if (!S.players || Object.keys(S.players).length < 100) {
-          try { S.players = await window.App.sf('/players/nfl'); } catch(e) { S.players = S.players || {}; }
+          try { S.players = await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl')); } catch(e) { S.players = S.players || {}; }
         }
         const res = await window.MFL.connectLeague(mflLeagueId || leagueId, yr, ak);
         S.myRosterId = String(entry.myRosterId || savedRosterId);
@@ -1871,7 +1890,7 @@ async function loadRegistryLeague(entry) {
       if (!window.Yahoo) { showToast('Yahoo connector not loaded — refresh page.'); renderLeagueHub(); return; }
       try {
         if (!S.players || Object.keys(S.players).length < 100) {
-          try { S.players = await window.App.sf('/players/nfl'); } catch(e) { S.players = S.players || {}; }
+          try { S.players = await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl')); } catch(e) { S.players = S.players || {}; }
         }
         const lKey = yahooLeagueKey || leagueId;
         const tKey = yahooMyTeam ? lKey + '.t.' + yahooMyTeam : null;
@@ -1977,7 +1996,7 @@ window.loadRegistryLeague = loadRegistryLeague;
           ss('conn-status','Loading your Yahoo leagues...');
           const _pEl=$('prog');if(_pEl)_pEl.style.display='block'; prog(20);
           if(!S.players||Object.keys(S.players).length<100){
-            try{S.players=await window.App.sf('/players/nfl');}catch(e){S.players=S.players||{};}
+            try{S.players=await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl'));}catch(e){S.players=S.players||{};}
           }
           prog(50);
           const _raw=await window.Yahoo.fetchUserLeagues();
@@ -2014,7 +2033,7 @@ window.loadRegistryLeague = loadRegistryLeague;
             ss('conn-status','Reconnecting to Yahoo...');
             const _pEl=$('prog');if(_pEl)_pEl.style.display='block'; prog(5);
             if(!S.players||Object.keys(S.players).length<100){
-              try{S.players=await window.App.sf('/players/nfl');}catch(e){S.players=S.players||{};}
+              try{S.players=await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl'));}catch(e){S.players=S.players||{};}
             }
             prog(30);
             const _teamKey=_yahooLeagueKey+'.t.'+_yahooMyTeam;
@@ -2063,7 +2082,7 @@ window.loadRegistryLeague = loadRegistryLeague;
           const _pEl=$('prog');if(_pEl)_pEl.style.display='block'; prog(5);
           // Load Sleeper player DB for crosswalk (best-effort)
           if(!S.players||Object.keys(S.players).length<100){
-            try{ S.players=await window.App.sf('/players/nfl'); }catch(e){ S.players=S.players||{}; }
+            try{ S.players=await (window.fetchPlayers ? window.fetchPlayers() : window.App.sf('/players/nfl')); }catch(e){ S.players=S.players||{}; }
           }
           prog(30);
           const _res=await window.ESPN.connectLeague(_espnSavedId,_yr,_s2||null,_sw||null);
