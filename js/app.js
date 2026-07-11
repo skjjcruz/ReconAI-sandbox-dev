@@ -968,7 +968,7 @@ window.App.loadLeagueFromRegistry=loadLeagueFromRegistry;
 function showLeagueUpgradeFromHub(leagueId,leagueName){
   const reg=getVisibleLeagueRegistry();
   const current=reg.find(e=>e.leagueId===(S.currentLeagueId||DhqStorage.getStr(STORAGE_KEYS.LEAGUE)));
-  showLeagueUpgradePrompt(
+  goProHardStop(
     {league_id:leagueId,name:leagueName||leagueId},
     {league_id:current?.leagueId,name:current?.leagueName||'your league'},
     leagueId,S.user?.user_id||''
@@ -1051,7 +1051,7 @@ function showLeaguePicker(leagues,userId){
         if(leagues.find(l=>l.league_id===savedLeague))selectLeague(savedLeague,userId);
         const target=leagues.find(l=>l.league_id===urlLeague);
         const current=leagues.find(l=>l.league_id===savedLeague);
-        showLeagueUpgradePrompt(target,current,urlLeague,userId);
+        goProHardStop(target,current,urlLeague,userId);
         return;
       }
       selectLeague(urlLeague,userId);
@@ -1120,12 +1120,21 @@ function trySelectLeague(leagueId,userId){
   // Same league as the claimed one — allow (and solidify a legacy implicit
   // choice into the shared key)
   if(leagueId===currentId){claimFreeLeague(currentId);selectLeague(leagueId,userId);return;}
-  // Free user trying a different league — hard stop with upgrade prompt
+  // Free user trying a different league — straight to the Pro purchase page
   claimFreeLeague(currentId);
   const target=S.leagues.find(l=>l.league_id===leagueId);
   const current=S.leagues.find(l=>l.league_id===currentId);
+  goProHardStop(target,current,leagueId,userId);
+}
+
+// Hard stop = straight to the Pro purchase page (owner call 2026-07-11).
+// The intermediate league-limit modal remains only as a fallback for the
+// unlikely case the pro-launch module hasn't loaded.
+function goProHardStop(target,current,leagueId,userId){
+  if(typeof window.showProLaunchPage==='function'){window.showProLaunchPage();return;}
   showLeagueUpgradePrompt(target,current,leagueId,userId);
 }
+window.goProHardStop=goProHardStop;
 window.trySelectLeague = trySelectLeague;
 window.App.trySelectLeague = trySelectLeague;
 
