@@ -968,7 +968,7 @@ window.App.loadLeagueFromRegistry=loadLeagueFromRegistry;
 function showLeagueUpgradeFromHub(leagueId,leagueName){
   const reg=getVisibleLeagueRegistry();
   const current=reg.find(e=>e.leagueId===(S.currentLeagueId||DhqStorage.getStr(STORAGE_KEYS.LEAGUE)));
-  goProHardStop(
+  showLeagueUpgradePrompt(
     {league_id:leagueId,name:leagueName||leagueId},
     {league_id:current?.leagueId,name:current?.leagueName||'your league'},
     leagueId,S.user?.user_id||''
@@ -1037,26 +1037,13 @@ window.App.getUrlLeagueId=getUrlLeagueId;
 
 function showLeaguePicker(leagues,userId){
   try{
-    // Free tier is locked to its saved league: a URL param pointing at a
-    // DIFFERENT league (deep link / cross-app hop) must not open it — that
-    // rendered an empty shell. Hard stop via the same upgrade prompt.
-    const isFree=typeof getTier==='function'?getTier()==='free':false;
-    // Shared cross-app free-league claim takes priority over Scout's own
-    // last-opened league.
-    const savedLeague=freeLeagueChoice()||DhqStorage.getStr(STORAGE_KEYS.LEAGUE);
     // URL param from War Room takes priority
     const urlLeague=getUrlLeagueId();
     if(urlLeague&&leagues.find(l=>l.league_id===urlLeague)){
-      if(isFree&&savedLeague&&urlLeague!==savedLeague){
-        if(leagues.find(l=>l.league_id===savedLeague))selectLeague(savedLeague,userId);
-        const target=leagues.find(l=>l.league_id===urlLeague);
-        const current=leagues.find(l=>l.league_id===savedLeague);
-        goProHardStop(target,current,urlLeague,userId);
-        return;
-      }
       selectLeague(urlLeague,userId);
       return;
     }
+    const savedLeague=DhqStorage.getStr(STORAGE_KEYS.LEAGUE);
     if(savedLeague&&leagues.find(l=>l.league_id===savedLeague)){
       selectLeague(savedLeague,userId);
       return;
@@ -1101,40 +1088,19 @@ window.showLeaguePicker = showLeaguePicker;
 // trySelectLeague — gate for free users. Paid users proceed directly.
 // Free users: if clicking a league that isn't their current one, show
 // the upgrade prompt (with option to switch). Otherwise proceed.
-// The one-league free tier is shared ACROSS apps: War Room and Scout live on
-// the same origin and both honor this raw localStorage key. The first league
-// a free user enters (in either app) claims the slot permanently; without
-// the shared key, each app tracked its own "current league" and a free user
-// could open one league here and a different one there.
-const FREE_LEAGUE_KEY='wr_free_league_id_v1';
-function freeLeagueChoice(){try{return localStorage.getItem(FREE_LEAGUE_KEY)||'';}catch(e){return '';}}
-function claimFreeLeague(id){try{if(id&&!localStorage.getItem(FREE_LEAGUE_KEY))localStorage.setItem(FREE_LEAGUE_KEY,String(id));}catch(e){}}
-window.claimFreeLeague=claimFreeLeague;
-
 function trySelectLeague(leagueId,userId){
   const isFree=typeof getTier==='function'?getTier()==='free':false;
   if(!isFree){selectLeague(leagueId,userId);return;}
-  const currentId=freeLeagueChoice()||S.currentLeagueId||DhqStorage.getStr(STORAGE_KEYS.LEAGUE)||'';
-  // No league claimed yet (first-time picker) — this pick claims the slot
-  if(!currentId){claimFreeLeague(leagueId);selectLeague(leagueId,userId);return;}
-  // Same league as the claimed one — allow (and solidify a legacy implicit
-  // choice into the shared key)
-  if(leagueId===currentId){claimFreeLeague(currentId);selectLeague(leagueId,userId);return;}
-  // Free user trying a different league — straight to the Pro purchase page
-  claimFreeLeague(currentId);
+  const currentId=S.currentLeagueId||DhqStorage.getStr(STORAGE_KEYS.LEAGUE)||'';
+  // No current league yet (first-time picker) — just pick it freely
+  if(!currentId){selectLeague(leagueId,userId);return;}
+  // Same league as currently active — allow (re-selecting same league is fine)
+  if(leagueId===currentId){selectLeague(leagueId,userId);return;}
+  // Free user trying a different league — show upgrade prompt
   const target=S.leagues.find(l=>l.league_id===leagueId);
   const current=S.leagues.find(l=>l.league_id===currentId);
-  goProHardStop(target,current,leagueId,userId);
-}
-
-// Hard stop = straight to the Pro purchase page (owner call 2026-07-11).
-// The intermediate league-limit modal remains only as a fallback for the
-// unlikely case the pro-launch module hasn't loaded.
-function goProHardStop(target,current,leagueId,userId){
-  if(typeof window.showProLaunchPage==='function'){window.showProLaunchPage();return;}
   showLeagueUpgradePrompt(target,current,leagueId,userId);
 }
-window.goProHardStop=goProHardStop;
 window.trySelectLeague = trySelectLeague;
 window.App.trySelectLeague = trySelectLeague;
 
@@ -1170,7 +1136,8 @@ function showLeagueUpgradePrompt(targetLeague,currentLeague,leagueId,userId){
         <div style="display:flex;flex-direction:column;gap:6px">${teaserHtml}</div>
       </div>`:''}
       <div style="display:flex;flex-direction:column;gap:10px">
-        <button onclick="document.getElementById('league-limit-modal').remove();if(window.showProLaunchPage)showProLaunchPage();" style="padding:13px 20px;background:linear-gradient(135deg,#d4af37,#b8941f);color:#1a1000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:-.01em">Upgrade to Pro — unlock all leagues →</button>
+        <button onclick="document.getElementById('league-limit-modal').remove();if(window.showProLaunchPage)showProLaunchPage();" style="padding:13px 20px;background:linear-gradient(135deg,#d4af37,#b8941f);color:#1a1000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:-.01em">Upgrade to War Room — unlock all leagues →</button>
+        <button onclick="document.getElementById('league-limit-modal').remove();selectLeague('${leagueId}','${userId}')" style="padding:10px 20px;background:transparent;color:var(--text2);border:1px solid var(--border2);border-radius:12px;font-size:13px;font-weight:500;cursor:pointer">Switch to this league instead</button>
         <button onclick="document.getElementById('league-limit-modal').remove()" style="padding:8px;background:transparent;color:var(--text3);border:none;font-size:13px;cursor:pointer">Cancel</button>
       </div>
     </div>`;
@@ -1195,10 +1162,6 @@ function switchLeagueMode(){
 window.switchLeagueMode = switchLeagueMode;
 
 async function selectLeague(leagueId,userId){
-  // Free tier: every successful open claims the shared cross-app free-league
-  // slot if none is claimed yet (no-op otherwise, and for paid tiers the key
-  // is irrelevant).
-  if(typeof getTier==='function'&&getTier()==='free')claimFreeLeague(leagueId);
   S.currentLeagueId=leagueId;
   DhqStorage.setStr(STORAGE_KEYS.LEAGUE, leagueId);
   const league=S.leagues.find(l=>l.league_id===leagueId);
@@ -1698,7 +1661,7 @@ function renderLeagueHub() {
 
   // Free-tier: only first league (or currently active one) is unlocked
   const isFree = typeof getTier === 'function' ? getTier() === 'free' : false;
-  const savedId = freeLeagueChoice() || DhqStorage.getStr(STORAGE_KEYS.LEAGUE) || S.currentLeagueId || '';
+  const savedId = DhqStorage.getStr(STORAGE_KEYS.LEAGUE) || S.currentLeagueId || '';
   const unlockedId = isFree ? (savedId && registry.find(e => e.leagueId === savedId) ? savedId : registry[0]?.leagueId) : null;
 
   // League cards
