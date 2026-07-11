@@ -26,7 +26,7 @@ jobs:
             echo "Supabase deploy token present — proceeding with deploy."
           fi
 
-      - uses: supabase/setup-cli@v2.1.1
+      - uses: supabase/setup-cli@v3.0.0
         if: ${{ env.SUPABASE_ACCESS_TOKEN != '' }}
         with:
           version: latest
