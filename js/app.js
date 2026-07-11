@@ -1041,7 +1041,9 @@ function showLeaguePicker(leagues,userId){
     // DIFFERENT league (deep link / cross-app hop) must not open it — that
     // rendered an empty shell. Hard stop via the same upgrade prompt.
     const isFree=typeof getTier==='function'?getTier()==='free':false;
-    const savedLeague=DhqStorage.getStr(STORAGE_KEYS.LEAGUE);
+    // Shared cross-app free-league claim takes priority over Scout's own
+    // last-opened league.
+    const savedLeague=freeLeagueChoice()||DhqStorage.getStr(STORAGE_KEYS.LEAGUE);
     // URL param from War Room takes priority
     const urlLeague=getUrlLeagueId();
     if(urlLeague&&leagues.find(l=>l.league_id===urlLeague)){
@@ -1099,15 +1101,27 @@ window.showLeaguePicker = showLeaguePicker;
 // trySelectLeague — gate for free users. Paid users proceed directly.
 // Free users: if clicking a league that isn't their current one, show
 // the upgrade prompt (with option to switch). Otherwise proceed.
+// The one-league free tier is shared ACROSS apps: War Room and Scout live on
+// the same origin and both honor this raw localStorage key. The first league
+// a free user enters (in either app) claims the slot permanently; without
+// the shared key, each app tracked its own "current league" and a free user
+// could open one league here and a different one there.
+const FREE_LEAGUE_KEY='wr_free_league_id_v1';
+function freeLeagueChoice(){try{return localStorage.getItem(FREE_LEAGUE_KEY)||'';}catch(e){return '';}}
+function claimFreeLeague(id){try{if(id&&!localStorage.getItem(FREE_LEAGUE_KEY))localStorage.setItem(FREE_LEAGUE_KEY,String(id));}catch(e){}}
+window.claimFreeLeague=claimFreeLeague;
+
 function trySelectLeague(leagueId,userId){
   const isFree=typeof getTier==='function'?getTier()==='free':false;
   if(!isFree){selectLeague(leagueId,userId);return;}
-  const currentId=S.currentLeagueId||DhqStorage.getStr(STORAGE_KEYS.LEAGUE)||'';
-  // No current league yet (first-time picker) — just pick it freely
-  if(!currentId){selectLeague(leagueId,userId);return;}
-  // Same league as currently active — allow (re-selecting same league is fine)
-  if(leagueId===currentId){selectLeague(leagueId,userId);return;}
-  // Free user trying a different league — show upgrade prompt
+  const currentId=freeLeagueChoice()||S.currentLeagueId||DhqStorage.getStr(STORAGE_KEYS.LEAGUE)||'';
+  // No league claimed yet (first-time picker) — this pick claims the slot
+  if(!currentId){claimFreeLeague(leagueId);selectLeague(leagueId,userId);return;}
+  // Same league as the claimed one — allow (and solidify a legacy implicit
+  // choice into the shared key)
+  if(leagueId===currentId){claimFreeLeague(currentId);selectLeague(leagueId,userId);return;}
+  // Free user trying a different league — hard stop with upgrade prompt
+  claimFreeLeague(currentId);
   const target=S.leagues.find(l=>l.league_id===leagueId);
   const current=S.leagues.find(l=>l.league_id===currentId);
   showLeagueUpgradePrompt(target,current,leagueId,userId);
@@ -1172,6 +1186,10 @@ function switchLeagueMode(){
 window.switchLeagueMode = switchLeagueMode;
 
 async function selectLeague(leagueId,userId){
+  // Free tier: every successful open claims the shared cross-app free-league
+  // slot if none is claimed yet (no-op otherwise, and for paid tiers the key
+  // is irrelevant).
+  if(typeof getTier==='function'&&getTier()==='free')claimFreeLeague(leagueId);
   S.currentLeagueId=leagueId;
   DhqStorage.setStr(STORAGE_KEYS.LEAGUE, leagueId);
   const league=S.leagues.find(l=>l.league_id===leagueId);
@@ -1671,7 +1689,7 @@ function renderLeagueHub() {
 
   // Free-tier: only first league (or currently active one) is unlocked
   const isFree = typeof getTier === 'function' ? getTier() === 'free' : false;
-  const savedId = DhqStorage.getStr(STORAGE_KEYS.LEAGUE) || S.currentLeagueId || '';
+  const savedId = freeLeagueChoice() || DhqStorage.getStr(STORAGE_KEYS.LEAGUE) || S.currentLeagueId || '';
   const unlockedId = isFree ? (savedId && registry.find(e => e.leagueId === savedId) ? savedId : registry[0]?.leagueId) : null;
 
   // League cards
