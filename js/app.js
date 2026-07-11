@@ -1037,13 +1037,24 @@ window.App.getUrlLeagueId=getUrlLeagueId;
 
 function showLeaguePicker(leagues,userId){
   try{
+    // Free tier is locked to its saved league: a URL param pointing at a
+    // DIFFERENT league (deep link / cross-app hop) must not open it — that
+    // rendered an empty shell. Hard stop via the same upgrade prompt.
+    const isFree=typeof getTier==='function'?getTier()==='free':false;
+    const savedLeague=DhqStorage.getStr(STORAGE_KEYS.LEAGUE);
     // URL param from War Room takes priority
     const urlLeague=getUrlLeagueId();
     if(urlLeague&&leagues.find(l=>l.league_id===urlLeague)){
+      if(isFree&&savedLeague&&urlLeague!==savedLeague){
+        if(leagues.find(l=>l.league_id===savedLeague))selectLeague(savedLeague,userId);
+        const target=leagues.find(l=>l.league_id===urlLeague);
+        const current=leagues.find(l=>l.league_id===savedLeague);
+        showLeagueUpgradePrompt(target,current,urlLeague,userId);
+        return;
+      }
       selectLeague(urlLeague,userId);
       return;
     }
-    const savedLeague=DhqStorage.getStr(STORAGE_KEYS.LEAGUE);
     if(savedLeague&&leagues.find(l=>l.league_id===savedLeague)){
       selectLeague(savedLeague,userId);
       return;
@@ -1136,8 +1147,7 @@ function showLeagueUpgradePrompt(targetLeague,currentLeague,leagueId,userId){
         <div style="display:flex;flex-direction:column;gap:6px">${teaserHtml}</div>
       </div>`:''}
       <div style="display:flex;flex-direction:column;gap:10px">
-        <button onclick="document.getElementById('league-limit-modal').remove();if(window.showProLaunchPage)showProLaunchPage();" style="padding:13px 20px;background:linear-gradient(135deg,#d4af37,#b8941f);color:#1a1000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:-.01em">Upgrade to War Room — unlock all leagues →</button>
-        <button onclick="document.getElementById('league-limit-modal').remove();selectLeague('${leagueId}','${userId}')" style="padding:10px 20px;background:transparent;color:var(--text2);border:1px solid var(--border2);border-radius:12px;font-size:13px;font-weight:500;cursor:pointer">Switch to this league instead</button>
+        <button onclick="document.getElementById('league-limit-modal').remove();if(window.showProLaunchPage)showProLaunchPage();" style="padding:13px 20px;background:linear-gradient(135deg,#d4af37,#b8941f);color:#1a1000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:-.01em">Upgrade to Pro — unlock all leagues →</button>
         <button onclick="document.getElementById('league-limit-modal').remove()" style="padding:8px;background:transparent;color:var(--text3);border:none;font-size:13px;cursor:pointer">Cancel</button>
       </div>
     </div>`;
