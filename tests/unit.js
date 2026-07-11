@@ -862,14 +862,16 @@ test('HIST_KEY produces dhq_hist_<leagueId> format',
 // ══════════════════════════════════════════════════════════════════
 group('isTrialActive');
 
-// tier.js sets TRIAL_START on load via initTrial(), so it's active by default.
-test('fresh install: trial is active',
-  () => ok(isTrialActive(), 'trial should be active after initTrial()'));
+// BILLING LIVE (2026-07-10): TRIAL_DAYS=0 in DHQ-Shared retired the legacy
+// 30-day client trial — the real Pro trial is the 7-day one at checkout.
+// isTrialActive is now false regardless of the TRIAL_START stamp.
+test('fresh install: legacy trial is retired (never active)',
+  () => eq(isTrialActive(), false));
 
-test('trial started today: isTrialActive → true',
+test('trial started today: isTrialActive → false (trial retired)',
   () => {
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
-    ok(isTrialActive());
+    eq(isTrialActive(), false);
   });
 
 test('trial started 31 days ago: isTrialActive → false',
@@ -907,11 +909,11 @@ function clearTierCache() {
   ls.removeItem(STORAGE_KEYS.TIER);
 }
 
-test('active trial + no profile → trial',
+test('trial stamp + no profile → free (legacy trial retired)',
   () => {
     clearTierCache();
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
-    eq(getTier(), 'trial');
+    eq(getTier(), 'free');
   });
 
 test('OD profile tier=scout in localStorage does not grant paid access',
@@ -1048,15 +1050,13 @@ test('paid tier → all features accessible',
     ctx.App._userTier = null;
   });
 
-test('trial tier → trial features accessible',
+test('trial stamp no longer unlocks paid features (legacy trial retired)',
   () => {
     clearTierCache();
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
-    // Active trial, no paid profile → tier = 'trial'
-    ok(canAccess(FEATURES.OWNER_DNA),         'OWNER_DNA in trial');
-    ok(canAccess(FEATURES.TRADE_CALC),        'TRADE_CALC in trial');
-    ok(canAccess(FEATURES.UNLIMITED_CHAT),    'UNLIMITED_CHAT in trial');
-    ok(canAccess(FEATURES.NOTIFICATIONS),     'NOTIFICATIONS in trial');
+    // Stamp present but trial retired → tier = 'free', paid features locked
+    eq(canAccess(FEATURES.OWNER_DNA), false,      'OWNER_DNA locked for free');
+    eq(canAccess(FEATURES.UNLIMITED_CHAT), false, 'UNLIMITED_CHAT locked for free');
   });
 
 test('trial tier → paid-only features blocked',
