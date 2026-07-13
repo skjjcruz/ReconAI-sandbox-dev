@@ -1084,65 +1084,22 @@ function showLeaguePicker(leagues,userId){
 }
 window.showLeaguePicker = showLeaguePicker;
 
-// ── League limit enforcement ───────────────────────────────────
-// trySelectLeague — gate for free users. Paid users proceed directly.
-// Free users: if clicking a league that isn't their current one, show
-// the upgrade prompt (with option to switch). Otherwise proceed.
+// ── League selection ───────────────────────────────────────────
+// No per-league limit (owner ruling 2026-07-13): every user, free or paid,
+// can enter any of their leagues. Dynasty HQ is feature-gated, not
+// league-gated. trySelectLeague is now a straight pass-through, kept as a
+// named entry point so existing callers don't change.
 function trySelectLeague(leagueId,userId){
-  const isFree=typeof getTier==='function'?getTier()==='free':false;
-  if(!isFree){selectLeague(leagueId,userId);return;}
-  const currentId=S.currentLeagueId||DhqStorage.getStr(STORAGE_KEYS.LEAGUE)||'';
-  // No current league yet (first-time picker) — just pick it freely
-  if(!currentId){selectLeague(leagueId,userId);return;}
-  // Same league as currently active — allow (re-selecting same league is fine)
-  if(leagueId===currentId){selectLeague(leagueId,userId);return;}
-  // Free user trying a different league — show upgrade prompt
-  const target=S.leagues.find(l=>l.league_id===leagueId);
-  const current=S.leagues.find(l=>l.league_id===currentId);
-  showLeagueUpgradePrompt(target,current,leagueId,userId);
+  selectLeague(leagueId,userId);
 }
 window.trySelectLeague = trySelectLeague;
 window.App.trySelectLeague = trySelectLeague;
 
-// showLeagueUpgradePrompt — modal shown when a free user taps a locked league.
-// Lists other available leagues as a teaser and offers upgrade + switch paths.
+// showLeagueUpgradePrompt — retired with the one-league limit (owner ruling
+// 2026-07-13). Kept as a no-op that simply enters the league, in case any
+// caller still references it.
 function showLeagueUpgradePrompt(targetLeague,currentLeague,leagueId,userId){
-  const existing=document.getElementById('league-limit-modal');
-  if(existing)existing.remove();
-  const connectedName=escHtml(currentLeague?.name||'your league');
-  const otherLeagues=(S.leagues||[]).filter(l=>l.league_id!==(currentLeague?.league_id));
-  const avatarHtml=l=>l.avatar
-    ?`<img src="https://sleepercdn.com/avatars/thumbs/${l.avatar}" style="width:28px;height:28px;border-radius:7px;object-fit:cover" onerror="this.style.display='none'"/>`
-    :`<div style="width:28px;height:28px;border-radius:7px;background:var(--accentL);display:flex;align-items:center;justify-content:center;font-size:11px">\u{1F3C8}</div>`;
-  const teaserHtml=otherLeagues.slice(0,4).map(l=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rl)">
-      ${avatarHtml(l)}
-      <span style="font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${escHtml(l.name||'League')}</span>
-      <span style="font-size:12px;color:var(--text3)">🔒</span>
-    </div>`).join('');
-  const modal=document.createElement('div');
-  modal.id='league-limit-modal';
-  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)';
-  modal.innerHTML=`
-    <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:28px 24px;max-width:400px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.5)">
-      <div style="text-align:center;margin-bottom:20px">
-        <div style="font-size:32px;margin-bottom:12px">🔒</div>
-        <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;letter-spacing:-.02em">You're connected to ${connectedName}</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.6">Upgrade to add all your leagues and switch between them instantly.</div>
-      </div>
-      ${otherLeagues.length>0?`
-      <div style="margin-bottom:20px">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Your other leagues</div>
-        <div style="display:flex;flex-direction:column;gap:6px">${teaserHtml}</div>
-      </div>`:''}
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <button onclick="document.getElementById('league-limit-modal').remove();if(window.showProLaunchPage)showProLaunchPage();" style="padding:13px 20px;background:linear-gradient(135deg,#d4af37,#b8941f);color:#1a1000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:-.01em">Upgrade to War Room — unlock all leagues →</button>
-        <button onclick="document.getElementById('league-limit-modal').remove();selectLeague('${leagueId}','${userId}')" style="padding:10px 20px;background:transparent;color:var(--text2);border:1px solid var(--border2);border-radius:12px;font-size:13px;font-weight:500;cursor:pointer">Switch to this league instead</button>
-        <button onclick="document.getElementById('league-limit-modal').remove()" style="padding:8px;background:transparent;color:var(--text3);border:none;font-size:13px;cursor:pointer">Cancel</button>
-      </div>
-    </div>`;
-  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
-  document.body.appendChild(modal);
+  selectLeague(leagueId,userId);
 }
 window.showLeagueUpgradePrompt = showLeagueUpgradePrompt;
 window.App.showLeagueUpgradePrompt = showLeagueUpgradePrompt;
