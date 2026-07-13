@@ -4,11 +4,11 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # The 30 shared modules are vendored from skjjcruz/DHQ-Shared at build time
       # (gitignored here), so check out the canonical source and sync before lint/tests.
       - name: Checkout DHQ-Shared (canonical engine)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: skjjcruz/DHQ-Shared
           path: dhq-shared-src
