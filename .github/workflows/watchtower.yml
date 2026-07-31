@@ -1,0 +1,61 @@
+# Watchtower — the robot customer + backend guardian (owner approval 2026-07-31).
+#
+# Every 10 minutes: probe the live product end to end (app site, website,
+# backend, third-party feeds), detect unauthorized backend changes, restore
+# approved code when possible, and keep exactly one 'watchtower' issue as
+# the live incident board. The hourly operator (Claude) works that board
+# under standing orders; the owner only hears outcomes.
+#
+# This workflow never fails on a product problem — the issue is the alarm,
+# not a red X. A red X here means the Watchtower ITSELF broke.
+name: Watchtower
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  actions: read
+
+concurrency:
+  group: watchtower
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v2.0.0
+        with:
+          version: latest
+
+      - name: Probe the product like a customer
+        run: bash watchtower/probes.sh
+
+      - name: Backend guardian — drift detect & restore
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash watchtower/guardian.sh
+
+      - name: Commit baseline when it legitimately moved
+        run: |
+          if [ -f watchtower/state/commit-baseline.txt ]; then
+            git config user.name "watchtower"
+            git config user.email "noreply@github.com"
+            git add watchtower/baseline.json
+            git commit -m "watchtower: baseline $(cat watchtower/state/commit-baseline.txt)" 2>/dev/null || exit 0
+            git pull --rebase origin main 2>/dev/null || true
+            git push origin main || echo "::warning::baseline push failed (non-fatal)"
+          fi
+
+      - name: Raise or clear the alarm
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash watchtower/alarm.sh
