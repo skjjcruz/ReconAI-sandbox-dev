@@ -1,0 +1,12 @@
+{
+  "_note": "Maintained by the hourly operator (Claude) via the management channel — the in-workflow guardian is dormant until this repo's SUPABASE_ACCESS_TOKEN is refreshed. Versions below are the approved production state as of 2026-07-31, post-restore.",
+  "ai-analyze": "183", "set-password": "109", "fw-signup": "114", "fw-signin": "113",
+  "fw-create-checkout": "112", "fw-stripe-webhook": "108", "admin-list-users": "108",
+  "espn-proxy": "35", "fw-request-password-reset": "82", "fw-confirm-password-reset": "82",
+  "admin-analytics-report": "83", "fw-profile": "81", "get-session-token": "80",
+  "mfl-proxy": "42", "yahoo-proxy": "29", "fw-delete-account": "59", "fw-oauth-sync": "59",
+  "ai-feedback": "68", "fw-revenuecat-webhook": "38", "report-bug": "1", "feature-requests": "1",
+  "fw-refresh-session": "18", "admin-delete-user": "16", "fw-billing-portal": "8",
+  "admin-grant-pro": "7", "admin-support-queue": "6", "admin-audit-log": "6",
+  "admin-billing-summary": "5", "nfl-scoreboard": "1"
+}
