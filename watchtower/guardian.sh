@@ -28,16 +28,25 @@ fi
 rm -f "$OUT/guardian-unarmed.txt"
 
 snapshot() {
-  curl -s --max-time 20 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-    "https://api.supabase.com/v1/projects/$PROJECT/functions" \
-    | jq -S 'map({(.slug): .version}) | add // {}'
+  local resp code body
+  resp=$(curl -s --max-time 20 -w $'\n%{http_code}' -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+    "https://api.supabase.com/v1/projects/$PROJECT/functions") || { echo "CURL_FAIL"; return; }
+  code=$(echo "$resp" | tail -1)
+  body=$(echo "$resp" | sed '$d')
+  if [ "$code" != "200" ]; then
+    echo "HTTP_$code $(echo "$body" | head -c 200)" >&2
+    echo "API_ERROR"
+    return
+  fi
+  echo "$body" | jq -S 'map({(.slug): .version|tostring}) | add // {}' 2>/dev/null || echo "PARSE_ERROR"
 }
 
 CURRENT=$(snapshot)
-if [ -z "$CURRENT" ] || [ "$CURRENT" = "null" ]; then
-  echo "guardian: could not read function versions (management API unreachable) — skipping this cycle"
-  exit 0
-fi
+case "$CURRENT" in
+  CURL_FAIL|API_ERROR|PARSE_ERROR|""|null)
+    echo "guardian: management API check failed ($CURRENT) — skipping this cycle (see stderr above for detail)"
+    exit 0;;
+esac
 
 # First run: record the baseline and stand watch from here.
 if [ ! -f "$BASELINE" ]; then
@@ -101,6 +110,6 @@ done
 [ -n "$UNKNOWN" ]  && echo "NEEDS HUMAN/OPERATOR:$UNKNOWN" | tee -a "$OUT/incident.txt"
 
 # Re-baseline on the post-restore state so the alarm doesn't repeat forever.
-snapshot > "$BASELINE"
+snapshot > "$BASELINE" 2>/dev/null
 echo "post-restore" > "$OUT/commit-baseline.txt"
 exit 0
