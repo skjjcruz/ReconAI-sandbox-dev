@@ -9,6 +9,11 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "https://jcc100218.github.io",
   "https://skjjcruz.github.io",
   "https://warroom.skjjcruz.com",
+  // Live marketing/app domain (dhqfootball.com cutover) — the website calls
+  // these proxies for league connect; without these origins every browser
+  // call from production is CORS-blocked.
+  "https://dhqfootball.com",
+  "https://www.dhqfootball.com",
   // Capacitor native app origins. iOS serves the bundled web app from the
   // 'capacitor' scheme; Android uses the 'https' scheme. Kept in sync with
   // War Room's _shared/security.ts so both apps enforce one shared allowlist
