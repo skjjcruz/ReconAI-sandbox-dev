@@ -1,6 +1,6 @@
 {
-  "_note": "Maintained by the hourly operator (Claude) via the management channel \u2014 the in-workflow guardian is dormant until this repo's SUPABASE_ACCESS_TOKEN is refreshed. Versions below are the approved production state as of 2026-07-31, post-restore.",
-  "admin-analytics-report": "83",
+  "_note": "Maintained by the hourly operator (Claude) via the management channel. The in-workflow guardian is armed again as of 2026-08-01 (fresh SUPABASE_ACCESS_TOKEN). Versions below are the approved production state.",
+  "admin-analytics-report": "84",
   "admin-audit-log": "6",
   "admin-billing-summary": "5",
   "admin-delete-user": "16",
