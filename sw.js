@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reconai-scout-mobile-shell-v20260708';
+const CACHE_NAME = 'reconai-scout-mobile-shell-v20260905';
 
 // App-shell navigation docs to precache on install so repeat visits paint
 // without waiting on the network. Resolved against the SW scope (/ReconAI/).
