@@ -481,7 +481,7 @@ async function selectESPNTeam(rosterId,leagueId,year,espnS2,swid){
     const hubElE=$('league-hub');if(hubElE)hubElE.style.display='none';
     const sb=$('setup-block');if(sb)sb.style.display='none';
     const dc=$('digest-content');if(dc)dc.style.display='block';
-    switchToLeagueEntryTab();
+    switchTab('digest',document.querySelector('.tab[onclick*="digest"]'));
     prog(100);
 
     try{if(typeof renderHomeSnapshot==='function')renderHomeSnapshot();}catch(e){}
@@ -603,7 +603,7 @@ async function selectMFLTeam(rosterId,leagueId,year,apiKey){
     const hubElM=$('league-hub');if(hubElM)hubElM.style.display='none';
     const sb=$('setup-block');if(sb)sb.style.display='none';
     const dc=$('digest-content');if(dc)dc.style.display='block';
-    switchToLeagueEntryTab();
+    switchTab('digest',document.querySelector('.tab[onclick*="digest"]'));
     prog(100);
 
     try{if(typeof renderHomeSnapshot==='function')renderHomeSnapshot();}catch(e){}
@@ -779,7 +779,7 @@ async function selectYahooTeam(teamId,leagueKey){
     const hubElY=$('league-hub');if(hubElY)hubElY.style.display='none';
     const sb=$('setup-block');if(sb)sb.style.display='none';
     const dc=$('digest-content');if(dc)dc.style.display='block';
-    switchToLeagueEntryTab();
+    switchTab('digest',document.querySelector('.tab[onclick*="digest"]'));
     prog(100);
 
     try{if(typeof renderHomeSnapshot==='function')renderHomeSnapshot();}catch(e){}
@@ -935,7 +935,7 @@ async function loadLeagueFromRegistry(leagueId){
         _updateLeaguePillYahoo(_res.league.name);
         const sbEl=$('setup-block');if(sbEl)sbEl.style.display='none';
         const dcEl=$('digest-content');if(dcEl)dcEl.style.display='block';
-        switchToLeagueEntryTab();
+        switchTab('digest',document.querySelector('.tab[onclick*="digest"]'));
         prog(100);try{renderHomeSnapshot();}catch(e2){}
         Promise.resolve().then(()=>loadAllData());
       }else{
@@ -1118,25 +1118,6 @@ function switchLeagueMode(){
 }
 window.switchLeagueMode = switchLeagueMode;
 
-// Pre-draft leagues open in the Draft Room (owner order 2026-09-05,
-// mirrors website b102): a league whose draft hasn't run yet enters at
-// the Draft Room; once its draft completes the entry point shifts back
-// to the Home digest on its own. Unknown or missing status always
-// means digest — ESPN/Yahoo leagues without a status are untouched.
-function leagueEntryTab(){
-  try{
-    const lg=(S.leagues||[]).find(l=>String(l.league_id)===String(S.currentLeagueId))||S.leagues?.[0];
-    const st=lg?.status;
-    if(st==='pre_draft'||st==='drafting')return 'draftroom';
-  }catch(e){/* digest */}
-  return 'digest';
-}
-function switchToLeagueEntryTab(){
-  const tab=leagueEntryTab();
-  if(tab==='draftroom'&&typeof window.mobileTab==='function'){window.mobileTab('draftroom');return;}
-  switchTab(tab,document.querySelector('.tab[onclick*="'+tab+'"]'));
-}
-
 async function selectLeague(leagueId,userId){
   S.currentLeagueId=leagueId;
   DhqStorage.setStr(STORAGE_KEYS.LEAGUE, leagueId);
@@ -1154,7 +1135,7 @@ async function selectLeague(leagueId,userId){
   try{
     await loadLeague(leagueId,userId);
     clearLeagueLoadingState();
-    switchToLeagueEntryTab();
+    switchTab('digest',document.querySelector('.tab[onclick*="digest"]'));
     prog(100);
     try{renderHomeSnapshot();}catch(e){dhqLog('selectLeague.renderHomeSnapshot',e);}
     checkApiKeyCallout();
@@ -1758,7 +1739,7 @@ async function loadRegistryLeague(entry) {
     const hub = $('league-hub'); if (hub) hub.style.display = 'none';
     const sb  = $('setup-block'); if (sb) sb.style.display = 'none';
     const dc  = $('digest-content'); if (dc) dc.style.display = 'block';
-    switchToLeagueEntryTab();
+    switchTab('digest', document.querySelector('.tab[onclick*="digest"]'));
     prog(100);
     try { renderHomeSnapshot(); } catch(e) {}
     try { checkApiKeyCallout(); } catch(e) {}
@@ -2019,7 +2000,7 @@ window.loadRegistryLeague = loadRegistryLeague;
             _updateLeaguePillYahoo(_res.league.name);
             const _sb=$('setup-block');if(_sb)_sb.style.display='none';
             const _dc=$('digest-content');if(_dc)_dc.style.display='block';
-            switchToLeagueEntryTab();
+            switchTab('digest',document.querySelector('.tab[onclick*="digest"]'));
             prog(100);ss('conn-status','');
             try{renderHomeSnapshot();}catch(e){}
             try{checkApiKeyCallout();}catch(e){}
@@ -2068,7 +2049,7 @@ window.loadRegistryLeague = loadRegistryLeague;
           _updateLeaguePillESPN(_res.league.name);
           const _sb=$('setup-block');if(_sb)_sb.style.display='none';
           const _dc=$('digest-content');if(_dc)_dc.style.display='block';
-          switchToLeagueEntryTab();
+          switchTab('digest',document.querySelector('.tab[onclick*="digest"]'));
           prog(100);ss('conn-status','');
           try{renderHomeSnapshot();}catch(e){}
           try{checkApiKeyCallout();}catch(e){}
