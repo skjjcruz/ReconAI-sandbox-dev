@@ -5,12 +5,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      # The 30 shared modules are vendored from skjjcruz/DHQ-Shared at build time
-      # (gitignored here), so check out the canonical source and sync before lint/tests.
+      # Test the same exact shared source used by the Pages release.
+      - name: Read reviewed shared revision
+        id: shared-revision
+        shell: bash
+        run: |
+          revision="$(tr -d '\r\n' < .dhq-shared-revision)"
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid shared revision'; exit 1; }
+          echo "sha=$revision" >> "$GITHUB_OUTPUT"
       - name: Checkout DHQ-Shared (canonical engine)
         uses: actions/checkout@v6
         with:
           repository: skjjcruz/DHQ-Shared
+          ref: ${{ steps.shared-revision.outputs.sha }}
           path: dhq-shared-src
       - uses: actions/setup-node@v4
         with:
