@@ -1,0 +1,14 @@
+PASS all three actual Scout renderers consume the confirmed feed across unknown week0
+PASS trade history retains team activity, network and details without fabricated grades
+[Yahoo] transactions fetch failed: outage
+PASS unavailable never appears as zero and stale retains last confirmed cards
+PASS verified empty replaces retained good rows without LI fallback
+[Yahoo] transactions fetch failed: outage
+PASS duplicate retry shares one provider fetch and releases after failure
+PASS late retry cannot write after account, provider, league, season or S replacement
+PASS same-account reconnect retires an old retry before new state publication
+PASS account change on rendered view hides rows and blocks any retry request
+PASS foreign metadata or malformed/pending rows cannot be presented as ready
+PASS provider names and asset strings are escaped as text
+PASS non-Yahoo state stays on its established renderer
+Scout Yahoo transactions: 11 passed, 0 failed
