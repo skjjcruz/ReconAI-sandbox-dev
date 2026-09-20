@@ -52,6 +52,7 @@ import './shared/gm-mode.js';
 import './js/app.js';
 import './js/sleeper-api.js';
 import './js/ai-chat.js';
+import './js/yahoo-transactions.js';
 import './js/ui.js';
 import './js/player-modal.js';
 import './js/shell.js';

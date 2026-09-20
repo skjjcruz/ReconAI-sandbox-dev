@@ -1701,9 +1701,14 @@ function renderTrades(){
     _trHeroEl.innerHTML=_trHeroHtml;
   }
 
+  const el=$('trades-recent');if(!el)return;
+  if (window.App?.ScoutYahooTransactions?.isYahoo()) {
+    window.App.ScoutYahooTransactions.render(el);
+    renderTradeIntel();
+    return;
+  }
   const week=S.currentWeek;
   const trades=(S.transactions['w'+week]||[]).filter(t=>t.type==='trade');
-  const el=$('trades-recent');if(!el)return;
   el.innerHTML=trades.length?trades.map(t=>{
     const rids=t.roster_ids||[];
     const names=rids.map(id=>{const r=S.rosters.find(r=>r.roster_id===id);const n=r?getUser(r.owner_id):`Team ${id}`;return id===S.myRosterId?n+' (you)':n;});

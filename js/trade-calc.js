@@ -1102,6 +1102,10 @@ function _renderTradeStudioHero(hero) {
 function _tcRenderRecentTrades() {
   const el = $('trades-recent');
   if (!el) return;
+  if (window.App?.ScoutYahooTransactions?.isYahoo()) {
+    window.App.ScoutYahooTransactions.render(el);
+    return;
+  }
   const li = _tcLI();
   const week = S.currentWeek;
   let trades = (S.transactions?.['w' + week] || []).filter(t => t.type === 'trade');
@@ -2362,6 +2366,10 @@ function _thAvatar(rid) {
 function renderTradeHistory(container) {
   if (!container) container = $('tc-view-content');
   if (!container) return;
+  if (window.App?.ScoutYahooTransactions?.isYahoo()) {
+    window.App.ScoutYahooTransactions.render(container, {history:true});
+    return;
+  }
   const li = _tcLI();
   const trades = (_tcLILoaded() && li.tradeHistory) || [];
   const profiles = (_tcLILoaded() && li.ownerProfiles) || {};

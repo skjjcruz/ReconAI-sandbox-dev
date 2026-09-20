@@ -1,0 +1,5 @@
+[Yahoo] Post-OAuth flow failed: Connection proof failed
+PASS actual Scout boot awaits proof before league fetch and shows actionable failure
+PASS transferred consent callback in separate same-account browser cannot exchange/store
+PASS initiating browser completes actual client/handler proof and preserves route context
+PASS reload/replay cannot resubmit consumed proof; completed session remains usable

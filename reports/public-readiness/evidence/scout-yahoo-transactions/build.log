@@ -1,0 +1,17 @@
+vite v8.0.16 building client environment for production...
+[2K
+transforming...✓ 68 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/assets/manifest-CYLw3ssa.json          0.95 kB │ gzip:   0.43 kB
+dist/assets/icon-192-Cr082-jS.png          31.54 kB
+dist/index.html                            72.77 kB │ gzip:  17.86 kB
+dist/assets/index-BcQW82Yt.css            198.14 kB │ gzip:  31.88 kB
+dist/assets/rolldown-runtime-D9-fqq9M.js    0.08 kB │ gzip:   0.08 kB
+dist/assets/dhq-engine-BRWw6E5k.js        101.80 kB │ gzip:  35.33 kB
+dist/assets/scout-ui-BEePSbw8.js          170.80 kB │ gzip:  48.44 kB
+dist/assets/tooling-HajN9kn1.js           248.30 kB │ gzip:  66.28 kB
+dist/assets/index-DC0xAIyD.js             398.27 kB │ gzip: 112.65 kB
+dist/assets/shared-core-CIcX1P0f.js       421.69 kB │ gzip: 140.03 kB
+
+✓ built in 278ms

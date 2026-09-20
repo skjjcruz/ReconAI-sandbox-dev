@@ -1,0 +1,1 @@
+Exact baseline 8d6cf54 tests/unit.js and js/scout-ui.js, identical vendored shared candidate and Node25.8.1: 136 pass / 9 tier failures on both. Failure descriptions and result summary byte-identical.
