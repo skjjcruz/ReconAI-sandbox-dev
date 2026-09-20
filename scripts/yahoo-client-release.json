@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "flow_version": "browser-verifier-v2",
+  "destination": "https://skjjcruz.github.io/ReconAI-sandbox-dev/",
+  "consumer_repository": "skjjcruz/ReconAI-sandbox-dev",
+  "consumer_revision": "ed259cf8f5879b9a39b19e49b5b1079602c87e84",
+  "shared_revision": "2ba92489cdbbedea7506f445e6baaab8c22f59ee",
+  "yahoo_source_sha256": "781e50d46385747825d90b1dcfff556ab76ed65f8a0fdabf817b4e6aa68d0044",
+  "sources": {
+    "index.html": "dbc7d3bf19a5f7aaebbc6b7c1e9f16dd75312ba3f3df548b5804b499b8d50a65",
+    "js/app.js": "061450401e2084bd8d2c04edce3c74337047830a0369144c6cbab9e6d1869baf",
+    "main.js": "bafca4860a4601e6ce5c54daba49533ab2da32b946c438402ef6502182a07605",
+    "package-lock.json": "11d7c1de1f1bc57bc0185bc7be1cfe57a1b70009de5f3ad190f90c8d79a4a7a6",
+    "vite.config.js": "85e939b6c6b6249c7a07edcc183ef54f1f2fc08ff4a84bbbbfc3d6d3d2ca2ade",
+    ".dhq-shared-revision": "8b33db723abd5fa25873d1d059ed37a2b2901ba351a03ef1ef6ae9a9e9ef8149",
+    ".github/workflows/deploy.yml": "2350e8d0cbc4d1de67c8c018c8455ebbf869185a5d8136f73255fb1a997a7a27",
+    "scripts/sync-shared.cjs": "5fc92d87b669332bbe1a6d896d4119d693f18d0c46b15b8559186b963f2b5370"
+  },
+  "artifacts": {
+    "index.html": "4852cebff7c3fb6b83c48eb096409ea771aa7988cd192f84101c694c2db138a7",
+    "assets/dhq-engine-CRjlZTXq.js": "3222752d0445319024a7a0a571761108004c9c290d60aa127fb6424da7f1874b",
+    "assets/index-CfHqKuqE.js": "c36aa124615769a908e31760993e560185a6d05df150795884357d1d52ba4577",
+    "assets/rolldown-runtime-D9-fqq9M.js": "a2b9cf4b963756dc2cae1ebdd1c0e51ef5780dd5bf64a55b90e21679c2b2434f",
+    "assets/scout-ui-BEePSbw8.js": "8f0badcee372c7a0010e28088b2a25b6fb08848634747eab7f527bfdbd216131",
+    "assets/shared-core-BaWdSxcL.js": "08ed5e411acc235b29366473fa9e35273b98de7505bf20f7195ce06c8a861adc",
+    "assets/tooling-D3iuhVZ2.js": "3158dc27de3427dda1ca791bf840e18d2dba347ab985a2ee020049845b961dbd"
+  }
+}

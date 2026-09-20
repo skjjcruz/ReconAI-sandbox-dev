@@ -103,8 +103,8 @@ test('Yahoo proxy uses shared CORS and validates OAuth return URLs', () => {
   hasEvery(yahoo, [
     'import { corsHeaders, isAllowedBrowserUrl } from "../_shared/cors.ts";',
     'const responseHeaders = corsHeaders(req);',
-    'return_url is not allowed',
-    '!isAllowedBrowserUrl(returnUrl)',
+    'Return to the app and start Yahoo connection again.',
+    '!allowedReturn(returnUrl, origin)',
   ], 'yahoo-proxy');
   ok(!yahoo.includes('"Access-Control-Allow-Origin": "*"'), 'yahoo-proxy must not use wildcard CORS');
   ok(!yahoo.includes('...corsHeaders'), 'yahoo-proxy must not spread stale static CORS headers');

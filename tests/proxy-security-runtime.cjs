@@ -19,7 +19,7 @@ async function fixture(options = {}) {
       select(){ return this; }, eq(k,v){predicates.push(r=>r[k]===v);return this;}, is(k,v){predicates.push(r=>(r[k]??null)===v);return this;},
       gt(k,v){predicates.push(r=>r[k]>v);return this;}, lt(k,v){predicates.push(r=>r[k]<v);return this;},
       update(v){op='update';value=v;return this;},delete(){op='delete';return this;},
-      async insert(row){if(state.stateError)return{error:Error('fixture unavailable')};state.states.set(row.state_hash,{...row,browser_hash:null});return{error:null};},
+      async insert(row){if(state.stateError)return{error:Error('fixture unavailable')};state.states.set(row.state_hash,{browser_hash:null,...row});return{error:null};},
       async upsert(row){if(state.saveError)return{error:Error('fixture secret database detail')};state.tokens.set(row.session_id,{...row});return{error:null};},
       async maybeSingle(){
         if(table==='app_users')return{data:state.deleted?null:{id:owner,session_version:state.version},error:state.userError?Error('fixture'):null};
@@ -40,17 +40,20 @@ async function fixture(options = {}) {
   if(fs.existsSync(path.resolve(__dirname,'../supabase/functions/_shared/yahoo-owner.ts'))){ const helper=load('supabase/functions/_shared/yahoo-owner.ts',globals).context; for(const key of ['requireYahooOwner','yahooOwnerIsCurrent','sha256Hex'])globals[key]=helper[key]; }
   globals.checkProxyLimit=globals.checkRateLimit;
   const {handler}=load('supabase/functions/yahoo-proxy/index.ts',globals);
+  const proof='d'.repeat(64);
   const post=(body, auth=token)=>handler(new Request(endpoint,{method:'POST',headers:{Authorization:'Bearer '+auth,Origin:origin},body:JSON.stringify(body)}));
-  const callback=(flow,cookie=flow.cookie)=>handler(new Request(endpoint+'?code=fixture-code&state='+encodeURIComponent(flow.state),{headers:cookie?{Cookie:cookie}:{}}));
+  const relay=(flow)=>handler(new Request(endpoint+'?code=fixture-code&state='+encodeURIComponent(flow.state)));
+  const callback=(flow, verifier=flow.verifier, auth=token)=>post({action:'complete_auth',flow_version:'browser-verifier-v2',return_url:flow.returnUrl,state:flow.state,code:'fixture-code',browser_verifier:verifier},auth);
   async function start(){
-    const response=await post({action:'auth_url',return_url:origin+'/index.html?vault=1#league'});assert.equal(response.status,200);
-    const url=(await response.json()).auth_url;const first=await handler(new Request(url));assert.equal(first.status,302);
-    const cookie=first.headers.get('set-cookie');assert.match(cookie,/HttpOnly; Secure; SameSite=Lax/);
-    return{url,state:new URL(first.headers.get('location')).searchParams.get('state'),cookie:cookie.split(';')[0]};
+    const returnUrl=origin+'/index.html?vault=1#league';
+    const response=await post({action:'auth_url',flow_version:'browser-verifier-v2',browser_challenge:await sha256Hex(proof),return_url:returnUrl});assert.equal(response.status,200);
+    const data=await response.json(); assert.equal(data.flow_version,'browser-verifier-v2');
+    assert.equal(new URL(data.auth_url).origin,'https://api.login.yahoo.com');
+    return{url:data.auth_url,state:data.state,verifier:proof,returnUrl};
   }
-  return{state,db,globals,handler,post,callback,start,token};
+  return{state,db,globals,handler,post,callback,relay,start,token,proof};
 }
-(async()=>{
+if(require.main===module)(async()=>{
   await test('unsigned callback cannot select a victim owner or reach Yahoo',async()=>{
     const f=await fixture();const forged=btoa(JSON.stringify({ownerKey:'app:'+owner,return:origin+'/index.html'}));
     const r=await f.handler(new Request(endpoint+'?code=fixture&state='+encodeURIComponent(forged)));assert.equal(r.status,400);assert.equal(f.state.exchanges,0);assert.equal(f.state.tokens.size,0);
@@ -64,15 +67,40 @@ async function fixture(options = {}) {
   await test('malformed JSON shape is actionable client error',async()=>{
     const f=await fixture();for(const body of [null,[],1,'auth_url'])assert.equal((await f.post(body)).status,400);
   });
-  await test('valid browser-bound connection preserves query and fragment and stores one owner',async()=>{
-    const f=await fixture();const flow=await f.start();assert.match(flow.state,/^[a-f0-9]{64}$/);assert.equal((await f.handler(new Request(flow.url))).status,400);
-    assert.equal((await f.callback(flow,'')).status,400);assert.equal((await f.callback(flow,flow.cookie.split('=')[0]+'=wrong')).status,400);assert.equal(f.state.exchanges,0);
-    const r=await f.callback(flow);assert.equal(r.status,302);const location=new URL(r.headers.get('location'));assert.equal(location.searchParams.get('vault'),'1');assert.equal(location.hash,'#league');assert.equal(f.state.tokens.get(location.searchParams.get('yahoo_session')).owner_key,'app:'+owner);
-    assert.equal((await f.callback(flow)).status,400);assert.equal(f.state.exchanges,1);
+  await test('same-account same-tab proof gates exchange and preserves exact return context',async()=>{
+    const f=await fixture();const flow=await f.start();assert.match(flow.state,/^[a-f0-9]{64}$/);
+    const relay=await f.relay(flow);assert.equal(relay.status,302);const location=new URL(relay.headers.get('location'));
+    assert.equal(location.origin,origin);assert.equal(location.pathname,'/index.html');assert.equal(location.searchParams.get('vault'),'1');
+    assert.match(location.hash,/^#dhq-yahoo=/);assert.equal(f.state.exchanges,0);assert.equal(f.state.tokens.size,0);
+    assert.equal((await f.callback(flow,'')).status,400);assert.equal((await f.callback(flow,'e'.repeat(64))).status,409);assert.equal(f.state.exchanges,0);
+    const r=await f.callback(flow);assert.equal(r.status,200);const result=await r.json();assert.equal(f.state.tokens.get(result.session_id).owner_key,'app:'+owner);
+    assert.equal((await f.callback(flow)).status,409);assert.equal(f.state.exchanges,1);
+  });
+  await test('transferred authorization URL and recipient callback never bind provider to initiator',async()=>{
+    const f=await fixture(),flow=await f.start();const relay=await f.relay(flow);assert.equal(relay.status,302);
+    const recipient=await new SignJWT({app_metadata:{user_id:'22222222-2222-4222-8222-222222222222',session_version:1}}).setSubject('22222222-2222-4222-8222-222222222222').setProtectedHeader({alg:'HS256'}).setExpirationTime('1h').sign(key);
+    assert.equal((await f.callback(flow,flow.verifier,recipient)).status,409); // Even with stolen verifier, wrong app identity cannot finish.
+    assert.equal((await f.callback(flow,'f'.repeat(64))).status,409); // Even same account in another browser needs the initiating secret.
+    assert.equal(f.state.tokens.size,0);assert.equal(f.state.exchanges,0);assert.equal(f.state.states.size,1);
+    assert.equal((await f.handler(new Request(endpoint+'?start='+flow.state))).status,400);
+  });
+  await test('return URL and origin are exact and untrusted path cannot begin or finish',async()=>{
+    const f=await fixture(),flow=await f.start();
+    for(const returnUrl of [origin+'/redirect?next=https://evil.invalid',origin+'/index.html?different=1#league','https://evil.invalid/index.html']){
+      const r=await f.post({action:'complete_auth',flow_version:'browser-verifier-v2',return_url:returnUrl,state:flow.state,browser_verifier:flow.verifier,code:'fixture-code'});
+      assert.ok([400,409].includes(r.status));
+    }
+    const r=await f.handler(new Request(endpoint,{method:'POST',headers:{Origin:'https://evil.invalid',Authorization:'Bearer '+f.token},body:JSON.stringify({action:'auth_url',flow_version:'browser-verifier-v2',return_url:origin+'/index.html',browser_challenge:await sha256Hex(f.proof)})}));
+    assert.equal(r.status,400);assert.equal(f.state.exchanges,0);
+  });
+  await test('old clients and old cookie states fail with explicit restart without altering saved sessions',async()=>{
+    const f=await fixture();assert.equal((await f.post({action:'auth_url',return_url:origin+'/index.html'})).status,409);
+    const flow=await f.start();f.state.states.get(await sha256Hex(flow.state)).browser_hash='a'.repeat(64);
+    assert.equal((await f.relay(flow)).status,400);assert.equal((await f.callback(flow)).status,409);assert.equal(f.state.exchanges,0);
   });
   await test('competing callbacks consume only once and expired state stays closed',async()=>{
-    const f=await fixture(),flow=await f.start();const rs=await Promise.all([f.callback(flow),f.callback(flow)]);assert.equal(rs.filter(r=>r.status===302).length,1);assert.equal(f.state.exchanges,1);
-    const expired=await f.start();f.state.states.get(await sha256Hex(expired.state)).expires_at=new Date(0).toISOString();assert.equal((await f.callback(expired)).status,400);
+    const f=await fixture(),flow=await f.start();const rs=await Promise.all([f.callback(flow),f.callback(flow)]);assert.equal(rs.filter(r=>r.status===200).length,1);assert.equal(f.state.exchanges,1);
+    const expired=await f.start();f.state.states.get(await sha256Hex(expired.state)).expires_at=new Date(0).toISOString();assert.equal((await f.callback(expired)).status,409);
   });
   await test('unconfirmed token persistence cannot redirect success or disclose database detail',async()=>{
     const f=await fixture({saveError:true}),flow=await f.start();const r=await f.callback(flow);assert.equal(r.status,503);assert.equal(r.headers.get('location'),null);assert.doesNotMatch(await r.text(),/fixture secret/);assert.equal(f.state.tokens.size,0);
@@ -92,7 +120,7 @@ async function fixture(options = {}) {
   });
   await test('signed legacy Sleeper owner remains supported without claiming app revocation parity',async()=>{
     const f=await fixture();const token=await new SignJWT({app_metadata:{sleeper_username:'LegacyFixture'}}).setSubject('legacyfixture').setProtectedHeader({alg:'HS256'}).setExpirationTime('1h').sign(key);
-    const r=await f.post({action:'auth_url',return_url:origin+'/index.html'},token);assert.equal(r.status,200);const row=[...f.state.states.values()][0];assert.equal(row.owner_key,'sleeper:legacyfixture');assert.equal(row.session_version,null);
+    const r=await f.post({action:'auth_url',flow_version:'browser-verifier-v2',browser_challenge:await sha256Hex(f.proof),return_url:origin+'/index.html'},token);assert.equal(r.status,200);const row=[...f.state.states.values()][0];assert.equal(row.owner_key,'sleeper:legacyfixture');assert.equal(row.session_version,null);
   });
   await test('stored Yahoo session is read only by matching authenticated owner',async()=>{
     const f=await fixture();f.state.tokens.set('owned',{session_id:'owned',owner_key:'app:'+owner,access_token:'fixture-access',expires_at:Date.now()+3600000});f.state.tokens.set('foreign',{session_id:'foreign',owner_key:'app:22222222-2222-4222-8222-222222222222',access_token:'private',expires_at:Date.now()+3600000});
@@ -100,7 +128,9 @@ async function fixture(options = {}) {
     assert.equal((await f.post({action:'api',endpoint:'/users',session_id:'foreign'})).status,401);assert.equal((await f.post({action:'refresh',session_id:'foreign'})).status,401);assert.equal(f.state.apiReads,1);assert.equal(f.state.exchanges,0);
   });
   await test('state persistence failure is visible with CORS and no success URL',async()=>{
-    const f=await fixture({stateError:true});const r=await f.post({action:'auth_url'});assert.equal(r.status,503);assert.equal(r.headers.get('access-control-allow-origin'),origin);assert.equal(r.headers.get('location'),null);assert.equal(f.state.exchanges,0);
+    const f=await fixture({stateError:true});const r=await f.post({action:'auth_url',flow_version:'browser-verifier-v2',browser_challenge:await sha256Hex(f.proof),return_url:origin+'/index.html'});assert.equal(r.status,503);assert.equal(r.headers.get('access-control-allow-origin'),origin);assert.equal(r.headers.get('location'),null);assert.equal(f.state.exchanges,0);
   });
   console.log(`Proxy security runtime: ${passes} passed, ${failures} failed`);process.exitCode=failures?1:0;
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
+module.exports={fixture};

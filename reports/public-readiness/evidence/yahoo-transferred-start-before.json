@@ -1,0 +1,11 @@
+{
+  "evidence": "Root actual-handler fixture observation before the new completion protocol; recorded from tool output",
+  "sourceCommit": "5d4bed8",
+  "worktreeHeadDuringObservation": "b1aaddc",
+  "scenario": "Authenticated initiator hands unused start link to another browser; recipient completes fixture Yahoo consent",
+  "startWithoutInitiatorCredential": 302,
+  "callback": 302,
+  "storedOwner": "app:11111111-1111-4111-8111-111111111111",
+  "providerExchanges": 1,
+  "evidenceLimit": "Does not demonstrate attacker obtaining random Yahoo session id or actual provider consent"
+}

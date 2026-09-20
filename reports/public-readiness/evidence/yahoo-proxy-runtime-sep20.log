@@ -1,0 +1,33 @@
+
+> reconai@1.0.0 test:proxy-runtime
+> node tests/proxy-security-runtime.cjs && node tests/proxy-relay-runtime.cjs
+
+PASS unsigned callback cannot select a victim owner or reach Yahoo
+PASS revoked app token cannot start, read or refresh Yahoo
+PASS callback errors never render caller HTML
+PASS malformed JSON shape is actionable client error
+PASS same-account same-tab proof gates exchange and preserves exact return context
+PASS transferred authorization URL and recipient callback never bind provider to initiator
+PASS return URL and origin are exact and untrusted path cannot begin or finish
+PASS old clients and old cookie states fail with explicit restart without altering saved sessions
+PASS competing callbacks consume only once and expired state stays closed
+PASS unconfirmed token persistence cannot redirect success or disclose database detail
+PASS session change before and during exchange prevents a stale success redirect
+PASS actual signature/expiry and account lookup failures fail closed without legacy downgrade
+PASS signed legacy Sleeper owner remains supported without claiming app revocation parity
+PASS stored Yahoo session is read only by matching authenticated owner
+PASS state persistence failure is visible with CORS and no success URL
+Proxy security runtime: 15 passed, 0 failed
+PASS durable counter is shared across fresh workers and retains accurate Retry-After
+PASS limiter outage/malformed replies cannot reset allowance via fresh workers
+PASS all browser/native known origins retain CORS while unknown origin is not echoed
+PASS ESPN preserves private cookies and provider data; rejects foreign/malformed calls before network
+PASS ESPN unavailable storage never reaches provider
+PASS MFL anonymous public read, actionable 404, explicit write and relative shard redirects remain supported
+[mfl-proxy] Provider request failed
+[mfl-proxy] Provider request failed
+PASS MFL refuses off-provider first/second redirect and credentials are never forwarded there
+PASS MFL login survives allowed redirect and captures intermediate session without echoing form
+[mfl-proxy] Provider request failed
+PASS MFL cycles and malformed or foreign destinations fail without successful mutations
+Proxy relay runtime: 9 passed, 0 failed

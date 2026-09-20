@@ -1,0 +1,3 @@
+PASS Chrome separate browser receiving unused consent URL cannot bind provider tokens
+PASS Chrome 320 initiating tab completes/reloads; code is cleared before asset/action probes
+PASS Chrome short landscape reconnect control remains in viewport

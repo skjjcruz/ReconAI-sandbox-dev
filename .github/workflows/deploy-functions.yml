@@ -6,6 +6,10 @@ on:
     paths:
       - "supabase/functions/**"
       - "scripts/proxy-release-preflight.sql"
+      - "scripts/verify-yahoo-client-release.py"
+      - "scripts/yahoo-client-release.json"
+      - "tests/yahoo-*"
+      - ".dhq-shared-revision"
       - "tests/proxy-*.cjs"
       - "tests/proxy-cors-contract.js"
       - "tests/helpers/proxy-ts-loader.cjs"
@@ -21,6 +25,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Read exact reviewed Yahoo shared revision
+        id: shared-revision
+        shell: bash
+        run: |
+          revision="$(tr -d '\r\n' < .dhq-shared-revision)"
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid shared revision'; exit 1; }
+          echo "sha=$revision" >> "$GITHUB_OUTPUT"
+      - name: Checkout reviewed shared client for actual protocol tests
+        uses: actions/checkout@v6
+        with:
+          repository: skjjcruz/DHQ-Shared
+          ref: ${{ steps.shared-revision.outputs.sha }}
+          path: dhq-shared-src
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20.20.2
@@ -32,6 +50,10 @@ jobs:
           npm ci --ignore-scripts
           npm run test:proxy-cors
           npm run test:proxy-runtime
+          python3 tests/yahoo-release-guard.py
+          DHQ_SHARED_SOURCE="$GITHUB_WORKSPACE/dhq-shared-src" npm run sync:shared
+          node "$GITHUB_WORKSPACE/dhq-shared-src/tests/yahoo-browser-binding.cjs"
+          READINESS_YAHOO_SHARED="$GITHUB_WORKSPACE/dhq-shared-src" node tests/yahoo-handshake-integration.cjs
 
       # When the deploy token isn't configured (e.g. this sandbox repo), skip
       # the deploy cleanly instead of failing the whole run. Every step below
@@ -135,6 +157,10 @@ jobs:
               sys.exit(1)
           print('Provider schema compatibility: all checks passed.')
           PYEOF
+
+      - name: Require reviewed Yahoo consumer bytes already served
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' }}
+        run: python3 scripts/verify-yahoo-client-release.py
 
       - name: Deploy espn-proxy function
         if: ${{ env.SUPABASE_ACCESS_TOKEN != '' }}

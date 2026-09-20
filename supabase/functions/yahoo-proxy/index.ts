@@ -10,10 +10,12 @@
 //   https://sxshiqyxhhifvtfqawbq.supabase.co/functions/v1/yahoo-proxy
 //
 // Actions:
-//   POST { action:'auth_url', return_url }
+//   POST { action:'auth_url', flow_version, browser_challenge, return_url }
 //     → { auth_url } — starts a browser-bound, server-recorded OAuth flow
 //   GET  ?code=XXX&state=XXX (Yahoo callback)
-//     → exchanges code for tokens, stores session, redirects to app
+//     → relays code/state in a fragment; the initiating tab must complete_auth
+//   POST { action:'complete_auth', state, code, browser_verifier, return_url, flow_version }
+//     → verifies the initiating app account/tab, consumes state, exchanges code
 //   POST { action:'api', endpoint, session_id }
 //     → proxies Yahoo Fantasy API request with stored access token
 //   POST { action:'refresh', session_id }
@@ -42,16 +44,18 @@ async function requesterKey(req: Request): Promise<string | null> {
   return (await requireYahooOwner(adminClient(), req))?.ownerKey || null;
 }
 
-// Start in a top-level navigation so the browser binding works even when
-// third-party cookies are blocked on the app's cross-origin fetch.
-function flowCookie(state: string, value: string, maxAge = 600): string {
-  return `__Host-dhq-yahoo-${state}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
-}
-
-function readFlowCookie(req: Request, state: string): string {
-  const prefix = `__Host-dhq-yahoo-${state}=`;
-  return (req.headers.get('Cookie') || '').split(';').map(s => s.trim())
-    .find(s => s.startsWith(prefix))?.slice(prefix.length) || '';
+// The verifier is kept by the initiating app tab. A link, cookie acquired by a
+// recipient, or a callback alone cannot authorize storage of provider tokens.
+const FLOW_VERSION = 'browser-verifier-v2';
+const FLOW_HASH_PREFIX = 'v2:';
+const APP_PATHS = new Set(['/', '/index.html', '/ReconAI/', '/ReconAI/index.html',
+  '/ReconAI-sandbox-dev/', '/ReconAI-sandbox-dev/index.html', '/dist-preview/', '/dist-preview/index.html']);
+function allowedReturn(value: string, origin?: string): boolean {
+  try {
+    const url = new URL(value);
+    return isAllowedBrowserUrl(value) && !url.username && !url.password &&
+      APP_PATHS.has(url.pathname) && (!origin || url.origin === origin);
+  } catch { return false; }
 }
 
 function oauthError(message: string, status = 400, cors: HeadersInit = {}): Response {
@@ -138,86 +142,35 @@ serve(async (req: Request) => {
     return new Response("ok", { headers: responseHeaders });
   }
 
-  // ── GET: Yahoo OAuth callback ─────────────────────────────────────
-  if (req.method === "GET") {
-    const url   = new URL(req.url);
-    const start = url.searchParams.get('start');
-    const code = url.searchParams.get('code');
-    const state = start || url.searchParams.get('state') || '';
-    if (!/^[a-f0-9]{64}$/.test(state)) return fail('Invalid Yahoo connection. Start again from the app.');
-    if (!CLIENT_ID || !CLIENT_SECRET) return fail('Yahoo connection is not configured.', 503);
-    const db = adminClient();
+  // The provider callback only relays a code to the recorded app. No token
+  // exchange or persistence happens until that tab proves its saved verifier.
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    const state = url.searchParams.get('state') || '';
+    if (url.searchParams.has('start') || !/^[a-f0-9]{64}$/.test(state)) {
+      return fail('This Yahoo connection needs to be restarted from the updated app.');
+    }
     try {
-      const stateHash = await sha256Hex(state);
-      if (start) {
-        const binding = crypto.randomUUID() + crypto.randomUUID();
-        const { data: pending, error } = await db.from('yahoo_oauth_states')
-          .update({ browser_hash: await sha256Hex(binding) })
-          .eq('state_hash', stateHash).is('browser_hash', null)
-          .gt('expires_at', new Date().toISOString()).select('state_hash').maybeSingle();
-        if (error || !pending) return fail('This Yahoo connection has expired or already started.');
-        const consent = new URL(YAHOO_AUTH_URL);
-        consent.search = new URLSearchParams({ client_id: CLIENT_ID, redirect_uri: REDIRECT_URI,
-          response_type: 'code', scope: 'fspt-r', state }).toString();
-        return new Response(null, { status: 302, headers: {
-          Location: consent.toString(), 'Set-Cookie': flowCookie(state, binding),
-          'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
-        } });
+      const { data: pending, error } = await adminClient().from('yahoo_oauth_states')
+        .select('owner_key, return_url, session_version, browser_hash')
+        .eq('state_hash', await sha256Hex(state)).gt('expires_at', new Date().toISOString()).maybeSingle();
+      if (error) return fail('Yahoo connection could not be checked. Start again from the app.', 503);
+      if (!pending || !/^v2:[a-f0-9]{64}$/.test(pending.browser_hash || '') || !allowedReturn(pending.return_url)) {
+        return fail('This Yahoo connection has expired or needs to be restarted from the updated app.');
       }
-      const binding = readFlowCookie(req, state);
-      if (!binding) return fail('Return to the browser that started this Yahoo connection.');
-      // DELETE ... RETURNING consumes exactly one matching browser-bound state,
-      // including when callbacks race. Neither identity nor return URL comes
-      // from the callback parameters.
-      const { data: pending, error } = await db.from('yahoo_oauth_states').delete()
-        .eq('state_hash', stateHash).eq('browser_hash', await sha256Hex(binding))
-        .gt('expires_at', new Date().toISOString())
-        .select('owner_key, return_url, session_version').maybeSingle();
-      if (error || !pending) return fail('This Yahoo connection has expired or already completed.');
-      if (url.searchParams.has('error') || !code) return fail('Yahoo connection was not approved. Start again from the app.');
-      const ownerKey = pending.owner_key;
-      const returnUrl = pending.return_url;
-      if (!isAllowedBrowserUrl(returnUrl)) return fail('Yahoo return URL is not allowed.');
-      if (!await yahooOwnerIsCurrent(db, ownerKey, pending.session_version)) {
-        return fail('Sign in again before connecting Yahoo.', 401);
-      }
-
-      // Exchange authorization code for tokens
-      const basic = btoa(`${CLIENT_ID}:${CLIENT_SECRET}`);
-      const tokenRes = await fetch(YAHOO_TOKEN_URL, {
-        method: "POST", redirect: "error", signal: AbortSignal.timeout(15000),
-        headers: {
-          "Authorization": `Basic ${basic}`,
-          "Content-Type":  "application/x-www-form-urlencoded",
-        },
-        body: [
-          "grant_type=authorization_code",
-          `code=${encodeURIComponent(code)}`,
-          `redirect_uri=${encodeURIComponent(REDIRECT_URI)}`,
-        ].join("&"),
-      });
-
-      if (!tokenRes.ok) {
-        const errText = await tokenRes.text();
-        throw new Error(`Token exchange failed (${tokenRes.status}): ${errText.slice(0, 300)}`);
-      }
-
-      const tokens = await tokenRes.json();
-      if (!await yahooOwnerIsCurrent(db, ownerKey, pending.session_version)) {
-        return fail('Sign in again before connecting Yahoo.', 401);
-      }
-      const sessionId = crypto.randomUUID();
-      await storeTokens(sessionId, tokens, returnUrl, ownerKey);
-
-      const appUrl = new URL(returnUrl);
-      appUrl.searchParams.set('yahoo_session', sessionId);
+      const code = url.searchParams.get('code') || '';
+      const rejected = url.searchParams.has('error') || !code || code.length > 8192;
+      const appUrl = new URL(pending.return_url);
+      // Fragments are not sent to the app host or in asset referrers. The app's
+      // first inline script removes this fragment before loading any assets.
+      appUrl.hash = 'dhq-yahoo=' + encodeURIComponent(JSON.stringify({
+        state, ...(rejected ? { error: 'not_approved' } : { code }),
+      }));
       return new Response(null, { status: 302, headers: {
-        Location: appUrl.toString(), 'Set-Cookie': flowCookie(state, '', 0),
-        'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
+        Location: appUrl.toString(), 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
       } });
-    } catch (err) {
-      console.error('[yahoo-proxy] Callback failed');
-      return fail('Yahoo connection could not be saved. Start again from the app.', 503);
+    } catch {
+      return fail('Yahoo connection could not be checked. Start again from the app.', 503);
     }
   }
 
@@ -237,46 +190,72 @@ serve(async (req: Request) => {
     try {
     const action = body.action;
 
-    // ── auth_url: build Yahoo OAuth consent URL ──
-    if (action === "auth_url") {
-      const ownerKey = await requesterKey(req);
-      if (!ownerKey) {
-        return new Response(
-          JSON.stringify({ error: "Valid session token required.", auth_required: true }),
-          { status: 401, headers: { ...responseHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (!CLIENT_ID || !CLIENT_SECRET) {
-        return new Response(
-          JSON.stringify({ error: "Yahoo connection is not configured." }),
-          { status: 503, headers: { ...responseHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const returnUrl = body.return_url || "https://dhqfootball.com/index.html";
-      if (returnUrl && !isAllowedBrowserUrl(returnUrl)) {
-        return new Response(
-          JSON.stringify({ error: "return_url is not allowed" }),
-          { status: 400, headers: { ...responseHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (action === 'auth_url' || action === 'complete_auth') {
       const db = adminClient();
-      const limit = await checkProxyLimit(`yahoo-oauth:start:${ownerKey}`, 10, 600);
+      const appSession = await requireYahooOwner(db, req);
+      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+        status, headers: { ...responseHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      });
+      if (!appSession) return json({ error: 'Sign in again before connecting Yahoo.', auth_required: true }, 401);
+      if (!CLIENT_ID || !CLIENT_SECRET) return json({ error: 'Yahoo connection is not configured.' }, 503);
+      if (body.flow_version !== FLOW_VERSION) {
+        return json({ error: 'Refresh the app before starting a new Yahoo connection.', code: 'client_upgrade_required' }, 409);
+      }
+      const origin = req.headers.get('Origin') || '';
+      const returnUrl = body.return_url;
+      if (!origin || typeof returnUrl !== 'string' || !allowedReturn(returnUrl, origin)) {
+        return json({ error: 'Return to the app and start Yahoo connection again.' }, 400);
+      }
+      const limit = await checkProxyLimit(`yahoo-oauth:${action}:${appSession.ownerKey}`, 10, 600);
       const limited = rateLimitResponse(limit, responseHeaders);
       if (limited) return limited;
-      const state = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
-      const appSession = await requireYahooOwner(db, req);
-      if (!appSession || appSession.ownerKey !== ownerKey) return fail('Sign in again.', 401);
-      // Bound storage growth for abandoned flows.
-      await db.from('yahoo_oauth_states').delete().lt('expires_at', new Date().toISOString());
-      const { error } = await db.from('yahoo_oauth_states').insert({
-        state_hash: await sha256Hex(state), owner_key: ownerKey, return_url: returnUrl,
-        session_version: appSession?.sessionVersion || null,
-        expires_at: new Date(Date.now() + 600_000).toISOString(),
-      });
-      if (error) return fail('Could not start Yahoo connection.', 503);
-      return new Response(JSON.stringify({ auth_url: `${REDIRECT_URI}?start=${state}` }), {
-        headers: { ...responseHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-      });
+      if (action === 'auth_url') {
+        if (!/^[a-f0-9]{64}$/.test(body.browser_challenge || '')) return json({ error: 'Missing browser connection proof.' }, 400);
+        const state = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
+        await db.from('yahoo_oauth_states').delete().lt('expires_at', new Date().toISOString());
+        const { error } = await db.from('yahoo_oauth_states').insert({
+          state_hash: await sha256Hex(state), owner_key: appSession.ownerKey, return_url: returnUrl,
+          session_version: appSession.sessionVersion, browser_hash: FLOW_HASH_PREFIX + body.browser_challenge,
+          expires_at: new Date(Date.now() + 600_000).toISOString(),
+        });
+        if (error) return json({ error: 'Could not start Yahoo connection.' }, 503);
+        const consent = new URL(YAHOO_AUTH_URL);
+        consent.search = new URLSearchParams({ client_id: CLIENT_ID, redirect_uri: REDIRECT_URI,
+          response_type: 'code', scope: 'fspt-r', state }).toString();
+        return json({ flow_version: FLOW_VERSION, state, auth_url: consent.toString() });
+      }
+      if (!/^[a-f0-9]{64}$/.test(body.state || '') || !/^[a-f0-9]{64}$/.test(body.browser_verifier || '') ||
+          typeof body.code !== 'string' || !body.code || body.code.length > 8192) {
+        return json({ error: 'This Yahoo connection needs to be restarted from this tab.' }, 400);
+      }
+      // The database consumes one exact account + return URL + browser proof.
+      // Concurrent completions cannot both exchange the single-use code.
+      let consume = db.from('yahoo_oauth_states').delete()
+        .eq('state_hash', await sha256Hex(body.state))
+        .eq('browser_hash', FLOW_HASH_PREFIX + await sha256Hex(body.browser_verifier))
+        .eq('owner_key', appSession.ownerKey).eq('return_url', returnUrl)
+        .gt('expires_at', new Date().toISOString());
+      consume = appSession.sessionVersion === null ? consume.is('session_version', null) : consume.eq('session_version', appSession.sessionVersion);
+      const { data: pending, error } = await consume.select('owner_key, return_url, session_version').maybeSingle();
+      if (error) return json({ error: 'Yahoo connection could not be checked. Start again from the app.' }, 503);
+      if (!pending) return json({ error: 'This Yahoo connection expired, already finished, or belongs to a different tab or account.' }, 409);
+      try {
+        const tokenRes = await fetch(YAHOO_TOKEN_URL, {
+          method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000),
+          headers: { Authorization: `Basic ${btoa(`${CLIENT_ID}:${CLIENT_SECRET}`)}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ grant_type: 'authorization_code', code: body.code, redirect_uri: REDIRECT_URI }).toString(),
+        });
+        if (!tokenRes.ok) throw new Error('Provider rejected code');
+        const tokens = await tokenRes.json();
+        if (!await yahooOwnerIsCurrent(db, appSession.ownerKey, appSession.sessionVersion)) {
+          return json({ error: 'Sign in again before connecting Yahoo.', auth_required: true }, 401);
+        }
+        const sessionId = crypto.randomUUID();
+        await storeTokens(sessionId, tokens, returnUrl, appSession.ownerKey);
+        return json({ flow_version: FLOW_VERSION, session_id: sessionId });
+      } catch {
+        return json({ error: 'Yahoo connection was not confirmed. Start a new connection from this tab.' }, 503);
+      }
     }
 
     // ── api: proxy Yahoo Fantasy API request ──
