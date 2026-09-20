@@ -1,0 +1,315 @@
+
+> reconai@1.0.0 test
+> npm run test:unit && npm run test:schema && npm run test:rls && npm run test:proxy-cors && npm run test:proxy-runtime && npm run test:bug-capture && npm run test:ai && npm run test:dhq && npm run test:intelligence && npm run test:landing-content && npm run test:rookies && npm run test:analytics && npm run test:tutorial && npm run test:alex-evals
+
+
+> reconai@1.0.0 test:unit
+> node tests/unit.js
+
+  Loading shared/utils.js … OK
+  Loading shared/storage.js … OK
+  Loading shared/event-bus.js … OK
+  Loading shared/tier.js … OK
+  Loading shared/sleeper-api.js … [Sleeper] platform-provider.js not loaded — provider will not be registered
+OK
+  Loading shared/dhq-core.js … OK
+  Loading shared/dhq-engine.js … OK
+  Extracting addFieldLogEntry … OK
+
+
+  normPos  ..........................
+  posLabel  ...
+  formatNFLDraftSlot  ..........
+  getLeaguePositions  ..
+  calcRawPts (utils.js)  .......
+  calcFantasyPts  ..................
+  DHQ value tuning  ..................
+  DhqStorage  .........[DHQ:storage.get:dhq_test_bad] Expected property name or '}' in JSON at position 1 
+....
+  DhqEvents  ......[DHQ:event-bus] handler error { event: 'test:error' }
+...
+  STORAGE_KEYS  ......
+  isTrialActive  .....
+  getTier  .............
+  getDailyChatRemaining  ......
+  canAccess  ....
+  addFieldLogEntry  .........
+
+✓ 149 tests — 149 passed, 0 failed
+
+> reconai@1.0.0 test:schema
+> node tests/schema-health.js
+
+
+Field-log schema health tests
+
+  migration snapshot  ....
+  shared client contract  ...
+  player tags policy  ..
+
+PASS 9 tests - 9 passed, 0 failed
+
+> reconai@1.0.0 test:rls
+> node tests/rls-contract.js
+
+
+RLS contract tests
+
+  owner identity  .
+  client-writable  ...
+  server-only  ..
+  docs  ..
+
+PASS 8 tests - 8 passed, 0 failed
+
+> reconai@1.0.0 test:proxy-cors
+> node tests/proxy-cors-contract.js
+
+
+Proxy CORS contract tests
+
+  shared helper  .
+  proxy functions  .....
+  durable rate limiting  ...
+
+PASS 9 tests - 9 passed, 0 failed
+
+> reconai@1.0.0 test:proxy-runtime
+> node tests/proxy-security-runtime.cjs && node tests/proxy-relay-runtime.cjs
+
+PASS unsigned callback cannot select a victim owner or reach Yahoo
+PASS revoked app token cannot start, read or refresh Yahoo
+PASS callback errors never render caller HTML
+PASS malformed JSON shape is actionable client error
+PASS same-account same-tab proof gates exchange and preserves exact return context
+PASS transferred authorization URL and recipient callback never bind provider to initiator
+PASS return URL and origin are exact and untrusted path cannot begin or finish
+PASS old clients and old cookie states fail with explicit restart without altering saved sessions
+PASS competing callbacks consume only once and expired state stays closed
+PASS unconfirmed token persistence cannot redirect success or disclose database detail
+PASS session change before and during exchange prevents a stale success redirect
+PASS actual signature/expiry and account lookup failures fail closed without legacy downgrade
+PASS signed legacy Sleeper owner remains supported without claiming app revocation parity
+PASS stored Yahoo session is read only by matching authenticated owner
+PASS state persistence failure is visible with CORS and no success URL
+Proxy security runtime: 15 passed, 0 failed
+PASS durable counter is shared across fresh workers and retains accurate Retry-After
+PASS limiter outage/malformed replies cannot reset allowance via fresh workers
+PASS all browser/native known origins retain CORS while unknown origin is not echoed
+PASS ESPN preserves private cookies and provider data; rejects foreign/malformed calls before network
+PASS ESPN unavailable storage never reaches provider
+PASS MFL anonymous public read, actionable 404, explicit write and relative shard redirects remain supported
+[mfl-proxy] Provider request failed
+[mfl-proxy] Provider request failed
+PASS MFL refuses off-provider first/second redirect and credentials are never forwarded there
+PASS MFL login survives allowed redirect and captures intermediate session without echoing form
+[mfl-proxy] Provider request failed
+PASS MFL cycles and malformed or foreign destinations fail without successful mutations
+Proxy relay runtime: 9 passed, 0 failed
+
+> reconai@1.0.0 test:bug-capture
+> node tests/bug-capture-contract.js
+
+
+Bug capture contract tests
+
+  config  .
+  client  ..
+
+PASS 3 tests - 3 passed, 0 failed
+
+> reconai@1.0.0 test:ai
+> node tests/ai-source-contract.cjs && node tests/ai-routing.js
+
+PASS exact reviewed owning AI source is available
+PASS explicit missing source cannot silently skip or use another checkout
+PASS changed owning source requires a new review
+
+AI routing regression tests
+
+  model IDs  ...
+  pricing  .
+  client routing  ......
+  local preview wiring  .
+  edge routing  ..
+
+PASS 13 tests - 13 passed, 0 failed
+
+> reconai@1.0.0 test:dhq
+> node tests/dhq-sanity-tests.js
+
+
+═══ DHQ ENGINE SANITY TESTS ═══
+League: synthetic-psycho-league | Season: 2026 | Teams: 16 | SF: true
+
+── 1. Scale & Range ──
+  ✓ All player values are 0-10000
+  ✓ At least 200 players scored
+  ✓ Top player is 7000+
+  ✓ Top player is not 10000 (should not max out scale)
+  ✓ Median player is 500-3000 range
+
+── 2. Elite Player Ordering ──
+  ✓ Josh Allen is top 5 (SF premium)
+  ✓ Bijan Robinson is top 10
+  ✓ Ja'Marr Chase is top 10
+  ✓ Brock Bowers is top 25 (elite young TE)
+  ✓ No IDP player in top 20
+
+── 3. Positional Value Hierarchy ──
+  ✓ SF: Top-5 QB avg > Top-5 RB avg
+  ✓ Top-5 RB avg ≈ Top-5 WR avg (within 25%)
+  ✓ Top-5 TE avg < Top-5 WR avg
+  ✓ Top-5 IDP avg < Top-5 TE avg
+
+── 4. Age Curves ──
+  ✓ Kenneth Walker (24 RB) > Saquon Barkley (29 RB)
+  ✓ Derrick Henry (32 RB) valued < 3500 (aging)
+  ✓ All RBs age 30+ are below 5000
+  ✓ No QB under 25 with production is below 2000
+
+── 5. FantasyCalc Market Correlation ──
+  ✓ Top-20 FC players: DHQ within 50% of FC scaled value
+  ✓ Daniel Jones DHQ < 4000 (was overvalued by pedigree floor)
+  ✓ Rank correlation with FC: Spearman > 0.7
+
+── 6. Draft Pick Values ──
+  ✓ Pick 1.01 > Pick 1.16 (monotonic within R1)
+  ✓ R1 picks decrease monotonically
+  ✓ Pick 1.01 is 5500-8000 range
+  ✓ Pick 2.01 is 1500-2500 range
+  ✓ R1 mid-pick within 35% of FC market
+  ✓ R1 last pick within 35% of FC market
+  ✓ Future year discount: 2027 pick < 2026 same slot
+  ✓ R4+ picks are under 1000 (lottery tickets)
+
+── 7. Scarcity & League Settings ──
+  ✓ SF league: QB scarcity multiplier >= 1.20
+  ✓ WR scarcity multiplier <= 1.0 (deepest position)
+  ✓ TE scarcity multiplier >= 1.10
+  ✓ IDP scarcity multiplier <= 1.05
+
+── 8. Rookie Handling ──
+  ✓ At least 30 rookies imported from FC
+  ✓ Rookie values are reasonable (not all at 100)
+  ✓ Top rookie is 3000+ (1st round pick caliber)
+  ✓ Fernando Mendoza remains ahead of Ty Simpson by rookie market order
+  ✓ Cam Ward keeps young starting QB protection above the rookie-QB floor
+  ✓ RB neighborhood: Kaleb Johnson is below Kenneth Walker but not erased
+  ✓ WR neighborhood: Josh Downs and Mike Evans stay comparable
+
+── 9. Trade Acceptance Logic ──
+  ✓ Fair trade with no taxes → neutral acceptance for every DNA
+  ✓ Underpaying 30%+ → all DNA types are low without tax help
+  ✓ Overpaying 20% → raises acceptance for every DNA
+  ✓ STALWART overpay helps instead of penalizing the offer
+  ✓ Tax modifiers fold into effective surplus
+  ✓ No acceptance ever exceeds 95%
+  ✓ No acceptance ever below 5%
+
+── 10. Metadata Integrity ──
+  ✓ All scored players have metadata
+  ✓ All metadata has valid position
+  ✓ ageFactor is 0-1.0 range for all players
+  ✓ sitMult is 0.40-1.60 range for all players
+  ✓ FC blend metadata present for blended players
+
+═══════════════════════════════════════
+  PASSED: 52  FAILED: 0  SKIPPED: 0
+═══════════════════════════════════════
+
+── Top 20 DHQ Players (manual review) ──
+  #   DHQ    Pos  Age  FC      Name
+   1   9200  QB    30  10744   Josh Allen
+   2   8571  RB    24  10009   Bijan Robinson
+   3   8188  WR    26   9562   Ja'Marr Chase
+   4   8053  RB    24   9404   Jahmyr Gibbs
+   5   7977  WR    24   9316   Jaxon Smith-Njigba
+   6   7612  QB    24   8889   Drake Maye
+   7   7610  WR    25   8887   Puka Nacua
+   8   6463  QB    25      —   Jayden Daniels
+   9   6398  QB    29   7472   Lamar Jackson
+  10   6361  WR    23   7429   Malik Nabers
+  11   6341  WR    26      —   Amon-Ra St. Brown
+  12   6188  WR    27      —   Justin Jefferson
+  13   6110  TE    23   7135   Brock Bowers
+  14   6096  TE    26   7119   Trey McBride
+  15   5917  RB    25      —   Jeremiyah Love
+  16   5869  QB    24   6854   Caleb Williams
+  17   5801  RB    22      —   Ashton Jeanty
+  18   5716  WR    27   6675   CeeDee Lamb
+  19   5679  QB    29   6632   Joe Burrow
+  20   5248  RB    25      —   De'Von Achane
+
+── R1 Pick Values (manual review) ──
+  Pick    DHQ   FC     Δ%
+  1.01   7200   7043     2%
+  1.02   6207   4842    28%
+  1.03   5407   4163    30%
+  1.04   4763   3806    25%
+  1.05   4245   3465    23%
+  1.06   3827   3046    26%
+  1.07   3491   2717    28%
+  1.08   3220   2543    27%
+  1.09   3002   2443    23%
+  1.10   2826   2315    22%
+  1.11   2685   2207    22%
+  1.12   2571   2126    21%
+
+> reconai@1.0.0 test:intelligence
+> node tests/intelligence-context-contract.js
+
+
+Intelligence context contract
+............
+
+PASS 12 tests - 12 passed, 0 failed
+
+> reconai@1.0.0 test:landing-content
+> node tests/landing-content-contract.js
+
+Scout landing content contract ok
+
+> reconai@1.0.0 test:rookies
+> node tests/rookie-data-contract.js
+
+
+Rookie-data contract tests
+
+  exports  .
+  data model  ....
+
+PASS 5 tests - 5 passed, 0 failed
+
+> reconai@1.0.0 test:analytics
+> node tests/analytics-contract.js
+
+
+Analytics contract tests
+
+  schema  ..
+  client events  ......
+  admin rollups  .
+
+PASS 9 tests - 9 passed, 0 failed
+
+> reconai@1.0.0 test:tutorial
+> node tests/tutorial-contract.js
+
+
+Assistant tutorial contract tests
+...
+
+PASS 3 tests - 3 passed, 0 failed
+
+> reconai@1.0.0 test:alex-evals
+> node tests/alex-evals.js
+
+
+Alex offline eval harness
+
+  fixture  .
+  routing  ..
+  analytics  .
+
+PASS 4 tests - 4 passed, 0 failed

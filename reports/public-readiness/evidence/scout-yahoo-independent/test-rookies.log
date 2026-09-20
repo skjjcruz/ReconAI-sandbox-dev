@@ -1,0 +1,11 @@
+
+> reconai@1.0.0 test:rookies
+> node tests/rookie-data-contract.js
+
+
+Rookie-data contract tests
+
+  exports  .
+  data model  ....
+
+PASS 5 tests - 5 passed, 0 failed

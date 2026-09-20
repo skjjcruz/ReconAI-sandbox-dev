@@ -1,0 +1,15 @@
+
+> reconai@1.0.0 test:alex-evals
+> node tests/alex-evals.js
+
+
+Alex offline eval harness
+
+  fixture  .
+  routing  .F
+  analytics  .
+
+  FAIL: edge routing can execute every eval call type
+        quick-team-brief edge route mismatch for home-chat
+
+FAIL 4 tests - 3 passed, 1 failed

@@ -1,0 +1,5 @@
+
+> reconai@1.0.0 test:landing-content
+> node tests/landing-content-contract.js
+
+Scout landing content contract ok

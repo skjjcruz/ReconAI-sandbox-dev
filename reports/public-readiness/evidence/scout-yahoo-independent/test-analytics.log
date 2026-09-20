@@ -1,0 +1,12 @@
+
+> reconai@1.0.0 test:analytics
+> node tests/analytics-contract.js
+
+
+Analytics contract tests
+
+  schema  ..
+  client events  ......
+  admin rollups  .
+
+PASS 9 tests - 9 passed, 0 failed

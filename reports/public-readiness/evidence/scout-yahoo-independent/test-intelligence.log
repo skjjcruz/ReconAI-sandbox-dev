@@ -1,0 +1,9 @@
+
+> reconai@1.0.0 test:intelligence
+> node tests/intelligence-context-contract.js
+
+
+Intelligence context contract
+............
+
+PASS 12 tests - 12 passed, 0 failed

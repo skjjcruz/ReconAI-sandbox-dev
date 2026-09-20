@@ -1,0 +1,30 @@
+[
+  {
+    "script": "test:dhq",
+    "exitCode": 0
+  },
+  {
+    "script": "test:intelligence",
+    "exitCode": 0
+  },
+  {
+    "script": "test:landing-content",
+    "exitCode": 0
+  },
+  {
+    "script": "test:rookies",
+    "exitCode": 0
+  },
+  {
+    "script": "test:analytics",
+    "exitCode": 0
+  },
+  {
+    "script": "test:tutorial",
+    "exitCode": 0
+  },
+  {
+    "script": "test:alex-evals",
+    "exitCode": 1
+  }
+]

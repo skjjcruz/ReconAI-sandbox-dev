@@ -13,7 +13,7 @@
     "test:rls": "node tests/rls-contract.js",
     "test:proxy-cors": "node tests/proxy-cors-contract.js",
     "test:bug-capture": "node tests/bug-capture-contract.js",
-    "test:ai": "node tests/ai-routing.js",
+    "test:ai": "node tests/ai-source-contract.cjs && node tests/ai-routing.js",
     "test:dhq": "node tests/dhq-sanity-tests.js",
     "test:intelligence": "node tests/intelligence-context-contract.js",
     "test:landing-content": "node tests/landing-content-contract.js",

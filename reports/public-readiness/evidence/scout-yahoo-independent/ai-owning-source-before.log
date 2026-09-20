@@ -1,0 +1,17 @@
+
+AI routing regression tests
+
+  model IDs  ...
+  pricing  .
+  client routing  ..F..
+  local preview wiring  .
+  edge routing  FF
+
+  FAIL: complex reasoning tasks route to premium tier
+        client dispatcher route pick-analysis should use premium tier
+  FAIL: server simple/medium routes match cost strategy
+        edge function route home-chat should use fast tier
+  FAIL: server complex routes use premium tier, commissioner deep routes use deep tier
+        edge function route pick-analysis should use premium tier
+
+FAIL 12 tests - 9 passed, 3 failed

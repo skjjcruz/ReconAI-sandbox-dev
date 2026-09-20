@@ -8,27 +8,12 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 
-function findWarRoomRoot() {
-  const candidates = [
-    process.env.WARROOM_ROOT,
-    path.resolve(ROOT, '..', 'warroom'),
-  ].filter(Boolean);
+const { loadAiEdgeSource } = require('./helpers/ai-edge-source.cjs');
+const reviewedEdge = loadAiEdgeSource();
 
-  for (const candidate of candidates) {
-    const edgeFile = path.join(candidate, 'supabase', 'functions', 'ai-analyze', 'index.ts');
-    if (fs.existsSync(edgeFile)) return candidate;
-  }
-
-  return null;
-}
-
-const WARROOM_ROOT = findWarRoomRoot();
-const EDGE_SOURCE = WARROOM_ROOT
-  ? fs.readFileSync(path.join(WARROOM_ROOT, 'supabase', 'functions', 'ai-analyze', 'index.ts'), 'utf8')
-  : '';
 const sources = {
   client: fs.readFileSync(path.join(ROOT, 'shared', 'ai-dispatch.js'), 'utf8'),
-  edge: EDGE_SOURCE,
+  edge: reviewedEdge.source,
   devPreviewConfig: fs.readFileSync(path.join(ROOT, 'shared', 'dev-preview-config.js'), 'utf8'),
   main: fs.readFileSync(path.join(ROOT, 'main.js'), 'utf8'),
   vite: fs.readFileSync(path.join(ROOT, 'vite.config.js'), 'utf8'),
@@ -132,18 +117,11 @@ function assertRouteTier(source, callType, tier, sourceName) {
   ok(pattern.test(source), `${sourceName} route ${callType} should use ${tier} tier`);
 }
 
-function testIfEdgeAvailable(name, fn) {
-  test(name, () => {
-    if (!sources.edge) return;
-    fn();
-  });
-}
-
 console.log('\nAI routing regression tests');
 
 group('model IDs');
 
-testIfEdgeAvailable('client and edge do not reference deprecated models', () => {
+test('client and edge do not reference deprecated models', () => {
   assertNoDeprecatedModels(sources.client, 'client dispatcher');
   assertNoDeprecatedModels(sources.edge, 'edge function');
 });
@@ -159,7 +137,7 @@ test('client exposes current routing model IDs', () => {
   ok(sources.client.includes('AI_POLICY_VERSION'), 'client dispatcher missing versioned AI policy');
 });
 
-testIfEdgeAvailable('edge exposes current routing model IDs', () => {
+test('edge exposes current routing model IDs', () => {
   for (const [name, value] of Object.entries(EXPECTED_MODELS)) {
     assertModelConstant(sources.edge, name, value, 'edge function');
   }
@@ -167,7 +145,7 @@ testIfEdgeAvailable('edge exposes current routing model IDs', () => {
 
 group('pricing');
 
-testIfEdgeAvailable('edge pricing constants match verified provider rates', () => {
+test('edge pricing constants match reviewed configured rates', () => {
   for (const [model, expected] of Object.entries(EXPECTED_COSTS)) {
     assertCost(sources.edge, model, expected, 'edge function');
   }
@@ -191,7 +169,7 @@ test('medium analysis tasks route to standard tier', () => {
 });
 
 test('complex reasoning tasks route to premium tier', () => {
-  ['trade-chat', 'trade-scout', 'draft-scout', 'pick-analysis', 'player-scout'].forEach(type => {
+  ['trade-chat', 'trade-scout', 'draft-scout', 'player-scout'].forEach(type => {
     assertRouteTier(sources.client, type, 'premium', 'client dispatcher');
   });
 });
@@ -212,6 +190,11 @@ test('client exposes OpenAI as BYO provider without making it default', () => {
   ok(sources.client.includes("https://api.openai.com/v1/responses"), 'client dispatcher missing OpenAI direct adapter');
   ok(sources.client.includes("byok: true"), 'BYO calls should be tagged in analytics');
   ok(sources.client.includes("defaultModel: AI_MODELS.GEMINI_FAST"), 'Gemini should remain fast default');
+});
+
+test('draft-night pick reactions retain the reviewed fast route on both sides', () => {
+  assertRouteTier(sources.client, 'pick-analysis', 'fast', 'client dispatcher');
+  assertRouteTier(sources.edge, 'pick-analysis', 'fast', 'edge function');
 });
 
 group('local preview wiring');
@@ -237,8 +220,9 @@ test('Scout local preview uses the same dev AI bridge contract as War Room', () 
 
 group('edge routing');
 
-testIfEdgeAvailable('server simple/medium routes match cost strategy', () => {
-  ['home-chat', 'memory-summary', 'power-posts', 'recon-chat'].forEach(type => {
+test('server simple/medium routes match cost strategy', () => {
+  assertRouteTier(sources.edge, 'home-chat', 'standard', 'edge function');
+  ['memory-summary', 'power-posts', 'recon-chat'].forEach(type => {
     assertRouteTier(sources.edge, type, 'fast', 'edge function');
   });
   ['waiver-chat', 'waiver-agent', 'draft-chat', 'strategy-analysis'].forEach(type => {
@@ -246,8 +230,8 @@ testIfEdgeAvailable('server simple/medium routes match cost strategy', () => {
   });
 });
 
-testIfEdgeAvailable('server complex routes use premium tier, commissioner deep routes use deep tier', () => {
-  ['trade-chat', 'trade-scout', 'draft-scout', 'pick-analysis', 'player-scout'].forEach(type => {
+test('server complex routes use premium tier, commissioner deep routes use deep tier', () => {
+  ['trade-chat', 'trade-scout', 'draft-scout', 'player-scout'].forEach(type => {
     assertRouteTier(sources.edge, type, 'premium', 'edge function');
   });
   ['deep-analysis', 'league-report', 'rule-simulator', 'trade-audit'].forEach(type => {
