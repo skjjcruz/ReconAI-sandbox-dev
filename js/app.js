@@ -626,8 +626,8 @@ function _updateLeaguePillMFL(leagueName){
 
 // ── Yahoo Connect ──────────────────────────────────────────────
 // OAuth flow: "Connect with Yahoo" → redirects to Yahoo → Yahoo redirects to
-// yahoo-proxy Edge Function → Edge Function stores tokens → redirects back to
-// app with ?yahoo_session=UUID → boot section detects param, shows league picker.
+// yahoo-proxy relays code/state → initiating app tab proves saved verifier and
+// current account → confirmed session → boot shows the Yahoo league picker.
 async function connectYahoo(){
   if(!platformAccessAllowed('yahoo')){ss('conn-status',platformBetaMessage('yahoo'),true);return;}
   if(!window.Yahoo){ss('conn-status','Yahoo connector not loaded — refresh and try again.',true);return;}
@@ -1926,7 +1926,7 @@ window.loadRegistryLeague = loadRegistryLeague;
     const savedUser = DhqStorage.getStr(STORAGE_KEYS.USERNAME);
 
     // ── League Hub: show game-save style picker if registry has leagues ──
-    if(getVisibleLeagueRegistry().length>0&&!new URLSearchParams(window.location.search).get('yahoo_session')){
+    if(getVisibleLeagueRegistry().length>0&&!window.Yahoo?.hasCallback()&&!new URLSearchParams(window.location.search).get('yahoo_session')){
       const registry=getVisibleLeagueRegistry();
       const urlLeagueId=getUrlLeagueId();
       const urlLeagueEntry=urlLeagueId?registry.find(e=>String(e.leagueId)===String(urlLeagueId)):null;
@@ -1937,19 +1937,21 @@ window.loadRegistryLeague = loadRegistryLeague;
     }
 
     // ── Yahoo OAuth callback detection ────────────────────────────
-    // After Yahoo OAuth, the edge function redirects back with ?yahoo_session=UUID.
-    const _yahooSessionParam = new URLSearchParams(window.location.search).get('yahoo_session');
+    // The head script captures/clears the v2 relay; old query callbacks show recovery.
+    const _yahooSessionParam = window.Yahoo?.hasCallback() || new URLSearchParams(window.location.search).get('yahoo_session');
     if (_yahooSessionParam && !platformAccessAllowed('yahoo')) {
       try{ window.history.replaceState({},document.title,window.location.pathname); }catch(e){}
     }
     if (_yahooSessionParam && platformAccessAllowed('yahoo')) {
-      // Store session ID and clean URL without reloading
-      try{ if(window.Yahoo) window.Yahoo.handleCallback(_yahooSessionParam); else { sessionStorage.setItem('yahoo_session_id',_yahooSessionParam); localStorage.removeItem('yahoo_session_id'); } }catch(e){}
-      try{ window.history.replaceState({},document.title,window.location.pathname); }catch(e){}
+      // Old opaque-session callbacks cannot establish a new connection.
+      // The v2 fragment was already cleared by the first inline head script.
+      try{ const clean = new URL(window.location.href); clean.searchParams.delete('yahoo_session'); window.history.replaceState({}, document.title, clean.href); }catch(e){}
       // Load player DB and show Yahoo league picker
       setTimeout(async()=>{
         if(S.user)return;
         try{
+          if (!window.Yahoo) throw new Error('Yahoo connector is unavailable. Refresh and reconnect.');
+          await window.Yahoo.handleCallback();
           ss('conn-status','Loading your Yahoo leagues...');
           const _pEl=$('prog');if(_pEl)_pEl.style.display='block'; prog(20);
           if(!S.players||Object.keys(S.players).length<100){
