@@ -1,6 +1,6 @@
 # Actual ReconAI provider reconciliation — 2026-09-20
 
-Status: **review candidate; not deployed or public-ready proof**. Worktree `/Users/jacobc/Projects/reconai-readiness-actual-proxies`, branch `codex/readiness-actual-proxies-20260920`, exact base `78294c80cf483aab32b37ae046d6b645f03ccb72`. This patch changes only provider functions/helpers, their tests, and the owning release prerequisites. Account/auth endpoints and account lifecycle source are untouched.
+Status: **review candidate; not deployed or public-ready proof**. Frozen provider source commit `5d4bed8`. Worktree `/Users/jacobc/Projects/reconai-readiness-actual-proxies`, branch `codex/readiness-actual-proxies-20260920`, exact base `78294c80cf483aab32b37ae046d6b645f03ccb72`. This patch changes only provider functions/helpers, their tests, and the owning release prerequisites. Account/auth endpoints and account lifecycle source are untouched.
 
 ## Ownership and current hosted evidence
 
@@ -38,6 +38,7 @@ Metadata was read both before and after download and was unchanged. [Hashes and 
 - `npx --yes deno check --node-modules-dir=none --no-lock` on all3 actual entrypoints:PASS. [Log](evidence/actual-proxy-deno.log).
 - Workflow YAML parsed; embedded Python preflight compiled; exactly the three owning deploy commands remain. `git diff --check`:PASS.
 - **Broader npm test did not pass**:unchanged unit tests stop at136pass/9fail in legacy/free-tier expectations while actual shared `dedbb1614f08459905eef27d0f0b7bce27cd4e15` returns paid access. No related source or assertions were edited. [Full attempted run](evidence/actual-proxy-full-test.log). Later broad suites therefore are not counted as run.
+- Independent-baseline reproduction: exported **untouched owner78294c8** with `git archive` into `/tmp/readiness-proxy-78294c8-baseline`, attached the same installed dependency tree, synced the exact same actual shared `dedbb16`, and ran the same `npm test` under Node25.8.1. It also stops at136pass/9fail. A comparison of all nine failing assertion names **and their expected/actual lines** matched exactly. [Untouched baseline log](evidence/actual-proxy-untouched-baseline-test.log). This confirms the unit failure was not introduced by the proxy patch; it does not waive the owner-wide release gate.
 - Local `npm audit` reports one pre-existing moderate transitive `@humanfs/node` advisory. No high/critical finding appeared; unrelated tooling upgrades were not added.
 
 ## Existing schema and release boundary
