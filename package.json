@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "npm run test:unit && npm run test:schema && npm run test:rls && npm run test:proxy-cors && npm run test:bug-capture && npm run test:ai && npm run test:dhq && npm run test:intelligence && npm run test:landing-content && npm run test:rookies && npm run test:analytics && npm run test:tutorial && npm run test:alex-evals",
+    "test": "npm run test:unit && npm run test:schema && npm run test:rls && npm run test:proxy-cors && npm run test:proxy-runtime && npm run test:bug-capture && npm run test:ai && npm run test:dhq && npm run test:intelligence && npm run test:landing-content && npm run test:rookies && npm run test:analytics && npm run test:tutorial && npm run test:alex-evals",
     "test:unit": "node tests/unit.js",
     "test:schema": "node tests/schema-health.js",
     "test:rls": "node tests/rls-contract.js",
@@ -32,7 +32,8 @@
     "preview": "vite preview",
     "start": "npm run sync:shared && vite",
     "landing:edit": "node scripts/serve-static.cjs --port=3012 --open=landing-editor.html",
-    "verify:deploy": "node scripts/verify-deploy-readiness.cjs"
+    "verify:deploy": "node scripts/verify-deploy-readiness.cjs",
+    "test:proxy-runtime": "node tests/proxy-security-runtime.cjs && node tests/proxy-relay-runtime.cjs"
   },
   "repository": {
     "type": "git",
@@ -56,8 +57,10 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.5.0",
     "husky": "^9.1.7",
+    "jose": "5.10.0",
     "lint-staged": "^17.0.7",
     "terser": "^5.48.0",
+    "typescript": "5.8.3",
     "vite": "^8.0.16"
   }
 }

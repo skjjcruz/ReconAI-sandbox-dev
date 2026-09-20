@@ -5,6 +5,12 @@ on:
     branches: ["main"]
     paths:
       - "supabase/functions/**"
+      - "scripts/proxy-release-preflight.sql"
+      - "tests/proxy-*.cjs"
+      - "tests/proxy-cors-contract.js"
+      - "tests/helpers/proxy-ts-loader.cjs"
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 
 jobs:
@@ -14,6 +20,18 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+          cache: npm
+      - name: Verify provider boundaries without hosted credentials
+        env:
+          SUPABASE_ACCESS_TOKEN: ""
+        run: |
+          npm ci --ignore-scripts
+          npm run test:proxy-cors
+          npm run test:proxy-runtime
 
       # When the deploy token isn't configured (e.g. this sandbox repo), skip
       # the deploy cleanly instead of failing the whole run. Every step below
@@ -94,6 +112,28 @@ jobs:
               sys.exit(1)
 
           print('Recorded migrations:', ', '.join(sorted(found & set(expected))))
+
+          # Existing provider state schemas must match the reviewed contract.
+          # This fixed query contains no migration or data mutation.
+          with open('scripts/proxy-release-preflight.sql') as f:
+              preflight_query = f.read()
+          req = urllib.request.Request(
+              'https://api.supabase.com/v1/projects/sxshiqyxhhifvtfqawbq/database/query',
+              data=json.dumps({'query': preflight_query}).encode(),
+              headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+              method='POST',
+          )
+          try:
+              with urllib.request.urlopen(req) as r:
+                  checks = json.load(r)
+          except Exception:
+              print('Provider schema preflight unavailable; no functions deployed.', file=sys.stderr)
+              sys.exit(1)
+          expected_checks = {'state_columns', 'account_version_column', 'owner_binding_column', 'state_private', 'tokens_private', 'state_atomic_key', 'reviewed_atomic_limiter'}
+          if not isinstance(checks, list) or len(checks) != 1 or not isinstance(checks[0], dict) or set(checks[0]) != expected_checks or any(value is not True for value in checks[0].values()):
+              print('Provider schema compatibility checks failed; no functions deployed.', file=sys.stderr)
+              sys.exit(1)
+          print('Provider schema compatibility: all checks passed.')
           PYEOF
 
       - name: Deploy espn-proxy function

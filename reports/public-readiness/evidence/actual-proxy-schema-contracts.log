@@ -1,0 +1,25 @@
+
+> reconai@1.0.0 test:schema
+> node tests/schema-health.js
+
+
+Field-log schema health tests
+
+  migration snapshot  ....
+  shared client contract  ...
+  player tags policy  ..
+
+PASS 9 tests - 9 passed, 0 failed
+
+> reconai@1.0.0 test:rls
+> node tests/rls-contract.js
+
+
+RLS contract tests
+
+  owner identity  .
+  client-writable  ...
+  server-only  ..
+  docs  ..
+
+PASS 8 tests - 8 passed, 0 failed

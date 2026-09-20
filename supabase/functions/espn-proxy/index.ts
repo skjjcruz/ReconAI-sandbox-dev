@@ -20,14 +20,23 @@ serve(async (req: Request) => {
     return new Response("ok", { headers: responseHeaders });
   }
 
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: responseHeaders });
+  let body;
+  try {
+    body = await req.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid body');
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } });
+  }
+
   const limit = await checkRateLimit(`espn-proxy:${clientIp(req)}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
   const limited = rateLimitResponse(limit, responseHeaders);
   if (limited) return limited;
 
   try {
-    const { url, espnS2, swid } = await req.json();
+    const { url, espnS2, swid } = body;
 
-    if (!url || !url.startsWith("https://lm-api-reads.fantasy.espn.com/")) {
+    if (typeof url !== "string" || !url || !url.startsWith("https://lm-api-reads.fantasy.espn.com/")) {
       return new Response(
         JSON.stringify({ error: "Invalid URL — only ESPN Fantasy API URLs are allowed" }),
         { status: 400, headers: { ...responseHeaders, "Content-Type": "application/json" } }
@@ -42,7 +51,7 @@ serve(async (req: Request) => {
       headers["Cookie"] = `espn_s2=${espnS2}; SWID=${swid}`;
     }
 
-    const espnRes = await fetch(url, { headers });
+    const espnRes = await fetch(url, { headers, redirect: "error", signal: AbortSignal.timeout(15000) });
 
     if (!espnRes.ok) {
       return new Response(
@@ -58,10 +67,10 @@ serve(async (req: Request) => {
     );
 
   } catch (err) {
-    console.error("[espn-proxy] Error:", err);
+    console.error("[espn-proxy] Provider request failed");
     return new Response(
-      JSON.stringify({ error: (err as Error).message || "Proxy error" }),
-      { status: 500, headers: { ...responseHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "ESPN is temporarily unavailable. Try again shortly." }),
+      { status: 502, headers: { ...responseHeaders, "Content-Type": "application/json" } }
     );
   }
 });

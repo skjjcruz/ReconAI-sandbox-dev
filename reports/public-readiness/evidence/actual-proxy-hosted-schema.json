@@ -1,0 +1,164 @@
+[
+  {
+    "preflight": {
+      "columns": [
+        {
+          "column": "id",
+          "table": "app_users",
+          "type": "uuid"
+        },
+        {
+          "column": "session_version",
+          "table": "app_users",
+          "type": "integer"
+        },
+        {
+          "column": "state_hash",
+          "table": "yahoo_oauth_states",
+          "type": "text"
+        },
+        {
+          "column": "owner_key",
+          "table": "yahoo_oauth_states",
+          "type": "text"
+        },
+        {
+          "column": "return_url",
+          "table": "yahoo_oauth_states",
+          "type": "text"
+        },
+        {
+          "column": "session_version",
+          "table": "yahoo_oauth_states",
+          "type": "integer"
+        },
+        {
+          "column": "browser_hash",
+          "table": "yahoo_oauth_states",
+          "type": "text"
+        },
+        {
+          "column": "expires_at",
+          "table": "yahoo_oauth_states",
+          "type": "timestamp with time zone"
+        },
+        {
+          "column": "created_at",
+          "table": "yahoo_oauth_states",
+          "type": "timestamp with time zone"
+        },
+        {
+          "column": "session_id",
+          "table": "yahoo_tokens",
+          "type": "text"
+        },
+        {
+          "column": "access_token",
+          "table": "yahoo_tokens",
+          "type": "text"
+        },
+        {
+          "column": "refresh_token",
+          "table": "yahoo_tokens",
+          "type": "text"
+        },
+        {
+          "column": "expires_at",
+          "table": "yahoo_tokens",
+          "type": "bigint"
+        },
+        {
+          "column": "token_type",
+          "table": "yahoo_tokens",
+          "type": "text"
+        },
+        {
+          "column": "return_url",
+          "table": "yahoo_tokens",
+          "type": "text"
+        },
+        {
+          "column": "updated_at",
+          "table": "yahoo_tokens",
+          "type": "timestamp with time zone"
+        },
+        {
+          "column": "owner_key",
+          "table": "yahoo_tokens",
+          "type": "text"
+        }
+      ],
+      "limiter": [
+        {
+          "anon": false,
+          "authenticated": false,
+          "definition": "CREATE OR REPLACE FUNCTION public.check_rate_limit(p_key text, p_limit integer, p_window_seconds integer)\n RETURNS json\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\ndeclare\n  v_epoch        bigint;\n  v_window_epoch bigint;\n  v_window_start timestamptz;\n  v_count        integer;\nbegin\n  if p_key is null or p_window_seconds is null or p_window_seconds <= 0 then\n    return json_build_object('allowed', true, 'count', 0, 'limit', p_limit, 'retry_after', 0);\n  end if;\n\n  v_epoch        := floor(extract(epoch from clock_timestamp()))::bigint;\n  v_window_epoch := (v_epoch / p_window_seconds) * p_window_seconds;\n  v_window_start := to_timestamp(v_window_epoch);\n\n  insert into public.rate_limit_counters (bucket_key, window_start, count)\n  values (p_key, v_window_start, 1)\n  on conflict (bucket_key, window_start)\n  do update set count = public.rate_limit_counters.count + 1,\n                updated_at = now()\n  returning count into v_count;\n\n  if p_limit > 0 and v_count > p_limit then\n    return json_build_object(\n      'allowed',     false,\n      'count',       v_count,\n      'limit',       p_limit,\n      'retry_after', greatest(1, p_window_seconds - (v_epoch - v_window_epoch))\n    );\n  end if;\n\n  return json_build_object('allowed', true, 'count', v_count, 'limit', p_limit, 'retry_after', 0);\nend;\n$function$\n",
+          "identity": "check_rate_limit(text,integer,integer)",
+          "service": true
+        }
+      ],
+      "policies": [
+        {
+          "check": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+          "command": "ALL",
+          "name": "active_app_session",
+          "qual": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+          "roles": [
+            "anon",
+            "authenticated"
+          ],
+          "table": "rate_limit_counters"
+        },
+        {
+          "check": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+          "command": "ALL",
+          "name": "active_app_session",
+          "qual": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+          "roles": [
+            "anon",
+            "authenticated"
+          ],
+          "table": "yahoo_oauth_states"
+        },
+        {
+          "check": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+          "command": "ALL",
+          "name": "active_app_session",
+          "qual": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+          "roles": [
+            "anon",
+            "authenticated"
+          ],
+          "table": "yahoo_tokens"
+        },
+        {
+          "check": "false",
+          "command": "ALL",
+          "name": "yahoo_tokens_deny_all",
+          "qual": "false",
+          "roles": [
+            "public"
+          ],
+          "table": "yahoo_tokens"
+        }
+      ],
+      "tables": [
+        {
+          "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "table": "rate_limit_counters"
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "table": "yahoo_oauth_states"
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+          "rls": true,
+          "table": "yahoo_tokens"
+        }
+      ]
+    }
+  }
+]

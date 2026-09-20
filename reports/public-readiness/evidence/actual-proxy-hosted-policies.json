@@ -1,0 +1,30 @@
+[
+  {
+    "check_expression": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+    "polname": "active_app_session",
+    "polpermissive": false,
+    "relname": "rate_limit_counters",
+    "using_expression": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))"
+  },
+  {
+    "check_expression": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+    "polname": "active_app_session",
+    "polpermissive": false,
+    "relname": "yahoo_oauth_states",
+    "using_expression": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))"
+  },
+  {
+    "check_expression": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))",
+    "polname": "active_app_session",
+    "polpermissive": false,
+    "relname": "yahoo_tokens",
+    "using_expression": "((( SELECT ((auth.jwt() -> 'app_metadata'::text) ->> 'user_id'::text)) IS NULL) OR (( SELECT current_app_user_id() AS current_app_user_id) IS NOT NULL))"
+  },
+  {
+    "check_expression": "false",
+    "polname": "yahoo_tokens_deny_all",
+    "polpermissive": true,
+    "relname": "yahoo_tokens",
+    "using_expression": "false"
+  }
+]

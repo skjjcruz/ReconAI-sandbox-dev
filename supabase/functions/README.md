@@ -22,3 +22,16 @@ deploy drift, each function has one source repo.
 
 Deploy individual functions by name from the owning repo. Do not deploy a
 same-named function from the other repo.
+
+
+## Provider release checks
+
+Run `npm run test:proxy-cors` and `npm run test:proxy-runtime` before releasing
+these three functions. The deployment workflow verifies the existing private
+Yahoo state schema and exact reviewed durable limiter through
+`scripts/proxy-release-preflight.sql`. It does not apply migrations. If that
+read-only gate fails, reconcile the owning schema/source before deployment.
+Account/session issuance remains owned by the native War Room repository;
+`_shared/yahoo-owner.ts` only validates the signed session contract for Yahoo.
+See `reports/public-readiness/actual-reconai-proxies-20260920.md` for the source
+comparison, evidence and remaining real-provider/native gates.

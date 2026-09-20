@@ -1,0 +1,32 @@
+FAIL unsigned callback cannot select a victim owner or reach Yahoo Expected values to be strictly equal:
+
+302 !== 400
+
+FAIL revoked app token cannot start, read or refresh Yahoo Expected values to be strictly equal:
+
+200 !== 401
+
+FAIL callback errors never render caller HTML The input did not match the regular expression /^text\/plain/. Input:
+
+'text/html'
+
+FAIL malformed JSON shape is actionable client error Cannot read properties of null (reading 'action')
+FAIL valid browser-bound connection preserves query and fragment and stores one owner Expected values to be strictly equal:
+
+400 !== 302
+
+FAIL competing callbacks consume only once and expired state stays closed Expected values to be strictly equal:
+
+400 !== 302
+
+FAIL unconfirmed token persistence cannot redirect success or disclose database detail Expected values to be strictly equal:
+
+400 !== 302
+
+FAIL session change before and during exchange prevents a stale success redirect Expected values to be strictly equal:
+
+400 !== 302
+
+Proxy security runtime: 0 passed, 8 failed
+(node:74822) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

@@ -1,0 +1,11 @@
+[
+  {
+    "account_version_column": true,
+    "owner_binding_column": true,
+    "reviewed_atomic_limiter": true,
+    "state_atomic_key": true,
+    "state_columns": true,
+    "state_private": true,
+    "tokens_private": true
+  }
+]

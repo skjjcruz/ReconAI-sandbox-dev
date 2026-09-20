@@ -12,6 +12,7 @@ const mfl = read('supabase/functions/mfl-proxy/index.ts');
 const yahoo = read('supabase/functions/yahoo-proxy/index.ts');
 const rateLimitHelper = read('supabase/functions/_shared/rate-limit.ts');
 const rateLimitMigration = read('supabase/migrations/022_proxy_rate_limits.sql');
+const yahooOwner = read('supabase/functions/_shared/yahoo-owner.ts');
 
 let passed = 0;
 let failed = 0;
@@ -111,7 +112,7 @@ test('Yahoo proxy uses shared CORS and validates OAuth return URLs', () => {
 
 test('Yahoo proxy binds stored sessions to the authenticated app or Sleeper owner', () => {
   hasEvery(yahoo, [
-    'import { jwtVerify } from "https://esm.sh/jose@5";',
+    'import { requireYahooOwner, yahooOwnerIsCurrent, sha256Hex } from "../_shared/yahoo-owner.ts";',
     'async function requesterKey(req: Request): Promise<string | null>',
     'const ownerKey = await requesterKey(req);',
     'Valid session token required.',
@@ -121,19 +122,22 @@ test('Yahoo proxy binds stored sessions to the authenticated app or Sleeper owne
     'await refreshAccessToken(session_id, ownerKey)',
     'JSON.stringify({ success: true })',
   ], 'yahoo owner-bound proxy');
+  hasEvery(yahooOwner, ['jwtVerify(token', ".from('app_users')", 'data.session_version === sessionVersion'], 'Yahoo active session verification');
 });
 
 group('durable rate limiting');
 
-test('shared rate-limit helper is Postgres-backed with an in-memory fallback', () => {
+test('shared rate-limit helper is Postgres-backed and fails closed on outage', () => {
   hasEvery(rateLimitHelper, [
     'SUPABASE_SERVICE_ROLE_KEY',
     '.rpc("check_rate_limit"',
-    'function fallbackCheck',
+    'unavailable: true',
+    'status: result.unavailable ? 503 : 429',
     'export async function checkRateLimit',
     'export function rateLimitResponse',
     'export function clientIp',
   ], 'rate-limit helper');
+  ok(!rateLimitHelper.includes('fallbackBuckets'), 'fresh workers must not reset the durable budget after a storage failure');
 });
 
 test('rate-limit migration defines a durable atomic counter', () => {
@@ -149,9 +153,9 @@ test('rate-limit migration defines a durable atomic counter', () => {
 
 test('Yahoo proxy rate-limits the API proxy action per owner', () => {
   hasEvery(yahoo, [
-    'import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";',
-    'await checkRateLimit(`yahoo-proxy:${ownerKey}`',
-    'rateLimitResponse(rl, responseHeaders)',
+    'import { checkRateLimit as checkProxyLimit, rateLimitResponse } from "../_shared/rate-limit.ts";',
+    'await checkProxyLimit(`yahoo-proxy:${ownerKey}`',
+    'rateLimitResponse(limit, responseHeaders)',
   ], 'yahoo-proxy rate limit');
 });
 

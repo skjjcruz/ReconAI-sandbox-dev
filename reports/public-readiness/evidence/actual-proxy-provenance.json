@@ -1,0 +1,40 @@
+{
+  "observed_at_utc": "2026-09-20T17:10:51.519121+00:00",
+  "owner_repository": "skjjcruz/ReconAI-sandbox-dev",
+  "owner_baseline": "78294c80cf483aab32b37ae046d6b645f03ccb72",
+  "workflow": "https://github.com/skjjcruz/ReconAI-sandbox-dev/blob/78294c80cf483aab32b37ae046d6b645f03ccb72/.github/workflows/deploy-functions.yml",
+  "previous_c2_review": "bb45182 (original abaa928d69411fd23b51ca89fc3efc3f8a459535)",
+  "functions": [
+    {
+      "slug": "espn-proxy",
+      "hosted_version": 117,
+      "hosted_updated_at": 1789766017189,
+      "gateway_verifies_jwt": false,
+      "owner_sha256": "b2a0add7abdd859ea17141d3b05430b4c8af6ac2abc75ce135d39ce3f2c6a40d",
+      "hosted_sha256": "b2a0add7abdd859ea17141d3b05430b4c8af6ac2abc75ce135d39ce3f2c6a40d",
+      "candidate_sha256": "363c0a36ea4bbab1be95115b40de3ab52992c5c53be2b1a55b1c832d9ae94587",
+      "hosted_matches_owner": true
+    },
+    {
+      "slug": "mfl-proxy",
+      "hosted_version": 124,
+      "hosted_updated_at": 1789766037396,
+      "gateway_verifies_jwt": false,
+      "owner_sha256": "4a4650d2bb3276ec636e7ae3afc1f5a65a76c9c62813e501ffc919aa2d140ace",
+      "hosted_sha256": "4e2b837011e43c11ebe4a80c4c141642107f97e65a1a7ba9fb1d28744db0fabb",
+      "candidate_sha256": "46999c8afe82ece231410cf0d40aa0014c6315157d462df6c5cd1c07d7af95a2",
+      "hosted_matches_owner": false
+    },
+    {
+      "slug": "yahoo-proxy",
+      "hosted_version": 111,
+      "hosted_updated_at": 1789766043084,
+      "gateway_verifies_jwt": false,
+      "owner_sha256": "38416a7b4351d6a606f15c1655615b657496879aad224fd2499b27fe461c6a0e",
+      "hosted_sha256": "38416a7b4351d6a606f15c1655615b657496879aad224fd2499b27fe461c6a0e",
+      "candidate_sha256": "ed42995be37bf5e9f1aac368289b3e96e6b5c480253d5bcd938a1b4381eec78a",
+      "hosted_matches_owner": true
+    }
+  ],
+  "deployed": false
+}
