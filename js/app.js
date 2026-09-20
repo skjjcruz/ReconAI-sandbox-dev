@@ -1926,7 +1926,7 @@ window.loadRegistryLeague = loadRegistryLeague;
     const savedUser = DhqStorage.getStr(STORAGE_KEYS.USERNAME);
 
     // ── League Hub: show game-save style picker if registry has leagues ──
-    if(getVisibleLeagueRegistry().length>0&&!window.Yahoo?.hasCallback()&&!new URLSearchParams(window.location.search).get('yahoo_session')){
+    if(getVisibleLeagueRegistry().length>0&&!window.__DHQ_YAHOO_CALLBACK&&!new URLSearchParams(window.location.search).get('yahoo_session')){
       const registry=getVisibleLeagueRegistry();
       const urlLeagueId=getUrlLeagueId();
       const urlLeagueEntry=urlLeagueId?registry.find(e=>String(e.leagueId)===String(urlLeagueId)):null;
@@ -1938,7 +1938,7 @@ window.loadRegistryLeague = loadRegistryLeague;
 
     // ── Yahoo OAuth callback detection ────────────────────────────
     // The head script captures/clears the v2 relay; old query callbacks show recovery.
-    const _yahooSessionParam = window.Yahoo?.hasCallback() || new URLSearchParams(window.location.search).get('yahoo_session');
+    const _yahooSessionParam = window.__DHQ_YAHOO_CALLBACK || new URLSearchParams(window.location.search).get('yahoo_session');
     if (_yahooSessionParam && !platformAccessAllowed('yahoo')) {
       try{ window.history.replaceState({},document.title,window.location.pathname); }catch(e){}
     }
@@ -1950,7 +1950,7 @@ window.loadRegistryLeague = loadRegistryLeague;
       setTimeout(async()=>{
         if(S.user)return;
         try{
-          if (!window.Yahoo) throw new Error('Yahoo connector is unavailable. Refresh and reconnect.');
+          if (!window.Yahoo?.hasCallback) throw new Error('Yahoo connector needs the updated app. Refresh and reconnect.');
           await window.Yahoo.handleCallback();
           ss('conn-status','Loading your Yahoo leagues...');
           const _pEl=$('prog');if(_pEl)_pEl.style.display='block'; prog(20);
