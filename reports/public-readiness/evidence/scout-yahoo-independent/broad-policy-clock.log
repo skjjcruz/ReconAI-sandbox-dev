@@ -1,0 +1,144 @@
+
+> reconai@1.0.0 test
+> npm run test:unit && npm run test:schema && npm run test:rls && npm run test:proxy-cors && npm run test:proxy-runtime && npm run test:bug-capture && npm run test:ai && npm run test:dhq && npm run test:intelligence && npm run test:landing-content && npm run test:rookies && npm run test:analytics && npm run test:tutorial && npm run test:alex-evals
+
+
+> reconai@1.0.0 test:unit
+> node tests/unit.js
+
+  Loading shared/utils.js … OK
+  Loading shared/storage.js … OK
+  Loading shared/event-bus.js … OK
+  Loading shared/tier.js … OK
+  Loading shared/sleeper-api.js … [Sleeper] platform-provider.js not loaded — provider will not be registered
+OK
+  Loading shared/dhq-core.js … OK
+  Loading shared/dhq-engine.js … OK
+  Extracting addFieldLogEntry … OK
+
+
+  normPos  ..........................
+  posLabel  ...
+  formatNFLDraftSlot  ..........
+  getLeaguePositions  ..
+  calcRawPts (utils.js)  .......
+  calcFantasyPts  ..................
+  DHQ value tuning  ..................
+  DhqStorage  .........[DHQ:storage.get:dhq_test_bad] Expected property name or '}' in JSON at position 1 (line 1 column 2) 
+....
+  DhqEvents  ......[DHQ:event-bus] handler error { event: 'test:error' }
+...
+  STORAGE_KEYS  ......
+  isTrialActive  .....
+  getTier  .............
+  getDailyChatRemaining  ......
+  canAccess  ....
+  addFieldLogEntry  .........
+
+✓ 149 tests — 149 passed, 0 failed
+
+> reconai@1.0.0 test:schema
+> node tests/schema-health.js
+
+
+Field-log schema health tests
+
+  migration snapshot  ....
+  shared client contract  ...
+  player tags policy  ..
+
+PASS 9 tests - 9 passed, 0 failed
+
+> reconai@1.0.0 test:rls
+> node tests/rls-contract.js
+
+
+RLS contract tests
+
+  owner identity  .
+  client-writable  ...
+  server-only  ..
+  docs  ..
+
+PASS 8 tests - 8 passed, 0 failed
+
+> reconai@1.0.0 test:proxy-cors
+> node tests/proxy-cors-contract.js
+
+
+Proxy CORS contract tests
+
+  shared helper  .
+  proxy functions  .....
+  durable rate limiting  ...
+
+PASS 9 tests - 9 passed, 0 failed
+
+> reconai@1.0.0 test:proxy-runtime
+> node tests/proxy-security-runtime.cjs && node tests/proxy-relay-runtime.cjs
+
+PASS unsigned callback cannot select a victim owner or reach Yahoo
+PASS revoked app token cannot start, read or refresh Yahoo
+PASS callback errors never render caller HTML
+PASS malformed JSON shape is actionable client error
+PASS same-account same-tab proof gates exchange and preserves exact return context
+PASS transferred authorization URL and recipient callback never bind provider to initiator
+PASS return URL and origin are exact and untrusted path cannot begin or finish
+PASS old clients and old cookie states fail with explicit restart without altering saved sessions
+PASS competing callbacks consume only once and expired state stays closed
+PASS unconfirmed token persistence cannot redirect success or disclose database detail
+PASS session change before and during exchange prevents a stale success redirect
+PASS actual signature/expiry and account lookup failures fail closed without legacy downgrade
+PASS signed legacy Sleeper owner remains supported without claiming app revocation parity
+PASS stored Yahoo session is read only by matching authenticated owner
+PASS state persistence failure is visible with CORS and no success URL
+Proxy security runtime: 15 passed, 0 failed
+PASS durable counter is shared across fresh workers and retains accurate Retry-After
+PASS limiter outage/malformed replies cannot reset allowance via fresh workers
+PASS all browser/native known origins retain CORS while unknown origin is not echoed
+PASS ESPN preserves private cookies and provider data; rejects foreign/malformed calls before network
+PASS ESPN unavailable storage never reaches provider
+PASS MFL anonymous public read, actionable 404, explicit write and relative shard redirects remain supported
+[mfl-proxy] Provider request failed
+[mfl-proxy] Provider request failed
+PASS MFL refuses off-provider first/second redirect and credentials are never forwarded there
+PASS MFL login survives allowed redirect and captures intermediate session without echoing form
+[mfl-proxy] Provider request failed
+PASS MFL cycles and malformed or foreign destinations fail without successful mutations
+Proxy relay runtime: 9 passed, 0 failed
+
+> reconai@1.0.0 test:bug-capture
+> node tests/bug-capture-contract.js
+
+
+Bug capture contract tests
+
+  config  .
+  client  ..
+
+PASS 3 tests - 3 passed, 0 failed
+
+> reconai@1.0.0 test:ai
+> node tests/ai-routing.js
+
+
+AI routing regression tests
+
+  model IDs  ..F
+  pricing  F
+  client routing  ..F..
+  local preview wiring  .
+  edge routing  FF
+
+  FAIL: edge exposes current routing model IDs
+        edge function missing GEMINI_FAST: gemini-2.5-flash-lite
+  FAIL: edge pricing constants match verified provider rates
+        edge function has stale/missing cost constants for gemini-2.5-flash-lite
+  FAIL: complex reasoning tasks route to premium tier
+        client dispatcher route pick-analysis should use premium tier
+  FAIL: server simple/medium routes match cost strategy
+        edge function route home-chat should use fast tier
+  FAIL: server complex routes use premium tier, commissioner deep routes use deep tier
+        edge function route trade-chat should use premium tier
+
+FAIL 12 tests - 7 passed, 5 failed

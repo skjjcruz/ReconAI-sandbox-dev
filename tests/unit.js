@@ -909,14 +909,66 @@ function clearTierCache() {
   ls.removeItem(STORAGE_KEYS.TIER);
 }
 
-test('trial stamp + no profile → free (legacy trial retired)',
+// The owner-approved 2026 free-season policy (canonical8db9f02) deliberately
+// precedes normal tier resolution. Keep every existing anti-spoofing assertion,
+// but execute its post-promotion contract after the documented expiry. Exercise
+// the actual policy and exact boundary below instead of disabling its function.
+const FREE_SEASON_END = Date.UTC(2027, 2, 1);
+function withTierClock(now, fn) {
+  const originalDate = ctx.Date;
+  const originalLocation = ctx.location;
+  ctx.Date = class extends Date {
+    constructor(...args) { super(...(args.length ? args : [now])); }
+    static now() { return now; }
+  };
+  ctx.location = { hostname: 'dhqfootball.com', pathname: '/', search: '' };
+  try { return fn(); }
+  finally { ctx.Date = originalDate; ctx.location = originalLocation; }
+}
+function postSeasonTest(name, fn) {
+  test('after free-season expiry: ' + name, () => withTierClock(FREE_SEASON_END, fn));
+}
+
+test('2026 season policy retains the owner-approved March1 expiry', () => {
+  eq(ctx.DHQ_FREE_SEASON.ENDS, FREE_SEASON_END);
+});
+test('current 2026 season grants full feature access on the public site', () => {
+  withTierClock(Date.UTC(2026, 8, 20), () => {
+    clearTierCache();
+    ctx.App._userTier = 'free';
+    eq(getTier(), 'paid');
+    ok(canAccess(FEATURES.OWNER_DNA), 'promised Owner DNA is available');
+    ok(canAccess(FEATURES.BEHAVIORAL_MODEL), 'promised paid-only analysis is available');
+    ok(canAccess(FEATURES.WAR_ROOM_CORE), 'promised War Room access is available');
+    ctx.App._userTier = null;
+  });
+});
+test('free-season access ends exactly at the documented boundary', () => {
+  clearTierCache();
+  withTierClock(FREE_SEASON_END - 1, () => eq(getTier(), 'paid'));
+  withTierClock(FREE_SEASON_END, () => {
+    eq(getTier(), 'free');
+    eq(canAccess(FEATURES.BEHAVIORAL_MODEL), false);
+  });
+  withTierClock(FREE_SEASON_END + 86400000, () => eq(getTier(), 'free'));
+});
+test('public sandbox query cannot extend the expired free-season policy', () => {
+  withTierClock(FREE_SEASON_END, () => {
+    clearTierCache();
+    ctx.location.search = '?sandbox=1&dev=1';
+    eq(getTier(), 'free');
+    eq(canAccess(FEATURES.WAR_ROOM_CORE), false);
+  });
+});
+
+postSeasonTest('trial stamp + no profile → free (legacy trial retired)',
   () => {
     clearTierCache();
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
     eq(getTier(), 'free');
   });
 
-test('OD profile tier=scout in localStorage does not grant paid access',
+postSeasonTest('OD profile tier=scout in localStorage does not grant paid access',
   () => {
     clearTierCache();
     ls.removeItem(STORAGE_KEYS.TRIAL_START);
@@ -926,7 +978,7 @@ test('OD profile tier=scout in localStorage does not grant paid access',
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
   });
 
-test('OD profile tier=war_room in localStorage does not grant paid access',
+postSeasonTest('OD profile tier=war_room in localStorage does not grant paid access',
   () => {
     clearTierCache();
     ls.removeItem(STORAGE_KEYS.TRIAL_START);
@@ -936,7 +988,7 @@ test('OD profile tier=war_room in localStorage does not grant paid access',
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
   });
 
-test('OD profile tier=commissioner in localStorage does not grant paid access',
+postSeasonTest('OD profile tier=commissioner in localStorage does not grant paid access',
   () => {
     clearTierCache();
     ls.removeItem(STORAGE_KEYS.TRIAL_START);
@@ -946,7 +998,7 @@ test('OD profile tier=commissioner in localStorage does not grant paid access',
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
   });
 
-test('FW session with access_token in localStorage does not grant paid access',
+postSeasonTest('FW session with access_token in localStorage does not grant paid access',
   () => {
     clearTierCache();
     ls.removeItem(STORAGE_KEYS.TRIAL_START);
@@ -956,7 +1008,7 @@ test('FW session with access_token in localStorage does not grant paid access',
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
   });
 
-test('DEV_MODE → paid regardless of profile',
+postSeasonTest('DEV_MODE → paid regardless of profile',
   () => {
     clearTierCache();
     ctx.DEV_MODE = true;
@@ -966,7 +1018,7 @@ test('DEV_MODE → paid regardless of profile',
     ctx.App._userTier = null;
   });
 
-test('expired trial + no profile → free',
+postSeasonTest('expired trial + no profile → free',
   () => {
     clearTierCache();
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now() - 31 * 24 * 60 * 60 * 1000));
@@ -975,7 +1027,7 @@ test('expired trial + no profile → free',
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
   });
 
-test('cached _userTier is respected',
+postSeasonTest('cached _userTier is respected',
   () => {
     clearTierCache();
     ctx.App._userTier = 'paid';
@@ -983,7 +1035,7 @@ test('cached _userTier is respected',
     ctx.App._userTier = null;
   });
 
-test('product entitlement keeps War Room separate from bundle/pro',
+postSeasonTest('product entitlement keeps War Room separate from bundle/pro',
   () => {
     eq(ctx.normalizeProductTier({ tier: 'pro', products: ['war_room'] }), 'warroom');
     eq(ctx.normalizeProductTier({ tier: 'pro', products: ['dynast_hq'] }), 'scout');
@@ -1038,7 +1090,7 @@ test('incrementDailyChat increments counter',
 
 group('canAccess');
 
-test('paid tier → all features accessible',
+postSeasonTest('paid tier → all features accessible',
   () => {
     clearTierCache();
     ctx.App._userTier = 'paid';
@@ -1050,7 +1102,7 @@ test('paid tier → all features accessible',
     ctx.App._userTier = null;
   });
 
-test('trial stamp no longer unlocks paid features (legacy trial retired)',
+postSeasonTest('trial stamp no longer unlocks paid features (legacy trial retired)',
   () => {
     clearTierCache();
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
@@ -1059,7 +1111,7 @@ test('trial stamp no longer unlocks paid features (legacy trial retired)',
     eq(canAccess(FEATURES.UNLIMITED_CHAT), false, 'UNLIMITED_CHAT locked for free');
   });
 
-test('trial tier → paid-only features blocked',
+postSeasonTest('trial tier → paid-only features blocked',
   () => {
     clearTierCache();
     ls.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
@@ -1068,7 +1120,7 @@ test('trial tier → paid-only features blocked',
     ok(!canAccess(FEATURES.WAR_ROOM_CORE),    'WAR_ROOM_CORE blocked in trial');
   });
 
-test('free tier → all features blocked',
+postSeasonTest('free tier → all features blocked',
   () => {
     clearTierCache();
     ls.removeItem(STORAGE_KEYS.TRIAL_START);  // no trial
