@@ -8,7 +8,7 @@
   "admin-support-queue": "21",
   "ai-analyze": "285",
   "ai-feedback": "157",
-  "duat": "29",
+  "duat": "30",
   "espn-proxy": "117",
   "feature-requests": "8",
   "fw-billing-portal": "23",
@@ -33,6 +33,6 @@
   "ops-email-doctor": "7",
   "report-bug": "8",
   "set-password": "198",
-  "time-league": "40",
+  "time-league": "41",
   "yahoo-proxy": "111"
 }
