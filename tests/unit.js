@@ -163,6 +163,9 @@ process.stdout.write('OK\n');
 // document.getElementById returns null for all banner/modal elements → safe.
 process.stdout.write('  Loading shared/tier.js … ');
 loadScript(ctx, 'shared/tier.js');
+// These tests check the paywall rules themselves, so the 2026 free-season
+// promotion (every signed-in user is paid until 2027-03-01) is switched off.
+if (ctx.DHQ_FREE_SEASON) ctx.DHQ_FREE_SEASON.ENDS = 0;
 process.stdout.write('OK\n');
 
 process.stdout.write('  Loading shared/sleeper-api.js … ');
@@ -175,6 +178,8 @@ process.stdout.write('OK\n');
 
 process.stdout.write('  Loading shared/dhq-engine.js … ');
 loadScript(ctx, 'shared/dhq-engine.js');
+// The value formula, split out of dhq-engine.js (DHQ-Shared, 2026-10-29).
+loadScript(ctx, 'shared/dhq-engine-values.js');
 process.stdout.write('OK\n');
 
 // Extract addFieldLogEntry from js/scout-ui.js (avoids full DOM-heavy file)

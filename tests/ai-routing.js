@@ -191,9 +191,15 @@ test('medium analysis tasks route to standard tier', () => {
 });
 
 test('complex reasoning tasks route to premium tier', () => {
-  ['trade-chat', 'trade-scout', 'draft-scout', 'pick-analysis', 'player-scout'].forEach(type => {
+  ['trade-chat', 'trade-scout', 'draft-scout', 'player-scout'].forEach(type => {
     assertRouteTier(sources.client, type, 'premium', 'client dispatcher');
   });
+});
+
+// Per-pick draft reactions ride the fast tier (draft-night burst valve,
+// 2026-09-07, ai-dispatch.js AI_ROUTES).
+test('per-pick draft reactions route to the fast tier', () => {
+  assertRouteTier(sources.client, 'pick-analysis', 'fast', 'client dispatcher');
 });
 
 test('client tier policy preserves low-cost defaults and explicit deep routes', () => {
