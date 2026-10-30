@@ -36,7 +36,7 @@ function buildCtx() {
 }
 const MODULES = ['shared/app-config.js', 'shared/data-cache.js', 'shared/constants.js', 'shared/utils.js',
   'shared/storage.js', 'shared/event-bus.js', 'shared/tier.js', 'shared/pick-value-model.js',
-  'shared/sleeper-api.js', 'shared/dhq-core.js', 'shared/intelligence-context.js', 'shared/dhq-engine.js'];
+  'shared/sleeper-api.js', 'shared/dhq-core.js', 'shared/dhq-core-values.js', 'shared/intelligence-context.js', 'shared/dhq-engine.js'];
 // Apply {find,replace} patches to a module's source before running it.
 function loadPatched(ctx, rel, patches) {
   let code = fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -84,7 +84,7 @@ async function getJSON(u) { const r = await globalThis.fetch(u); if (!r.ok) thro
   const P = {
     qbWeight: { 'shared/dhq-engine.js': [{ label: 'QB dynasty weight 1.0→0.65', find: 'const baseDynastyWeight={QB:1.0,RB:1.0,WR:1.0,TE:0.95,', replace: 'const baseDynastyWeight={QB:0.65,RB:1.05,WR:1.05,TE:1.0,' }] },
     vor: { 'shared/dhq-engine.js': [{ label: 'lineupValue VOR mix 0.35/0.65→0.15/0.85', find: 'return (p.wPPG*0.35)+(edge*0.65);', replace: 'return (p.wPPG*0.15)+(edge*0.85);' }] },
-    fcBlend: { 'shared/dhq-core.js': [{ label: 'FC blend weight floor→0.55', find: 'return +Math.min(weight,cap).toFixed(2);', replace: 'return 0.55;' }] },
+    fcBlend: { 'shared/dhq-core-values.js': [{ label: 'FC blend weight floor→0.55', find: 'return +Math.min(weight,cap).toFixed(2);', replace: 'return 0.55;' }] },
   };
   const merge = (...ps) => { const out = {}; ps.forEach(p => Object.entries(p).forEach(([k, v]) => { out[k] = (out[k] || []).concat(v); })); return out; };
   const SCENARIOS = [

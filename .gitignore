@@ -54,6 +54,7 @@ shared/draft-gameplan.js
 shared/alex-voice.js
 shared/gm-mode.js
 shared/dhq-engine-values.js
+shared/dhq-core-values.js
 shared/identity.js
 shared/intent-reads.js
 shared/nfl-roles.js

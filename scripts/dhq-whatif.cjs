@@ -96,11 +96,11 @@ function buildCtx() {
     encodeURIComponent, decodeURIComponent, URLSearchParams, URL, Set, Map, WeakMap, WeakSet, Symbol, Promise, Reflect, Proxy, ArrayBuffer, Float64Array, Float32Array, Int32Array, Uint8Array, Intl };
   ctx.window = ctx; ctx.self = ctx; ctx.globalThis = ctx; ctx.DEV_MODE = false; vm.createContext(ctx); return ctx;
 }
-const MODULES = ['shared/app-config.js', 'shared/data-cache.js', 'shared/constants.js', 'shared/utils.js', 'shared/storage.js', 'shared/event-bus.js', 'shared/tier.js', 'shared/pick-value-model.js', 'shared/sleeper-api.js', 'shared/dhq-core.js', 'shared/intelligence-context.js', 'shared/dhq-engine.js'];
+const MODULES = ['shared/app-config.js', 'shared/data-cache.js', 'shared/constants.js', 'shared/utils.js', 'shared/storage.js', 'shared/event-bus.js', 'shared/tier.js', 'shared/pick-value-model.js', 'shared/sleeper-api.js', 'shared/dhq-core.js', 'shared/dhq-core-values.js', 'shared/intelligence-context.js', 'shared/dhq-engine.js'];
 function parsePatches(list) { return (list || []).map(s => { const [find, replace] = String(s).split('=>>'); return { file: 'auto', find, replace: replace ?? '' }; }); }
 function loadModule(ctx, rel, corePatches, enginePatches) {
   let code = fs.readFileSync(path.join(ROOT, rel), 'utf8');
-  const patches = rel.endsWith('dhq-core.js') ? corePatches : rel.endsWith('dhq-engine.js') ? enginePatches : [];
+  const patches = /dhq-core(-values)?\.js$/.test(rel) ? corePatches : rel.endsWith('dhq-engine.js') ? enginePatches : [];
   patches.forEach(p => { if (p.find && code.includes(p.find)) code = code.replace(p.find, p.replace); });
   vm.runInContext(code, ctx, { filename: rel });
 }

@@ -22,7 +22,7 @@ function buildCtx() {
     encodeURIComponent, decodeURIComponent, URLSearchParams, URL, Set, Map, WeakMap, WeakSet, Symbol, Promise, Reflect, Proxy, ArrayBuffer, Float64Array, Float32Array, Int32Array, Uint8Array, Intl };
   ctx.window = ctx; ctx.self = ctx; ctx.globalThis = ctx; ctx.DEV_MODE = false; vm.createContext(ctx); return ctx;
 }
-const MODULES = ['shared/app-config.js', 'shared/data-cache.js', 'shared/constants.js', 'shared/utils.js', 'shared/storage.js', 'shared/event-bus.js', 'shared/tier.js', 'shared/pick-value-model.js', 'shared/sleeper-api.js', 'shared/dhq-core.js', 'shared/intelligence-context.js', 'shared/dhq-engine.js'];
+const MODULES = ['shared/app-config.js', 'shared/data-cache.js', 'shared/constants.js', 'shared/utils.js', 'shared/storage.js', 'shared/event-bus.js', 'shared/tier.js', 'shared/pick-value-model.js', 'shared/sleeper-api.js', 'shared/dhq-core.js', 'shared/dhq-core-values.js', 'shared/intelligence-context.js', 'shared/dhq-engine.js'];
 function load(ctx, rel) { vm.runInContext(fs.readFileSync(path.join(ROOT, rel), 'utf8'), ctx, { filename: rel }); }
 async function getJSON(u) { const r = await globalThis.fetch(u); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
 

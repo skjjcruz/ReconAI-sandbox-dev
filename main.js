@@ -16,6 +16,8 @@ import './shared/pick-value-model.js';
 import './shared/dhq-providers.js';
 import './shared/rookie-data.js';
 import './shared/dhq-core.js';
+// The core's value formula (server-only on the website; Scout computes locally).
+import './shared/dhq-core-values.js';
 import './shared/intelligence-context.js';
 import './shared/dhq-engine.js';
 // The value formula, split out of dhq-engine.js (DHQ-Shared, 2026-10-29).

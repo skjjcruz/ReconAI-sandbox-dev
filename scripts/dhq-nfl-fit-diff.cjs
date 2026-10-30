@@ -75,7 +75,7 @@ function load(ctx, rel) {
 const MODULES = [
   'shared/app-config.js', 'shared/data-cache.js', 'shared/constants.js', 'shared/utils.js',
   'shared/storage.js', 'shared/event-bus.js', 'shared/tier.js', 'shared/pick-value-model.js',
-  'shared/sleeper-api.js', 'shared/dhq-core.js', 'shared/intelligence-context.js',
+  'shared/sleeper-api.js', 'shared/dhq-core.js', 'shared/dhq-core-values.js', 'shared/intelligence-context.js',
   'shared/dhq-engine.js', 'shared/nfl-fit.js',
 ];
 

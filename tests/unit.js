@@ -174,6 +174,8 @@ process.stdout.write('OK\n');
 
 process.stdout.write('  Loading shared/dhq-core.js … ');
 loadScript(ctx, 'shared/dhq-core.js');
+// The core's value formula, split out of dhq-core.js (DHQ-Shared, Phase A8).
+loadScript(ctx, 'shared/dhq-core-values.js');
 process.stdout.write('OK\n');
 
 process.stdout.write('  Loading shared/dhq-engine.js … ');

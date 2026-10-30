@@ -43,8 +43,7 @@ function parseArgs(argv) {
   return args;
 }
 
-function loadCommonJsBrowserFile(file) {
-  const code = fs.readFileSync(file, 'utf8');
+function loadCommonJsBrowserFile(file, ...more) {
   const sandbox = {
     module: { exports: {} },
     exports: {},
@@ -52,7 +51,8 @@ function loadCommonJsBrowserFile(file) {
     window: { App: {} },
   };
   sandbox.globalThis = sandbox;
-  vm.runInNewContext(code, sandbox, { filename: file });
+  vm.createContext(sandbox);
+  for (const f of [file, ...more]) vm.runInContext(fs.readFileSync(f, 'utf8'), sandbox, { filename: f });
   return sandbox.module.exports && Object.keys(sandbox.module.exports).length
     ? sandbox.module.exports
     : sandbox.window.App.DhqCore;
@@ -103,7 +103,7 @@ function normalizePickModel(fn) {
 
 async function main() {
   const args = parseArgs(process.argv);
-  const core = loadCommonJsBrowserFile(path.join(REPO, 'shared/dhq-core.js'));
+  const core = loadCommonJsBrowserFile(path.join(REPO, 'shared/dhq-core.js'), path.join(REPO, 'shared/dhq-core-values.js'));
   const pickModel = loadCommonJsBrowserFile(path.join(REPO, 'shared/pick-value-model.js'));
   const isDynasty = args.mode !== 'redraft';
   let fcUrl = `https://api.fantasycalc.com/values/current?isDynasty=${isDynasty ? 'true' : 'false'}&numQbs=${args.numQbs}&numTeams=${args.teams}&ppr=${args.ppr}`;
